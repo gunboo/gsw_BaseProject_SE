@@ -1,0 +1,79 @@
+# village.map - tutorial level terrain
+# legend: . grass  , tallgrass  : dirt  = stone  ~ water  _ sand  T tree  t bush  o rock
+SIZE 44 36
+TILES
+T,TTTTTTTTTTtTTT,TTTtTTToTT.tT,TTTTT,,TTTTTt
+TTTTTTTTTTTTTToTTtTTTT,T,TtT,TTTTTT,TTTTtoTT
+,,TT,TTTTTTTTtTTTT,TTTTTTTToTT,TTTTTTtTTTT,T
+TTTTTTT,T,TtTTTTTTt,oTTttT.TtTttToTTToTTTTTT
+tTTTTT,TTTTTT,TTtTT,tT,TtTTTTTtTTTtTtTTTTTTT
+TTTtttTTTTTT,TTTTTTTTTTTTTTT,.T,TTTtTTTt,oTT
+TT,,TTTTTTtoTTTT,TTT..TT,T.TTtTTTT,T,,T,TTTt
+TT,TtTT,TToT.t.,.....,..,tT.TTTTTTTTTT,TTTTT
+TTtt,,T,TTTTtT.,.T..===...T..TTtTTT,TTTTT.TT
+,TTTTTTTTtT.Tt...,.=====......,T.T,TTTTToTTT
+TTTTTtTTtTT........=====....,.,TTTtTTT,TTTTT
+TTTTt,TTTt.....,...=====.,........,TT,TTTTTT
+TTTTtTt.,Tt.,.,.....===..,....,...TTTTTTTtoT
+TTTTTTTToT.....,...,::..........T.tTTTT,.TTT
+TT,TTTT.....,,,.....===......,.,..TTTTTTTTTT
+T,ToTttTT.,....,..,=====...,.......t,TTTTTtT
+,TTTTTT,.t......,.=======...........TTT,TTTT
+TTTTT...t.....,,..=======.,.....,o.TT.,TTTTT
+tTTTTT...t......,.=======.,.........tTTT,.To
+TTTTt,TT.t.,...,..:=====::.....,.._____t,TTT
+TTTTtTTt.t.......:::===,::::,..__~~~~~~~__,T
+TTT,TTTt,...,..,:::......::::._~~~~~~~~~~~_,
+TTTTTTTTT..,..::::....,....::_~~~~~~~~~~~~~_
+TTTTtTT,T,T..:::,..........._~~~~~~~~~~~~~~~
+TTTTTTTTTT.T:::,,,.........._~~~~~~~~~~~~~~~
+TTTTtt,tTTT:::........,....._~~~~~~~~~~~~~~~
+TTTtTTTTT:::Tt...t.........__~~~~~~~~~~~~~~~
+,TTtTTTT:::,TTT.,..T.t..,..,_~~~~~~~~~~~~~~~
+TTTTTtT:::TTTTTT.TTtTTt.,T,t_~~~~~~~~~~~~~~~
+,TT,t::::,TTTTTTTTTTTT.ttTTT_~~~~~~~~~~~~~~~
+TT,t:::,TTTttTTtTTTTT,TtTtTTT_~~~~~~~~~~~~~_
+T,Tt::TT,TtTTToT,T,TT,oToTTTTT_~~~~~~~~~~~_T
+tTtTTTTtTTTTT,TTT,TTtTTTTt,t,TT__~~~~~~~__TT
+TTTTT,TTTTTTTTtTTtTTTTTTTT,TTTTttT_____TT,TT
+TTTTttTTTTTTTTTTtTTTTTTTTTtTTTTT,TtT,TTTtt,T
+TT,TtTTT,oTTTToTtT,TTTTT,,tTT,,TT,TToTT,tTT,
+# --------------------------------------------------------------------
+# props: <type> <x> <y> <sizeX> <sizeY> <variant>
+# tiles under a footprint are flattened to ground on load, so props may
+# be placed over scattered trees without editing the terrain by hand.
+PROPS
+shrine 19.5 7.0 3.0 2.5 0
+torii 21.0 12.6 0 0 0
+house 11.0 11.0 4.0 3.0 0
+house 25.0 11.0 4.0 3.0 1
+house 10.0 19.0 3.5 3.0 2
+house 25.0 16.0 4.0 3.0 0
+house 16.0 23.0 4.0 3.0 1
+ruin 8.0 14.0 3.5 3.0 0
+well 21.0 21.0 0 0 0
+cart 24.5 22.0 0 0 0
+dock 29.5 22.5 0 0 0
+stone 8.5 24.0 0 0 0
+stone 33.0 15.0 0 0 0
+lantern 18.0 15.0 0 0 0
+lantern 24.0 15.0 0 0 0
+lantern 18.0 20.0 0 0 0
+lantern 24.0 20.0 0 0 0
+lantern 21.0 13.8 0 0 0
+lantern 21.0 10.4 0 0 0
+lantern 29.0 21.6 0 0 0
+lantern 12.2 17.6 0 0 0
+lantern 14.0 24.5 0 0 0
+# --------------------------------------------------------------------
+# npcs: <dialogue id> <x> <y>
+NPCS
+elder 21.0 11.2
+smith 12.6 14.8
+fisher 28.8 22.2
+child 17.4 19.6
+farmer 25.4 19.9
+monk 19.2 13.4
+drunk 14.2 22.4
+ghost 9.5 17.9
+PLAYER 6.0 30.0
