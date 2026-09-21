@@ -9,6 +9,7 @@
 #include "Input.h"
 #include "Lighting.h"
 #include "Model.h"
+#include "SceneGraph.h"
 
 enum GameState
 {
@@ -38,17 +39,14 @@ enum ClueBit
 struct Npc
 {
 	std::string id;
-	float x;
-	float y;
+	Actor* actor;
 	float phase;		// idle sway offset so the crowd is not in lockstep
 	int look;
 };
 
 struct Mote
 {
-	float x;
-	float y;
-	float z;
+	Actor* actor;
 	float riseSpeed;
 	float drift;
 	float life;
@@ -67,15 +65,29 @@ public:
 	void Update(float deltaSeconds);
 	void Render();
 
+	// Game borrows its gameplay actor pointers from this graph. Before removing
+	// those actors or their ancestors, clear the associated Game references.
+	SceneGraph& GetSceneGraph();
+	const SceneGraph& GetSceneGraph() const;
+
 	void OnKey(unsigned char key, bool down, bool shift);
 	bool WantsExit() const { return m_WantsExit; }
-	bool WantsNextLevel() const { return m_WantsNextLevel; }
+	bool ConsumeNextLevelRequest();
 
 private:
 	// --- simulation ---
+	void CreateScene();
+	void CreateEnvironmentActors();
+	void CreateCharacterActors();
+	void CreateEffectActors();
+	void CreateInterfaceActors();
+	void UpdateSceneState();
 	void UpdatePlayer(float deltaSeconds);
+	void UpdateCamera(float deltaSeconds);
+	void UpdateLighting();
 	void UpdateInteractionTarget();
-	void UpdateMotes(float deltaSeconds);
+	void UpdateMote(size_t index, float deltaSeconds);
+	void UpdateMist(size_t index, float deltaSeconds);
 	void TryInteract();
 	void OpenDialogue(const std::string& key);
 	void AdvanceDialogue();
@@ -89,14 +101,18 @@ private:
 	// --- rendering ---
 	Color Lit(const Color& base, float worldX, float worldY) const;
 	float FogFactor(float worldX, float worldY) const;
-	bool OnScreen(float screenX, float screenY, float margin) const;
-	void PushShadow(float worldX, float worldY, float radiusX, float radiusY, float depth);
+	void PushShadow(float worldX, float worldY, float radiusX, float radiusY, float depth, float worldZ);
 
-	void DrawGround();
-	void DrawScenery();
-	void DrawMotes();
+	void DrawGround(const Actor& actor, TileType tile, unsigned int variation);
+	void DrawScenery(const Actor& actor, TileType tile, int variant);
+	void DrawProp(const Actor& actor, const Prop& definition);
+	void DrawNpc(const Npc& npc);
+	void DrawPlayer(const Actor& actor);
+	void DrawMote(const Mote& mote);
+	void DrawMist(const Mote& wisp, size_t index);
 	void DrawAtmosphere();
 	void DrawHud();
+	void DrawTutorialSkipHint();
 	void DrawQuestGuide();
 	void DrawDialogue();
 	void DrawClueList();
@@ -105,24 +121,35 @@ private:
 	void DrawPanel(float x, float y, float width, float height, float alpha, float depth);
 	void DrawAccentPanel(float x, float y, float width, float height, const Color& accent, float depth);
 
-	void DrawTree(float worldX, float worldY, int variant);
-	void DrawBush(float worldX, float worldY);
-	void DrawRock(float worldX, float worldY);
-	void DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow);
-	void DrawRuin(const Prop& prop);
-	void DrawTorii(const Prop& prop);
-	void DrawLantern(const Prop& prop);
-	void DrawWell(const Prop& prop);
-	void DrawCart(const Prop& prop);
-	void DrawDock(const Prop& prop);
-	void DrawStone(const Prop& prop);
+	void DrawTree(float worldX, float worldY, int variant, float worldZ);
+	void DrawBush(float worldX, float worldY, float worldZ);
+	void DrawRock(float worldX, float worldY, float worldZ);
+	void DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow, float worldZ);
+	void DrawRuin(const Prop& prop, float worldZ);
+	void DrawTorii(const Prop& prop, float worldZ);
+	void DrawLantern(const Prop& prop, float worldZ);
+	void DrawWell(const Prop& prop, float worldZ);
+	void DrawCart(const Prop& prop, float worldZ);
+	void DrawDock(const Prop& prop, float worldZ);
+	void DrawStone(const Prop& prop, float worldZ);
 	void DrawPerson(float worldX, float worldY, float bodyHeight, const Color& robe,
-		const Color& trim, bool hat, bool sword, bool lantern, float bobPixels);
+		const Color& trim, bool hat, bool sword, bool lantern, float bobPixels, float worldZ);
 
 	Renderer* m_Renderer;
 	ModelLibrary* m_Models;
 	DialogueDB* m_Dialogue;
 	World m_World;
+	SceneGraph m_SceneGraph;
+	Actor* m_EnvironmentActor;
+	Actor* m_CharactersActor;
+	Actor* m_EffectsActor;
+	Actor* m_InterfaceActor;
+	Actor* m_HudActor;
+	Actor* m_DialogueActor;
+	Actor* m_CluesActor;
+	Actor* m_IntroActor;
+	Actor* m_EndingActor;
+	std::vector<Actor*> m_PropActors;
 
 	GameState m_State;
 	bool m_WantsExit;
@@ -132,8 +159,7 @@ private:
 	float m_Fade;			// 1 = fully black
 
 	// player
-	float m_PlayerX;
-	float m_PlayerY;
+	Actor* m_PlayerActor;
 	float m_PlayerStride;	// drives the walk bob
 	bool m_MoveKey[MOVE_COUNT];
 	bool m_Running;

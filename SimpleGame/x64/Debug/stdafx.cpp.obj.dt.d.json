@@ -1,0 +1,38 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\users\\jinseok\\onedrive\\desktop\\class\\26-2\\game_software\\gsw_baseproject_se\\simplegame\\stdafx.cpp",
+        "ProvidedModule": "",
+        "Includes": [
+            "c:\\users\\jinseok\\onedrive\\desktop\\class\\26-2\\game_software\\gsw_baseproject_se\\simplegame\\stdafx.h",
+            "c:\\users\\jinseok\\onedrive\\desktop\\class\\26-2\\game_software\\gsw_baseproject_se\\simplegame\\targetver.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\shared\\sdkddkver.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\stdio.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt.h",
+            "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\vcruntime.h",
+            "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\sal.h",
+            "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\concurrencysal.h",
+            "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\vadefs.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wstdio.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_stdio_config.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\tchar.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\wchar.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_memcpy_s.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\errno.h",
+            "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\vcruntime_string.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wconio.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wctype.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wdirect.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wio.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_share.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wprocess.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wstdlib.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wstring.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\corecrt_wtime.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\sys\\stat.h",
+            "c:\\program files (x86)\\windows kits\\10\\include\\10.0.28000.0\\ucrt\\sys\\types.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

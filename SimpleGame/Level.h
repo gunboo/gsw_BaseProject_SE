@@ -8,6 +8,7 @@
 #include "Lighting.h"
 #include "Model.h"
 #include "Renderer.h"
+#include "SceneGraph.h"
 #include "Stats.h"
 #include "World.h"
 
@@ -35,9 +36,8 @@ enum PickupKind
 
 struct Enemy
 {
+	Actor* actor;
 	EnemyKind kind;
-	float x;
-	float y;
 	float health;
 	float maxHealth;
 	float attackTimer;
@@ -52,20 +52,17 @@ struct Enemy
 
 struct Pickup
 {
+	Actor* actor;
 	PickupKind kind;
-	float x;
-	float y;
 	float phase;
 	float life;
 	int value;
-	bool active;
 };
 
 struct FloatingText
 {
+	Actor* actor;
 	std::wstring text;
-	float x;
-	float y;
 	float rise;
 	float life;
 	float maxLife;
@@ -87,17 +84,29 @@ public:
 	void Render();
 	void OnKey(unsigned char key, bool down, bool shift);
 
+	// Gameplay retains borrowed Actor pointers; remove managed actors only
+	// through the scene lifecycle.
+	SceneGraph& GetSceneGraph();
+	const SceneGraph& GetSceneGraph() const;
+
 	bool WantsExit() const
 	{
 		return m_WantsExit;
 	}
 
 private:
+	void BuildSceneGraph();
+	void BuildEnvironment(Actor* environment);
+	void SyncSceneState();
+	ActorPosition PlayerPosition() const;
+
 	// --- simulation ---
+	void UpdateSimulation(float deltaSeconds);
+	void UpdateCamera(float deltaSeconds);
 	void UpdatePlayer(float deltaSeconds);
-	void UpdateEnemies(float deltaSeconds);
-	void UpdatePickups(float deltaSeconds);
-	void UpdateEffects(float deltaSeconds);
+	void UpdateEnemy(int index, float deltaSeconds);
+	void UpdatePickup(int index, float deltaSeconds);
+	void UpdateFloatingText(int index, float deltaSeconds);
 	void UpdateLights();
 
 	void Attack();
@@ -107,17 +116,17 @@ private:
 	void SpawnEnemy(int index, bool awayFromPlayer);
 	void SpawnPickup(PickupKind kind, float x, float y, int value);
 	void CollectPickup(int index);
-	void AddFloatingText(const std::wstring& text, float x, float y, const Color& color, int size);
+	void AddFloatingText(const std::wstring& text, const ActorPosition& position, const Color& color, int size);
 	void GrantExperience(int amount);
 
 	// --- rendering ---
-	void DrawGround();
-	void DrawScenery();
-	void DrawEnemies();
-	void DrawPickups();
+	void DrawGround(const Actor& actor, int x, int y);
+	void DrawScenery(const Actor& actor, const Model* model);
+	void DrawEnemy(int index);
+	void DrawPickup(int index);
 	void DrawPlayer();
-	void DrawSwing();
-	void DrawFloatingText();
+	void DrawSwing(const Actor& actor);
+	void DrawFloatingText(int index);
 	void DrawAtmosphere();
 	void DrawHud();
 	void DrawStatsScreen();
@@ -126,7 +135,6 @@ private:
 		const Color& fillColor, const Color& backColor, float depth);
 	void DrawPanel(float x, float y, float width, float height, float alpha, float depth);
 
-	bool OnScreen(float screenX, float screenY, float margin) const;
 	const Model* ModelFor(EnemyKind kind) const;
 	const Model* ModelFor(PickupKind kind) const;
 	std::wstring Text(const char* key) const;
@@ -139,6 +147,13 @@ private:
 	Lighting m_Lighting;
 	PlayerStats m_Stats;
 	Rng m_Rng;
+	SceneGraph m_SceneGraph;
+	Actor* m_SimulationActor;
+	Actor* m_PlayerActor;
+	Actor* m_PickupActors;
+	Actor* m_FloatingTextActors;
+	Actor* m_StatsActor;
+	Actor* m_DownedActor;
 
 	LevelState m_State;
 	bool m_WantsExit;
@@ -146,8 +161,6 @@ private:
 	float m_StateTime;
 	float m_Fade;
 
-	float m_PlayerX;
-	float m_PlayerY;
 	float m_FacingX;
 	float m_FacingY;
 	float m_Stride;

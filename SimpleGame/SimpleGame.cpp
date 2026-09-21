@@ -109,7 +109,8 @@ void Idle(void)
 	{
 		g_Tutorial->Update(deltaSeconds);
 
-		if (g_Tutorial->WantsNextLevel())
+		// Consume once so a failed transition waits for another explicit request.
+		if (g_Tutorial->ConsumeNextLevelRequest())
 		{
 			EnterLevel();
 		}

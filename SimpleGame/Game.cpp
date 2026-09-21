@@ -19,9 +19,9 @@ namespace
 	const Color COL_WATER = { 0.20f, 0.30f, 0.39f, 1.0f };
 	const Color COL_SAND = { 0.56f, 0.51f, 0.41f, 1.0f };
 
-	const Color COL_TSUCHI = { 0.48f, 0.38f, 0.28f, 1.0f };		// 土  earth
-	const Color COL_SHIRO = { 0.79f, 0.77f, 0.70f, 1.0f };		// 白  faded white
-	const Color COL_SHU = { 0.66f, 0.24f, 0.16f, 1.0f };		// 朱  vermilion
+	const Color COL_TSUCHI = { 0.48f, 0.38f, 0.28f, 1.0f };		// earth
+	const Color COL_SHIRO = { 0.79f, 0.77f, 0.70f, 1.0f };		// faded white
+	const Color COL_SHU = { 0.66f, 0.24f, 0.16f, 1.0f };		// vermilion
 
 	const Color COL_THATCH = { 0.31f, 0.28f, 0.24f, 1.0f };
 	const Color COL_PLASTER = { 0.62f, 0.60f, 0.54f, 1.0f };
@@ -52,10 +52,30 @@ namespace
 	const float PLAYER_RADIUS = 0.28f;
 	const float WALK_SPEED = 3.1f;
 	const float RUN_SPEED = 5.2f;
+	const unsigned char TUTORIAL_SKIP_KEY = '1';
+	const int SKIP_HINT_FONT_SIZE = 14;
+	const float SKIP_HINT_SIDE_MARGIN = 22.0f;
+	const float SKIP_HINT_BOTTOM_MARGIN = 34.0f;
 	const float GUIDE_EDGE_MARGIN = 46.0f;
 	const float GUIDE_VERTICAL_MARGIN = 120.0f;
 	const float GUIDE_PANEL_WIDTH = 252.0f;
 	const float GUIDE_PANEL_HEIGHT = 60.0f;
+	const int SCENE_CHUNK_SIZE = 8;
+	const int EMBER_COUNT = 44;
+	const int MIST_COUNT = 16;
+	const float SCENERY_BOUND_WIDTH = 100.0f;
+	const float SCENERY_BOUND_TOP = 160.0f;
+	const float SCENERY_BOUND_BOTTOM = 40.0f;
+	const float CHARACTER_BOUND_WIDTH = 64.0f;
+	const float CHARACTER_BOUND_TOP = 84.0f;
+	const float CHARACTER_BOUND_BOTTOM = 32.0f;
+	const float MIST_BOUND_WIDTH = 140.0f;
+	const float MIST_BOUND_HEIGHT = 40.0f;
+	const float EMBER_BOUND_RADIUS = 4.0f;
+	const float PROP_BOUND_LEFT_MARGIN = 120.0f;
+	const float PROP_BOUND_RIGHT_MARGIN = 160.0f;
+	const float PROP_BOUND_TOP_MARGIN = 160.0f;
+	const float PROP_BOUND_BOTTOM_MARGIN = 100.0f;
 
 	const float DEPTH_OVERLAY = 900000.0f;
 	const float DEPTH_PANEL = 920000.0f;
@@ -87,7 +107,7 @@ namespace
 	}
 
 	// Projects a world-space polygon and hands it to the batch.
-	void PushPoly3(Renderer* renderer, const float* xyz, int count, const Color& color, float depth)
+	void PushPoly3(Renderer* renderer, const float* xyz, int count, const Color& color, float depth, float worldZ)
 	{
 		float points[32];
 
@@ -98,7 +118,7 @@ namespace
 
 		for (int i = 0; i < count; ++i)
 		{
-			renderer->WorldToScreen(xyz[i * 3 + 0], xyz[i * 3 + 1], xyz[i * 3 + 2],
+			renderer->WorldToScreen(xyz[i * 3 + 0], xyz[i * 3 + 1], xyz[i * 3 + 2] + worldZ,
 				&points[i * 2 + 0], &points[i * 2 + 1]);
 		}
 
@@ -107,7 +127,7 @@ namespace
 
 	// Flat quad lying on a horizontal plane at height z.
 	void PushFlatQuad(Renderer* renderer, float x0, float y0, float x1, float y1, float z,
-		const Color& color, float depth)
+		const Color& color, float depth, float worldZ)
 	{
 		const float xyz[12] =
 		{
@@ -116,12 +136,13 @@ namespace
 			x1, y1, z,
 			x0, y1, z
 		};
-		PushPoly3(renderer, xyz, 4, color, depth);
+
+		PushPoly3(renderer, xyz, 4, color, depth, worldZ);
 	}
 
 	// Vertical face spanning two world points, from height z0 up to z1.
 	void PushWallQuad(Renderer* renderer, float ax, float ay, float bx, float by,
-		float z0, float z1, const Color& color, float depth)
+		float z0, float z1, const Color& color, float depth, float worldZ)
 	{
 		const float xyz[12] =
 		{
@@ -130,7 +151,8 @@ namespace
 			bx, by, z1,
 			ax, ay, z1
 		};
-		PushPoly3(renderer, xyz, 4, color, depth);
+
+		PushPoly3(renderer, xyz, 4, color, depth, worldZ);
 	}
 }
 
@@ -138,14 +160,22 @@ Game::Game()
 	: m_Renderer(NULL)
 	, m_Models(NULL)
 	, m_Dialogue(NULL)
+	, m_EnvironmentActor(NULL)
+	, m_CharactersActor(NULL)
+	, m_EffectsActor(NULL)
+	, m_InterfaceActor(NULL)
+	, m_HudActor(NULL)
+	, m_DialogueActor(NULL)
+	, m_CluesActor(NULL)
+	, m_IntroActor(NULL)
+	, m_EndingActor(NULL)
 	, m_State(STATE_INTRO)
 	, m_WantsExit(false)
 	, m_WantsNextLevel(false)
 	, m_Time(0.0f)
 	, m_StateTime(0.0f)
 	, m_Fade(1.0f)
-	, m_PlayerX(1.0f)
-	, m_PlayerY(1.0f)
+	, m_PlayerActor(NULL)
 	, m_PlayerStride(0.0f)
 	, m_Running(false)
 	, m_Moving(false)
@@ -180,89 +210,288 @@ bool Game::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dial
 		return false;
 	}
 
-	m_PlayerX = m_World.GetPlayerStartX();
-	m_PlayerY = m_World.GetPlayerStartY();
-	m_CameraX = m_PlayerX;
-	m_CameraY = m_PlayerY;
+	m_SceneGraph.Clear();
+	m_Npcs.clear();
+	m_PropActors.clear();
+	m_Motes.clear();
+	m_Mist.clear();
+	m_Lighting.Clear();
+	m_CameraX = m_World.GetPlayerStartX();
+	m_CameraY = m_World.GetPlayerStartY();
 	m_Lighting.SetViewer(m_CameraX, m_CameraY);
+	m_State = STATE_INTRO;
+	m_StateTime = 0.0f;
+	m_Fade = 1.0f;
+	CreateScene();
+	UpdateSceneState();
+	UpdateLighting();
 
-	// Villagers, in the order the map lists them.
-	const std::vector<SpawnPoint>& spawns = m_World.GetNpcSpawns();
+	return true;
+}
 
-	for (size_t i = 0; i < spawns.size(); ++i)
+void Game::CreateScene()
+{
+	m_EnvironmentActor = m_SceneGraph.CreateActor("Environment");
+	m_CharactersActor = m_SceneGraph.CreateActor("Characters");
+	m_EffectsActor = m_SceneGraph.CreateActor("Effects");
+	m_InterfaceActor = m_SceneGraph.CreateActor("Interface");
+	m_EnvironmentActor->SetActive(false);
+
+	CreateEnvironmentActors();
+	CreateCharacterActors();
+	CreateEffectActors();
+	CreateInterfaceActors();
+
+	// Effects follow Characters so camera/light positions use this frame's move.
+	m_EffectsActor->SetUpdateCallback([this](Actor&, float deltaSeconds)
 	{
-		Npc npc;
-		npc.id = spawns[i].id;
-		npc.x = spawns[i].x;
-		npc.y = spawns[i].y;
-		npc.phase = (float)(i * 1.37f);
-		npc.look = (int)(i % 8);
-		m_Npcs.push_back(npc);
+		UpdateCamera(deltaSeconds);
+		UpdateInteractionTarget();
+	});
+}
+
+void Game::CreateEnvironmentActors()
+{
+	const int chunkColumns = (m_World.GetWidth() + SCENE_CHUNK_SIZE - 1) / SCENE_CHUNK_SIZE;
+	const int chunkRows = (m_World.GetHeight() + SCENE_CHUNK_SIZE - 1) / SCENE_CHUNK_SIZE;
+	std::vector<Actor*> chunks;
+
+	for (int y = 0; y < chunkRows; ++y)
+	{
+		for (int x = 0; x < chunkColumns; ++x)
+		{
+			Actor* chunk = m_SceneGraph.CreateActor("Chunk_" + std::to_string(x)
+				+ "_" + std::to_string(y), m_EnvironmentActor);
+			chunk->SetPosition((float)(x * SCENE_CHUNK_SIZE), (float)(y * SCENE_CHUNK_SIZE));
+			chunk->SetActive(false);
+			chunks.push_back(chunk);
+		}
 	}
 
-	// Light 0 is the lantern the player carries; the rest are fixed.
-	m_PlayerLightIndex = m_Lighting.AddLight(m_PlayerX, m_PlayerY, 4.2f, 1.15f, COL_FLAME, true);
+	for (int y = 0; y < m_World.GetHeight(); ++y)
+	{
+		for (int x = 0; x < m_World.GetWidth(); ++x)
+		{
+			const TileType tile = m_World.GetTile(x, y);
+			const unsigned int variation = HashInt(x, y);
+			Actor* chunk = chunks[(y / SCENE_CHUNK_SIZE) * chunkColumns + x / SCENE_CHUNK_SIZE];
+			const ActorPosition origin = chunk->GetWorldPosition();
+			const std::string suffix = std::to_string(x) + "_" + std::to_string(y);
+			Actor* ground = m_SceneGraph.CreateActor("Ground_" + suffix, chunk);
+			ground->SetPosition((float)x + 0.5f - origin.x, (float)y + 0.5f - origin.y);
+			ground->SetRenderBounds(-Renderer::TileHalfWidth(), -Renderer::TileHalfHeight(),
+				Renderer::TileHalfWidth(), Renderer::TileHalfHeight());
+			ground->SetRenderCallback([this, tile, variation](const Actor& actor, Renderer&)
+			{
+				DrawGround(actor, tile, variation);
+			});
+
+			if (tile != TILE_TREE && tile != TILE_BUSH && tile != TILE_ROCK)
+			{
+				continue;
+			}
+
+			Actor* scenery = m_SceneGraph.CreateActor("Scenery_" + suffix, chunk);
+			scenery->SetPosition((float)x + 0.30f + (float)(variation % 40) * 0.01f - origin.x,
+				(float)y + 0.30f + (float)((variation >> 8) % 40) * 0.01f - origin.y);
+			scenery->SetRenderBounds(-SCENERY_BOUND_WIDTH, -SCENERY_BOUND_TOP,
+				SCENERY_BOUND_WIDTH, SCENERY_BOUND_BOTTOM);
+			scenery->SetRenderCallback([this, tile, variation](const Actor& actor, Renderer&)
+			{
+				DrawScenery(actor, tile, (int)((variation >> 16) % 5));
+			});
+		}
+	}
 
 	const std::vector<Prop>& props = m_World.GetProps();
 
 	for (size_t i = 0; i < props.size(); ++i)
 	{
-		if (props[i].type != PROP_LANTERN)
+		const Prop definition = props[i];
+		const int chunkX = (int)Clamp(definition.x / SCENE_CHUNK_SIZE, 0.0f, (float)(chunkColumns - 1));
+		const int chunkY = (int)Clamp(definition.y / SCENE_CHUNK_SIZE, 0.0f, (float)(chunkRows - 1));
+		Actor* chunk = chunks[chunkY * chunkColumns + chunkX];
+		const ActorPosition origin = chunk->GetWorldPosition();
+		Actor* prop = m_SceneGraph.CreateActor("Prop_" + std::to_string(i), chunk);
+		prop->SetPosition(definition.x - origin.x, definition.y - origin.y);
+		prop->SetRenderBounds(-definition.sizeY * Renderer::TileHalfWidth() - PROP_BOUND_LEFT_MARGIN,
+			-PROP_BOUND_TOP_MARGIN, definition.sizeX * Renderer::TileHalfWidth() + PROP_BOUND_RIGHT_MARGIN,
+			(definition.sizeX + definition.sizeY) * Renderer::TileHalfHeight() + PROP_BOUND_BOTTOM_MARGIN);
+		prop->SetRenderCallback([this, definition](const Actor& actor, Renderer&)
 		{
-			continue;
-		}
+			DrawProp(actor, definition);
+		});
 
-		m_Lighting.AddLight(props[i].x, props[i].y, 5.0f, 1.45f, COL_FLAME, true);
+		m_PropActors.push_back(prop);
 	}
+}
 
-	// The forge keeps the smith awake; a redder, tighter pool of light.
-	for (size_t i = 0; i < m_Npcs.size(); ++i)
+void Game::CreateCharacterActors()
+{
+	const std::vector<SpawnPoint>& spawns = m_World.GetNpcSpawns();
+
+	for (size_t i = 0; i < spawns.size(); ++i)
 	{
-		if (m_Npcs[i].id != "smith")
+		Npc npc;
+
+		npc.id = spawns[i].id;
+		npc.actor = m_SceneGraph.CreateActor("Npc_" + npc.id, m_CharactersActor);
+		npc.actor->SetPosition(spawns[i].x, spawns[i].y);
+		npc.actor->SetRenderBounds(-CHARACTER_BOUND_WIDTH, -CHARACTER_BOUND_TOP,
+			CHARACTER_BOUND_WIDTH, CHARACTER_BOUND_BOTTOM);
+		npc.phase = (float)i * 1.37f;
+		npc.look = (int)(i % 8);
+		npc.actor->SetRenderCallback([this, i](const Actor&, Renderer&)
 		{
-			continue;
-		}
+			DrawNpc(m_Npcs[i]);
+		});
 
-		m_Lighting.AddLight(m_Npcs[i].x + 0.6f, m_Npcs[i].y + 0.3f, 3.4f, 1.6f,
-			RGBA(1.0f, 0.45f, 0.20f), true);
+		m_Npcs.push_back(npc);
 	}
 
-	// Embers drifting off the lanterns.
-	for (int i = 0; i < 44; ++i)
+	m_PlayerActor = m_SceneGraph.CreateActor("Player", m_CharactersActor);
+	m_PlayerActor->SetPosition(m_World.GetPlayerStartX(), m_World.GetPlayerStartY());
+	m_PlayerActor->SetRenderBounds(-CHARACTER_BOUND_WIDTH, -CHARACTER_BOUND_TOP,
+		CHARACTER_BOUND_WIDTH, CHARACTER_BOUND_BOTTOM);
+	m_PlayerActor->SetUpdateCallback([this](Actor&, float deltaSeconds)
 	{
-		Mote mote;
-		mote.life = 0.0f;
-		mote.maxLife = 1.0f;
-		mote.x = 0.0f;
-		mote.y = 0.0f;
-		mote.z = 0.0f;
-		mote.riseSpeed = 0.0f;
-		mote.drift = 0.0f;
-		mote.size = 1.0f;
-		m_Motes.push_back(mote);
-	}
+		UpdatePlayer(deltaSeconds);
+	});
 
-	// Low mist banks, drifting across the ground.
-	for (int i = 0; i < 16; ++i)
+	m_PlayerActor->SetRenderCallback([this](const Actor& actor, Renderer&)
 	{
-		const unsigned int h = HashInt(i * 17 + 3, i * 5 + 11);
+		DrawPlayer(actor);
+	});
+}
+
+void Game::CreateEffectActors()
+{
+	for (int i = 0; i < MIST_COUNT; ++i)
+	{
+		const unsigned int variation = HashInt(i * 17 + 3, i * 5 + 11);
 		Mote wisp;
-		wisp.x = 4.0f + (float)(h % 3600) * 0.01f;
-		wisp.y = 4.0f + (float)((h >> 8) % 2800) * 0.01f;
-		wisp.z = 0.10f + (float)((h >> 4) % 20) * 0.004f;
-		wisp.drift = 0.10f + (float)((h >> 12) % 40) * 0.004f;
+
+		wisp.actor = m_SceneGraph.CreateActor("Mist_" + std::to_string(i), m_EffectsActor);
+		wisp.actor->SetPosition(4.0f + (float)(variation % 3600) * 0.01f,
+			4.0f + (float)((variation >> 8) % 2800) * 0.01f,
+			0.10f + (float)((variation >> 4) % 20) * 0.004f);
+		wisp.drift = 0.10f + (float)((variation >> 12) % 40) * 0.004f;
 		wisp.riseSpeed = 0.0f;
 		wisp.life = 1.0f;
 		wisp.maxLife = 1.0f;
-		wisp.size = 2.6f + (float)((h >> 16) % 26) * 0.08f;
+		wisp.size = 2.6f + (float)((variation >> 16) % 26) * 0.08f;
+		wisp.actor->SetRenderBounds(-MIST_BOUND_WIDTH, -MIST_BOUND_HEIGHT,
+			MIST_BOUND_WIDTH, MIST_BOUND_HEIGHT);
+		wisp.actor->SetUpdateCallback([this, i](Actor&, float deltaSeconds)
+		{
+			UpdateMist((size_t)i, deltaSeconds);
+		});
+
+		wisp.actor->SetRenderCallback([this, i](const Actor&, Renderer&)
+		{
+			DrawMist(m_Mist[i], (size_t)i);
+		});
+
 		m_Mist.push_back(wisp);
 	}
 
-	m_State = STATE_INTRO;
-	m_StateTime = 0.0f;
-	m_Fade = 1.0f;
+	for (int i = 0; i < EMBER_COUNT; ++i)
+	{
+		Mote mote;
 
-	return true;
+		mote.actor = m_SceneGraph.CreateActor("Ember_" + std::to_string(i), m_EffectsActor);
+		mote.actor->SetVisible(false);
+		mote.actor->SetRenderBounds(-EMBER_BOUND_RADIUS, -EMBER_BOUND_RADIUS,
+			EMBER_BOUND_RADIUS, EMBER_BOUND_RADIUS);
+		mote.life = 0.0f;
+		mote.maxLife = 1.0f;
+		mote.riseSpeed = 0.0f;
+		mote.drift = 0.0f;
+		mote.size = 1.0f;
+		mote.actor->SetUpdateCallback([this, i](Actor&, float deltaSeconds)
+		{
+			UpdateMote((size_t)i, deltaSeconds);
+		});
+
+		mote.actor->SetRenderCallback([this, i](const Actor&, Renderer&)
+		{
+			DrawMote(m_Motes[i]);
+		});
+
+		m_Motes.push_back(mote);
+	}
+}
+
+void Game::CreateInterfaceActors()
+{
+	// Window-relative panels deliberately have no world-culling bounds.
+	Actor* atmosphere = m_SceneGraph.CreateActor("Atmosphere", m_InterfaceActor);
+	atmosphere->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawAtmosphere();
+	});
+
+	m_HudActor = m_SceneGraph.CreateActor("Hud", m_InterfaceActor);
+	m_HudActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawHud();
+	});
+
+	m_DialogueActor = m_SceneGraph.CreateActor("Dialogue", m_InterfaceActor);
+	m_DialogueActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawDialogue();
+	});
+
+	m_CluesActor = m_SceneGraph.CreateActor("Clues", m_InterfaceActor);
+	m_CluesActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawClueList();
+	});
+
+	m_IntroActor = m_SceneGraph.CreateActor("Intro", m_InterfaceActor);
+	m_IntroActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawIntro();
+	});
+
+	m_EndingActor = m_SceneGraph.CreateActor("Ending", m_InterfaceActor);
+	m_EndingActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawEnding();
+	});
+
+	Actor* skipHint = m_SceneGraph.CreateActor("TutorialSkipHint", m_InterfaceActor);
+	skipHint->SetActive(false);
+	skipHint->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawTutorialSkipHint();
+	});
+
+	m_InterfaceActor->SetUpdateCallback([this](Actor&, float deltaSeconds)
+	{
+		if (m_ToastTimer > 0.0f)
+		{
+			m_ToastTimer -= deltaSeconds;
+		}
+	});
+}
+
+void Game::UpdateSceneState()
+{
+	const bool worldVisible = m_State != STATE_ENDING || m_Fade < 0.999f;
+	const bool worldActive = m_State != STATE_INTRO && m_State != STATE_ENDING;
+	m_EnvironmentActor->SetVisible(worldVisible);
+	m_CharactersActor->SetVisible(worldVisible);
+	m_CharactersActor->SetActive(worldActive);
+	m_EffectsActor->SetVisible(worldVisible);
+	m_EffectsActor->SetActive(worldActive);
+	m_PlayerActor->SetActive(m_State == STATE_PLAY);
+	m_HudActor->SetVisible(worldActive);
+	m_DialogueActor->SetVisible(m_State == STATE_DIALOGUE);
+	m_CluesActor->SetVisible(m_State == STATE_CLUES);
+	m_IntroActor->SetVisible(m_State == STATE_INTRO);
+	m_EndingActor->SetVisible(m_State == STATE_ENDING);
 }
 
 // ---------------------------------------------------------------- simulation
@@ -271,11 +500,6 @@ void Game::Update(float deltaSeconds)
 {
 	m_Time += deltaSeconds;
 	m_StateTime += deltaSeconds;
-
-	if (m_ToastTimer > 0.0f)
-	{
-		m_ToastTimer -= deltaSeconds;
-	}
 
 	if (m_State == STATE_INTRO)
 	{
@@ -286,36 +510,70 @@ void Game::Update(float deltaSeconds)
 			m_State = STATE_PLAY;
 			m_StateTime = 0.0f;
 		}
-
-		return;
 	}
-
-	if (m_State == STATE_ENDING)
+	else if (m_State == STATE_ENDING)
 	{
 		m_Fade = Clamp(m_StateTime / 1.6f, 0.0f, 1.0f);
-		return;
 	}
 
-	if (m_State == STATE_PLAY)
-	{
-		UpdatePlayer(deltaSeconds);
-	}
-	else
+	if (m_State != STATE_PLAY)
 	{
 		m_Moving = false;
 	}
 
-	// The camera eases toward the player so that stopping does not feel abrupt.
-	const float follow = Clamp(deltaSeconds * 6.0f, 0.0f, 1.0f);
-	m_CameraX += (m_PlayerX - m_CameraX) * follow;
-	m_CameraY += (m_PlayerY - m_CameraY) * follow;
+	UpdateSceneState();
+	m_SceneGraph.Update(deltaSeconds);
+}
 
+void Game::UpdateCamera(float deltaSeconds)
+{
+	const ActorPosition player = m_PlayerActor->GetWorldPosition();
+	const float follow = Clamp(deltaSeconds * 6.0f, 0.0f, 1.0f);
+	m_CameraX += (player.x - m_CameraX) * follow;
+	m_CameraY += (player.y - m_CameraY) * follow;
 	m_Lighting.SetViewer(m_CameraX, m_CameraY);
 	m_Lighting.SetTime(m_Time);
-	m_Lighting.MoveLight(m_PlayerLightIndex, m_PlayerX, m_PlayerY - 0.15f);
+	UpdateLighting();
+}
 
-	UpdateInteractionTarget();
-	UpdateMotes(deltaSeconds);
+void Game::UpdateLighting()
+{
+	const ActorPosition player = m_PlayerActor->GetWorldPosition();
+	const float playerIntensity = m_PlayerActor->IsVisibleInHierarchy() ? 1.15f : 0.0f;
+	const std::vector<Prop>& props = m_World.GetProps();
+
+	m_Lighting.Clear();
+
+	// Keep slot 0 reserved even while hidden; ember emitters start at slot 1.
+	m_PlayerLightIndex = m_Lighting.AddLight(player.x, player.y - 0.15f,
+		4.2f, playerIntensity, COL_FLAME, true);
+
+	for (size_t i = 0; i < props.size(); ++i)
+	{
+		if (props[i].type != PROP_LANTERN || !m_PropActors[i]->IsVisibleInHierarchy())
+		{
+			continue;
+		}
+
+		const ActorPosition position = m_PropActors[i]->GetWorldPosition();
+
+		m_Lighting.AddLight(position.x, position.y, 5.0f, 1.45f, COL_FLAME, true);
+	}
+
+	for (size_t i = 0; i < m_Npcs.size(); ++i)
+	{
+		const Npc& npc = m_Npcs[i];
+
+		if (npc.id != "smith" || !npc.actor->IsVisibleInHierarchy())
+		{
+			continue;
+		}
+
+		const ActorPosition position = npc.actor->GetWorldPosition();
+
+		m_Lighting.AddLight(position.x + 0.6f, position.y + 0.3f, 3.4f, 1.6f,
+			RGBA(1.0f, 0.45f, 0.20f), true);
+	}
 }
 
 void Game::UpdatePlayer(float deltaSeconds)
@@ -365,18 +623,24 @@ void Game::UpdatePlayer(float deltaSeconds)
 	const float speed = m_Running ? RUN_SPEED : WALK_SPEED;
 	const float stepX = dx * speed * deltaSeconds;
 	const float stepY = dy * speed * deltaSeconds;
+	const ActorPosition worldPosition = m_PlayerActor->GetWorldPosition();
+	ActorPosition position = m_PlayerActor->GetPosition();
+	float worldX = worldPosition.x;
+	float worldY = worldPosition.y;
 
 	// Axis-separated so that sliding along a wall still works.
-	if (!m_World.IsBlocked(m_PlayerX + stepX, m_PlayerY, PLAYER_RADIUS))
+	if (!m_World.IsBlocked(worldX + stepX, worldY, PLAYER_RADIUS))
 	{
-		m_PlayerX += stepX;
+		worldX += stepX;
+		position.x += stepX;
 	}
 
-	if (!m_World.IsBlocked(m_PlayerX, m_PlayerY + stepY, PLAYER_RADIUS))
+	if (!m_World.IsBlocked(worldX, worldY + stepY, PLAYER_RADIUS))
 	{
-		m_PlayerY += stepY;
+		position.y += stepY;
 	}
 
+	m_PlayerActor->SetPosition(position.x, position.y, position.z);
 	m_PlayerStride += deltaSeconds * (m_Running ? 13.0f : 9.0f);
 }
 
@@ -385,12 +649,19 @@ void Game::UpdateInteractionTarget()
 	m_TargetKind = INTERACT_NONE;
 	m_TargetIndex = -1;
 
+	const ActorPosition player = m_PlayerActor->GetWorldPosition();
 	float bestDistance = 1e9f;
 
 	for (size_t i = 0; i < m_Npcs.size(); ++i)
 	{
-		const float dx = m_Npcs[i].x - m_PlayerX;
-		const float dy = m_Npcs[i].y - m_PlayerY;
+		if (!m_Npcs[i].actor->IsVisibleInHierarchy())
+		{
+			continue;
+		}
+
+		const ActorPosition position = m_Npcs[i].actor->GetWorldPosition();
+		const float dx = position.x - player.x;
+		const float dy = position.y - player.y;
 		const float d = sqrtf(dx * dx + dy * dy);
 
 		if (d < 1.6f && d < bestDistance)
@@ -398,8 +669,8 @@ void Game::UpdateInteractionTarget()
 			bestDistance = d;
 			m_TargetKind = INTERACT_NPC;
 			m_TargetIndex = (int)i;
-			m_TargetX = m_Npcs[i].x;
-			m_TargetY = m_Npcs[i].y;
+			m_TargetX = position.x;
+			m_TargetY = position.y;
 		}
 	}
 
@@ -415,17 +686,18 @@ void Game::UpdateInteractionTarget()
 	{
 		const Prop& prop = props[i];
 
-		if (prop.type == PROP_LANTERN)
+		if (prop.type == PROP_LANTERN || !m_PropActors[i]->IsVisibleInHierarchy())
 		{
 			continue;
 		}
 
-		const float centerX = prop.x + prop.sizeX * 0.5f;
-		const float centerY = prop.y + prop.sizeY * 0.5f;
+		const ActorPosition position = m_PropActors[i]->GetWorldPosition();
+		const float centerX = position.x + prop.sizeX * 0.5f;
+		const float centerY = position.y + prop.sizeY * 0.5f;
 		const float reach = 1.15f + (prop.sizeX > prop.sizeY ? prop.sizeX : prop.sizeY) * 0.5f;
 
-		const float dx = centerX - m_PlayerX;
-		const float dy = centerY - m_PlayerY;
+		const float dx = centerX - player.x;
+		const float dy = centerY - player.y;
 		const float d = sqrtf(dx * dx + dy * dy);
 
 		// Keep the existing relative ranking among nearby scenery props.
@@ -442,66 +714,74 @@ void Game::UpdateInteractionTarget()
 	}
 }
 
-void Game::UpdateMotes(float deltaSeconds)
+void Game::UpdateMote(size_t index, float deltaSeconds)
 {
-	for (size_t i = 0; i < m_Motes.size(); ++i)
+	Mote& mote = m_Motes[index];
+	mote.life -= deltaSeconds;
+
+	if (mote.life <= 0.0f)
 	{
-		Mote& mote = m_Motes[i];
-		mote.life -= deltaSeconds;
+		mote.actor->SetVisible(false);
 
-		if (mote.life <= 0.0f)
+		if (m_Lighting.GetLightCount() < 2)
 		{
-			// Respawn at a lantern near the player so the effect stays where
-			// the camera is. Light 0 is the carried lantern, so skip it.
-			if (m_Lighting.GetLightCount() < 2)
-			{
-				continue;
-			}
-
-			int best = 1;
-			float bestDistance = 1e9f;
-
-			for (int k = 1; k < m_Lighting.GetLightCount(); ++k)
-			{
-				const float dx = m_Lighting.GetLight(k).x - m_PlayerX;
-				const float dy = m_Lighting.GetLight(k).y - m_PlayerY;
-				const float d = dx * dx + dy * dy;
-				const unsigned int jitter = HashInt((int)(i * 31 + (size_t)k), (int)(m_Time * 3.0f));
-				const float noisy = d + (float)(jitter % 100) * 0.35f;
-
-				if (noisy < bestDistance)
-				{
-					bestDistance = noisy;
-					best = k;
-				}
-			}
-
-			const unsigned int h = HashInt((int)i, (int)(m_Time * 60.0f));
-			mote.x = m_Lighting.GetLight(best).x + ((float)(h % 100) * 0.01f - 0.5f) * 0.7f;
-			mote.y = m_Lighting.GetLight(best).y + ((float)((h >> 7) % 100) * 0.01f - 0.5f) * 0.7f;
-			mote.z = 0.85f + (float)((h >> 14) % 40) * 0.004f;
-			mote.riseSpeed = 0.22f + (float)((h >> 20) % 40) * 0.006f;
-			mote.drift = ((float)((h >> 3) % 100) * 0.01f - 0.5f) * 0.18f;
-			mote.maxLife = 2.4f + (float)((h >> 11) % 30) * 0.06f;
-			mote.life = mote.maxLife;
-			mote.size = 1.4f + (float)((h >> 17) % 20) * 0.07f;
-			continue;
+			return;
 		}
 
-		mote.z += mote.riseSpeed * deltaSeconds;
-		mote.x += mote.drift * deltaSeconds;
-	}
+		// Light 0 belongs to the player; embers choose nearby fixed lanterns.
+		const ActorPosition player = m_PlayerActor->GetWorldPosition();
+		int best = 1;
+		float bestDistance = 1e9f;
 
-	for (size_t i = 0; i < m_Mist.size(); ++i)
-	{
-		Mote& wisp = m_Mist[i];
-		wisp.x += wisp.drift * deltaSeconds;
-
-		if (wisp.x > (float)m_World.GetWidth() + 4.0f)
+		for (int k = 1; k < m_Lighting.GetLightCount(); ++k)
 		{
-			wisp.x = -4.0f;
+			const float dx = m_Lighting.GetLight(k).x - player.x;
+			const float dy = m_Lighting.GetLight(k).y - player.y;
+			const float distance = dx * dx + dy * dy;
+			const unsigned int jitter = HashInt((int)(index * 31 + (size_t)k), (int)(m_Time * 3.0f));
+			const float noisy = distance + (float)(jitter % 100) * 0.35f;
+
+			if (noisy < bestDistance)
+			{
+				bestDistance = noisy;
+				best = k;
+			}
 		}
+
+		const unsigned int variation = HashInt((int)index, (int)(m_Time * 60.0f));
+		const Actor* parent = mote.actor->GetParent();
+		const ActorPosition origin = parent != NULL
+			? parent->GetWorldPosition() : ActorPosition{ 0.0f, 0.0f, 0.0f };
+		mote.actor->SetPosition(m_Lighting.GetLight(best).x
+			+ ((float)(variation % 100) * 0.01f - 0.5f) * 0.7f - origin.x,
+			m_Lighting.GetLight(best).y + ((float)((variation >> 7) % 100) * 0.01f - 0.5f) * 0.7f - origin.y,
+			0.85f + (float)((variation >> 14) % 40) * 0.004f - origin.z);
+		mote.riseSpeed = 0.22f + (float)((variation >> 20) % 40) * 0.006f;
+		mote.drift = ((float)((variation >> 3) % 100) * 0.01f - 0.5f) * 0.18f;
+		mote.maxLife = 2.4f + (float)((variation >> 11) % 30) * 0.06f;
+		mote.life = mote.maxLife;
+		mote.size = 1.4f + (float)((variation >> 17) % 20) * 0.07f;
+		mote.actor->SetVisible(true);
+		return;
 	}
+
+	const ActorPosition position = mote.actor->GetPosition();
+	mote.actor->SetPosition(position.x + mote.drift * deltaSeconds,
+		position.y, position.z + mote.riseSpeed * deltaSeconds);
+}
+
+void Game::UpdateMist(size_t index, float deltaSeconds)
+{
+	Mote& wisp = m_Mist[index];
+	ActorPosition position = wisp.actor->GetPosition();
+	position.x += wisp.drift * deltaSeconds;
+
+	if (position.x > (float)m_World.GetWidth() + 4.0f)
+	{
+		position.x = -4.0f;
+	}
+
+	wisp.actor->SetPosition(position.x, position.y, position.z);
 }
 
 // ---------------------------------------------------------------- interaction
@@ -713,6 +993,14 @@ void Game::ShowToast(const std::wstring& text)
 	m_ToastTimer = 2.6f;
 }
 
+bool Game::ConsumeNextLevelRequest()
+{
+	const bool requested = m_WantsNextLevel;
+	m_WantsNextLevel = false;
+
+	return requested;
+}
+
 void Game::OnKey(unsigned char key, bool down, bool shift)
 {
 	m_Running = shift;
@@ -747,16 +1035,15 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		return;
 	}
 
+	// Check before state-specific input so dialogue and clue panels can be skipped too.
+	if (key == TUTORIAL_SKIP_KEY)
+	{
+		m_WantsNextLevel = true;
+		return;
+	}
+
 	if (m_State == STATE_INTRO)
 	{
-		// The tutorial can be skipped straight into level 1, which is what you
-		// want when the thing being tested is the level and not the village.
-		if (key == '1')
-		{
-			m_WantsNextLevel = true;
-			return;
-		}
-
 		if (key == 'e' || key == ' ' || key == 13)
 		{
 			m_State = STATE_PLAY;
@@ -822,18 +1109,10 @@ Color Game::Lit(const Color& base, float worldX, float worldY) const
 	return m_Lighting.Apply(base, worldX, worldY);
 }
 
-bool Game::OnScreen(float screenX, float screenY, float margin) const
-{
-	const float halfWidth = m_Renderer->GetWidth() * 0.5f + margin;
-	const float halfHeight = m_Renderer->GetHeight() * 0.5f + margin;
-	return screenX > -halfWidth && screenX < halfWidth
-		&& screenY > -halfHeight && screenY < halfHeight;
-}
-
-void Game::PushShadow(float worldX, float worldY, float radiusX, float radiusY, float depth)
+void Game::PushShadow(float worldX, float worldY, float radiusX, float radiusY, float depth, float worldZ)
 {
 	float sx, sy;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &sx, &sy);
+	m_Renderer->WorldToScreen(worldX, worldY, worldZ, &sx, &sy);
 
 	Color shadow = RGBA(0.0f, 0.0f, 0.0f, 0.30f * (1.0f - FogFactor(worldX, worldY)));
 	m_Renderer->PushEllipse(sx, sy, radiusX, radiusY, shadow, depth, 12);
@@ -841,135 +1120,86 @@ void Game::PushShadow(float worldX, float worldY, float radiusX, float radiusY, 
 
 // ---------------------------------------------------------------- world draw
 
-void Game::DrawGround()
+void Game::DrawGround(const Actor& actor, TileType tile, unsigned int variation)
 {
-	const int width = m_World.GetWidth();
-	const int height = m_World.GetHeight();
+	const ActorPosition position = actor.GetWorldPosition();
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-	for (int y = 0; y < height; ++y)
+	Color base;
+
+	switch (tile)
 	{
-		for (int x = 0; x < width; ++x)
-		{
-			float sx, sy;
-			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &sx, &sy);
+	case TILE_TALLGRASS: base = COL_TALLGRASS; break;
+	case TILE_DIRT:      base = COL_DIRT; break;
+	case TILE_STONE:     base = COL_STONE; break;
+	case TILE_SAND:      base = COL_SAND; break;
+	case TILE_WATER:     base = COL_WATER; break;
+	default:            base = COL_GRASS; break;
+	}
 
-			if (!OnScreen(sx, sy, 64.0f))
-			{
-				continue;
-			}
+	if (tile == TILE_WATER)
+	{
+		const float x = position.x - 0.5f;
+		const float y = position.y - 0.5f;
+		const float ripple = sinf(m_Time * 1.3f + x * 0.62f + y * 0.44f) * 0.035f
+			+ sinf(m_Time * 0.7f + x * 0.21f - y * 0.33f) * 0.02f;
+		base.g += ripple;
+		base.b += ripple * 1.4f;
+	}
+	else
+	{
+		const float shade = 1.0f + ((float)(variation % 100) * 0.01f - 0.5f) * 0.09f;
+		base.r *= shade;
+		base.g *= shade;
+		base.b *= shade;
+	}
 
-			const TileType tile = m_World.GetTile(x, y);
+	const Color lit = Lit(base, position.x, position.y);
+	m_Renderer->PushDiamond(screenX, screenY, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
+		lit, -100000.0f + (position.x + position.y - 1.0f) * 0.01f);
+}
 
-			Color base;
+void Game::DrawScenery(const Actor& actor, TileType tile, int variant)
+{
+	const ActorPosition position = actor.GetWorldPosition();
 
-			switch (tile)
-			{
-			case TILE_TALLGRASS: base = COL_TALLGRASS; break;
-			case TILE_DIRT:      base = COL_DIRT; break;
-			case TILE_STONE:     base = COL_STONE; break;
-			case TILE_SAND:      base = COL_SAND; break;
-			case TILE_WATER:     base = COL_WATER; break;
-			default:             base = COL_GRASS; break;		// trees stand on grass
-			}
-
-			if (tile == TILE_WATER)
-			{
-				const float ripple = sinf(m_Time * 1.3f + x * 0.62f + y * 0.44f) * 0.035f
-					+ sinf(m_Time * 0.7f + x * 0.21f - y * 0.33f) * 0.02f;
-				base.g += ripple;
-				base.b += ripple * 1.4f;
-			}
-			else
-			{
-				// Slight per-tile value noise so the ground is not a flat wash.
-				const float shade = 1.0f + ((float)(HashInt(x, y) % 100) * 0.01f - 0.5f) * 0.09f;
-				base.r *= shade;
-				base.g *= shade;
-				base.b *= shade;
-			}
-
-			const Color lit = Lit(base, (float)x + 0.5f, (float)y + 0.5f);
-			m_Renderer->PushDiamond(sx, sy, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
-				lit, -100000.0f + (float)(x + y) * 0.01f);
-		}
+	switch (tile)
+	{
+	case TILE_TREE: DrawTree(position.x, position.y, variant, position.z); break;
+	case TILE_BUSH: DrawBush(position.x, position.y, position.z); break;
+	case TILE_ROCK: DrawRock(position.x, position.y, position.z); break;
+	default: break;
 	}
 }
 
-void Game::DrawScenery()
+void Game::DrawProp(const Actor& actor, const Prop& definition)
 {
-	const int width = m_World.GetWidth();
-	const int height = m_World.GetHeight();
+	const ActorPosition position = actor.GetWorldPosition();
+	Prop prop = definition;
 
-	for (int y = 0; y < height; ++y)
+	prop.x = position.x;
+	prop.y = position.y;
+
+	switch (prop.type)
 	{
-		for (int x = 0; x < width; ++x)
-		{
-			const TileType tile = m_World.GetTile(x, y);
-
-			if (tile != TILE_TREE && tile != TILE_BUSH && tile != TILE_ROCK)
-			{
-				continue;
-			}
-
-			float sx, sy;
-			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &sx, &sy);
-
-			if (!OnScreen(sx, sy, 180.0f))
-			{
-				continue;
-			}
-
-			// Jitter inside the tile so the forest is not on a visible grid.
-			const unsigned int h = HashInt(x, y);
-			const float jx = (float)x + 0.30f + (float)(h % 40) * 0.01f;
-			const float jy = (float)y + 0.30f + (float)((h >> 8) % 40) * 0.01f;
-
-			if (tile == TILE_TREE)
-			{
-				DrawTree(jx, jy, (int)((h >> 16) % 5));
-			}
-			else if (tile == TILE_BUSH)
-			{
-				DrawBush(jx, jy);
-			}
-			else
-			{
-				DrawRock(jx, jy);
-			}
-		}
+	case PROP_HOUSE:   DrawBuilding(prop, COL_PLASTER, COL_THATCH, true, position.z); break;
+	case PROP_SHRINE:  DrawBuilding(prop, RGBA(0.55f, 0.47f, 0.42f), RGBA(0.26f, 0.23f, 0.22f), false, position.z); break;
+	case PROP_RUIN:    DrawRuin(prop, position.z); break;
+	case PROP_TORII:   DrawTorii(prop, position.z); break;
+	case PROP_LANTERN: DrawLantern(prop, position.z); break;
+	case PROP_WELL:    DrawWell(prop, position.z); break;
+	case PROP_CART:    DrawCart(prop, position.z); break;
+	case PROP_DOCK:    DrawDock(prop, position.z); break;
+	case PROP_STONE:   DrawStone(prop, position.z); break;
+	default: break;
 	}
+}
 
-	const std::vector<Prop>& props = m_World.GetProps();
-
-	for (size_t i = 0; i < props.size(); ++i)
-	{
-		const Prop& prop = props[i];
-
-		float sx, sy;
-		m_Renderer->WorldToScreen(prop.x + prop.sizeX * 0.5f, prop.y + prop.sizeY * 0.5f, 0.0f, &sx, &sy);
-
-		if (!OnScreen(sx, sy, 260.0f))
-		{
-			continue;
-		}
-
-		switch (prop.type)
-		{
-		case PROP_HOUSE:   DrawBuilding(prop, COL_PLASTER, COL_THATCH, true); break;
-		case PROP_SHRINE:  DrawBuilding(prop, RGBA(0.55f, 0.47f, 0.42f), RGBA(0.26f, 0.23f, 0.22f), false); break;
-		case PROP_RUIN:    DrawRuin(prop); break;
-		case PROP_TORII:   DrawTorii(prop); break;
-		case PROP_LANTERN: DrawLantern(prop); break;
-		case PROP_WELL:    DrawWell(prop); break;
-		case PROP_CART:    DrawCart(prop); break;
-		case PROP_DOCK:    DrawDock(prop); break;
-		case PROP_STONE:   DrawStone(prop); break;
-		default: break;
-		}
-	}
-
-	// Villagers.
-	static const Color robes[8] =
+void Game::DrawNpc(const Npc& npc)
+{
+	static const Color ROBES[8] =
 	{
 		{ 0.34f, 0.30f, 0.25f, 1.0f },
 		{ 0.26f, 0.29f, 0.34f, 1.0f },
@@ -980,48 +1210,38 @@ void Game::DrawScenery()
 		{ 0.28f, 0.33f, 0.31f, 1.0f },
 		{ 0.41f, 0.38f, 0.32f, 1.0f }
 	};
+	const ActorPosition position = npc.actor->GetWorldPosition();
+	const float bob = sinf(m_Time * 1.6f + npc.phase) * 1.6f;
 
-	for (size_t i = 0; i < m_Npcs.size(); ++i)
+	if (npc.id == "ghost")
 	{
-		const Npc& npc = m_Npcs[i];
-
-		float sx, sy;
-		m_Renderer->WorldToScreen(npc.x, npc.y, 0.0f, &sx, &sy);
-
-		if (!OnScreen(sx, sy, 120.0f))
-		{
-			continue;
-		}
-
-		const float bob = sinf(m_Time * 1.6f + npc.phase) * 1.6f;
-
-		if (npc.id == "ghost")
-		{
-			// The tsukumogami hovers, is not lit by lanterns, and casts nothing.
-			Color pale = RGBA(0.62f, 0.72f, 0.78f, 0.52f);
-			pale = Mix(pale, COL_FOG, FogFactor(npc.x, npc.y) * 0.6f);
-			const float hover = sinf(m_Time * 1.1f + npc.phase) * 4.0f - 6.0f;
-			DrawPerson(npc.x, npc.y, 1.30f, pale, RGBA(0.75f, 0.83f, 0.88f, 0.45f),
-				false, false, false, hover);
-			continue;
-		}
-
-		const bool hat = (npc.id == "farmer" || npc.id == "fisher");
-		const bool small = (npc.id == "child");
-		DrawPerson(npc.x, npc.y, small ? 0.92f : 1.32f, robes[npc.look],
-			Mix(robes[npc.look], COL_SHIRO, 0.35f), hat, false, false, bob);
+		Color pale = RGBA(0.62f, 0.72f, 0.78f, 0.52f);
+		pale = Mix(pale, COL_FOG, FogFactor(position.x, position.y) * 0.6f);
+		const float hover = sinf(m_Time * 1.1f + npc.phase) * 4.0f - 6.0f;
+		DrawPerson(position.x, position.y, 1.30f, pale, RGBA(0.75f, 0.83f, 0.88f, 0.45f),
+			false, false, false, hover, position.z);
+		return;
 	}
 
-	// The player: dark indigo, a faded red sword cord, and a carried lantern.
+	const bool hat = npc.id == "farmer" || npc.id == "fisher";
+	const bool small = npc.id == "child";
+	DrawPerson(position.x, position.y, small ? 0.92f : 1.32f, ROBES[npc.look],
+		Mix(ROBES[npc.look], COL_SHIRO, 0.35f), hat, false, false, bob, position.z);
+}
+
+void Game::DrawPlayer(const Actor& actor)
+{
+	const ActorPosition position = actor.GetWorldPosition();
 	const float stride = m_Moving ? fabsf(sinf(m_PlayerStride)) * 2.6f : 0.0f;
-	DrawPerson(m_PlayerX, m_PlayerY, 1.38f, RGBA(0.20f, 0.24f, 0.31f),
-		COL_SHU, false, true, true, -stride);
+
+	DrawPerson(position.x, position.y, 1.38f, RGBA(0.20f, 0.24f, 0.31f),
+		COL_SHU, false, true, true, -stride, position.z);
 }
 
 // Vegetation and boulders come from the cached library. The shapes used to be
 // rebuilt from triangles every frame here; now this only picks a model and
 // shades it once.
-void Game::DrawTree(float worldX, float worldY, int variant)
+void Game::DrawTree(float worldX, float worldY, int variant, float worldZ)
 {
 	static const char* const CEDAR_NAMES[3] =
 	{
@@ -1040,14 +1260,14 @@ void Game::DrawTree(float worldX, float worldY, int variant)
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+	m_Renderer->WorldToScreen(worldX, worldY, worldZ, &screenX, &screenY);
 
 	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
 
 	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
-void Game::DrawBush(float worldX, float worldY)
+void Game::DrawBush(float worldX, float worldY, float worldZ)
 {
 	const Model* model = m_Models->Find("bush");
 
@@ -1058,14 +1278,14 @@ void Game::DrawBush(float worldX, float worldY)
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+	m_Renderer->WorldToScreen(worldX, worldY, worldZ, &screenX, &screenY);
 
 	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
 
 	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
-void Game::DrawRock(float worldX, float worldY)
+void Game::DrawRock(float worldX, float worldY, float worldZ)
 {
 	const Model* model = m_Models->Find("rock");
 
@@ -1076,14 +1296,14 @@ void Game::DrawRock(float worldX, float worldY)
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+	m_Renderer->WorldToScreen(worldX, worldY, worldZ, &screenX, &screenY);
 
 	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
 
 	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
-void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow)
+void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1104,25 +1324,25 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 
 	// Stone plinth the building stands on.
 	PushFlatQuad(r, x0 - 0.16f, y0 - 0.16f, x1 + 0.16f, y1 + 0.16f, 0.02f,
-		Lit(RGBA(0.30f, 0.29f, 0.27f), centerX, centerY), depth - 0.30f);
+		Lit(RGBA(0.30f, 0.29f, 0.27f), centerX, centerY), depth - 0.30f, worldZ);
 
 	// The two walls that face the camera: the +x face and the +y face.
 	const Color wallEast = Lit(Scale(wall, 0.78f), x1, centerY);
 	const Color wallSouth = Lit(wall, centerX, y1);
 
-	PushWallQuad(r, x1, y0, x1, y1, 0.0f, wallTop, wallEast, depth - 0.25f);
-	PushWallQuad(r, x1, y1, x0, y1, 0.0f, wallTop, wallSouth, depth - 0.24f);
+	PushWallQuad(r, x1, y0, x1, y1, 0.0f, wallTop, wallEast, depth - 0.25f, worldZ);
+	PushWallQuad(r, x1, y1, x0, y1, 0.0f, wallTop, wallSouth, depth - 0.24f, worldZ);
 
 	// Timber posts at the corners of the visible faces.
 	const Color timber = Lit(COL_TIMBER, centerX, centerY);
-	PushWallQuad(r, x1, y0, x1, y0 + 0.12f, 0.0f, wallTop, timber, depth - 0.23f);
-	PushWallQuad(r, x1, y1 - 0.12f, x1, y1, 0.0f, wallTop, timber, depth - 0.23f);
-	PushWallQuad(r, x0, y1, x0 + 0.12f, y1, 0.0f, wallTop, timber, depth - 0.23f);
+	PushWallQuad(r, x1, y0, x1, y0 + 0.12f, 0.0f, wallTop, timber, depth - 0.23f, worldZ);
+	PushWallQuad(r, x1, y1 - 0.12f, x1, y1, 0.0f, wallTop, timber, depth - 0.23f, worldZ);
+	PushWallQuad(r, x0, y1, x0 + 0.12f, y1, 0.0f, wallTop, timber, depth - 0.23f, worldZ);
 
 	// Door on the south face.
 	const float doorX = x0 + prop.sizeX * 0.42f;
 	PushWallQuad(r, doorX + 0.62f, y1, doorX, y1, 0.0f, 0.92f,
-		Lit(RGBA(0.16f, 0.14f, 0.13f), centerX, y1), depth - 0.22f);
+		Lit(RGBA(0.16f, 0.14f, 0.13f), centerX, y1), depth - 0.22f, worldZ);
 
 	if (litWindow)
 	{
@@ -1130,10 +1350,10 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 		// not a surface, and it is most of what makes the village feel inhabited.
 		const float fog = FogFactor(x1, centerY);
 		const Color glow = Mix(RGBA(0.98f, 0.70f, 0.36f), COL_FOG, fog * 0.7f);
-		PushWallQuad(r, x1, y0 + 0.55f, x1, y0 + 1.55f, 0.55f, 1.20f, glow, depth - 0.21f);
+		PushWallQuad(r, x1, y0 + 0.55f, x1, y0 + 1.55f, 0.55f, 1.20f, glow, depth - 0.21f, worldZ);
 
 		const Color mullion = Lit(COL_TIMBER, x1, centerY);
-		PushWallQuad(r, x1, y0 + 1.02f, x1, y0 + 1.08f, 0.55f, 1.20f, mullion, depth - 0.20f);
+		PushWallQuad(r, x1, y0 + 1.02f, x1, y0 + 1.08f, 0.55f, 1.20f, mullion, depth - 0.20f, worldZ);
 	}
 
 	// Roof. The ridge runs along x, which is the long axis of every building in
@@ -1147,7 +1367,7 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 		x1 + eave, y1 + eave, eaveHeight,
 		x1 + eave, yc,        ridgeHeight
 	};
-	PushPoly3(r, gable, 3, roofEast, depth - 0.10f);
+	PushPoly3(r, gable, 3, roofEast, depth - 0.10f, worldZ);
 
 	const float slope[12] =
 	{
@@ -1156,20 +1376,20 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 		x1 + eave, yc,        ridgeHeight,
 		x0 - eave, yc,        ridgeHeight
 	};
-	PushPoly3(r, slope, 4, roofSouth, depth - 0.05f);
+	PushPoly3(r, slope, 4, roofSouth, depth - 0.05f, worldZ);
 
 	// Ridge cap and eave line, the two edges that give thatch its silhouette.
 	float ax, ay, bx, by;
-	r->WorldToScreen(x0 - eave, yc, ridgeHeight, &ax, &ay);
-	r->WorldToScreen(x1 + eave, yc, ridgeHeight, &bx, &by);
+	r->WorldToScreen(x0 - eave, yc, ridgeHeight + worldZ, &ax, &ay);
+	r->WorldToScreen(x1 + eave, yc, ridgeHeight + worldZ, &bx, &by);
 	r->PushLine(ax, ay, bx, by, 5.0f, Lit(Scale(roof, 1.35f), centerX, yc), depth - 0.04f);
 
-	r->WorldToScreen(x0 - eave, y1 + eave, eaveHeight, &ax, &ay);
-	r->WorldToScreen(x1 + eave, y1 + eave, eaveHeight, &bx, &by);
+	r->WorldToScreen(x0 - eave, y1 + eave, eaveHeight + worldZ, &ax, &ay);
+	r->WorldToScreen(x1 + eave, y1 + eave, eaveHeight + worldZ, &bx, &by);
 	r->PushLine(ax, ay, bx, by, 3.0f, Lit(Scale(roof, 0.55f), centerX, y1), depth - 0.03f);
 }
 
-void Game::DrawRuin(const Prop& prop)
+void Game::DrawRuin(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1182,12 +1402,12 @@ void Game::DrawRuin(const Prop& prop)
 	const float depth = x1 + y1;
 
 	PushFlatQuad(r, x0 - 0.1f, y0 - 0.1f, x1 + 0.1f, y1 + 0.1f, 0.02f,
-		Lit(RGBA(0.17f, 0.15f, 0.14f), centerX, centerY), depth - 0.30f);
+		Lit(RGBA(0.17f, 0.15f, 0.14f), centerX, centerY), depth - 0.30f, worldZ);
 
 	// Wall stubs: the fire took the top of everything.
 	const Color charred = Lit(RGBA(0.20f, 0.17f, 0.15f), centerX, centerY);
-	PushWallQuad(r, x1, y0, x1, y0 + 1.1f, 0.0f, 0.75f, charred, depth - 0.25f);
-	PushWallQuad(r, x1, y1, x1 - 1.3f, y1, 0.0f, 0.55f, charred, depth - 0.24f);
+	PushWallQuad(r, x1, y0, x1, y0 + 1.1f, 0.0f, 0.75f, charred, depth - 0.25f, worldZ);
+	PushWallQuad(r, x1, y1, x1 - 1.3f, y1, 0.0f, 0.55f, charred, depth - 0.24f, worldZ);
 
 	// Standing posts, snapped at different heights.
 	const float postHeights[4] = { 1.9f, 1.1f, 2.3f, 0.8f };
@@ -1198,7 +1418,7 @@ void Game::DrawRuin(const Prop& prop)
 	{
 		PushWallQuad(r, postX[i], postY[i], postX[i] + 0.16f, postY[i],
 			0.0f, postHeights[i], Lit(RGBA(0.13f, 0.11f, 0.10f), postX[i], postY[i]),
-			postX[i] + postY[i] + 0.01f);
+			postX[i] + postY[i] + 0.01f, worldZ);
 	}
 
 	// Rubble.
@@ -1209,12 +1429,12 @@ void Game::DrawRuin(const Prop& prop)
 		const float ry = y0 + (float)((h >> 9) % 100) * 0.01f * prop.sizeY;
 
 		float sx, sy;
-		r->WorldToScreen(rx, ry, 0.0f, &sx, &sy);
+		r->WorldToScreen(rx, ry, worldZ, &sx, &sy);
 		r->PushEllipse(sx, sy, 7.0f, 3.5f, Lit(RGBA(0.16f, 0.14f, 0.13f), rx, ry), rx + ry, 8);
 	}
 }
 
-void Game::DrawTorii(const Prop& prop)
+void Game::DrawTorii(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1231,17 +1451,17 @@ void Game::DrawTorii(const Prop& prop)
 	const Color pillar = Lit(Scale(COL_SHU, 0.85f), x, y);
 	const Color beam = Lit(COL_SHU, x, y);
 
-	PushShadow(x - span, y, 8.0f, 4.0f, depth - 0.02f);
-	PushShadow(x + span, y, 8.0f, 4.0f, depth - 0.02f);
+	PushShadow(x - span, y, 8.0f, 4.0f, depth - 0.02f, worldZ);
+	PushShadow(x + span, y, 8.0f, 4.0f, depth - 0.02f, worldZ);
 
-	PushWallQuad(r, x - span - 0.09f, y, x - span + 0.09f, y, 0.0f, postTop, pillar, depth);
-	PushWallQuad(r, x + span - 0.09f, y, x + span + 0.09f, y, 0.0f, postTop, pillar, depth);
+	PushWallQuad(r, x - span - 0.09f, y, x - span + 0.09f, y, 0.0f, postTop, pillar, depth, worldZ);
+	PushWallQuad(r, x + span - 0.09f, y, x + span + 0.09f, y, 0.0f, postTop, pillar, depth, worldZ);
 
-	PushWallQuad(r, x - span - 0.10f, y, x + span + 0.10f, y, nuki, nuki + 0.16f, beam, depth + 0.01f);
-	PushWallQuad(r, x - span - 0.34f, y, x + span + 0.34f, y, kasagi, kasagi + 0.22f, beam, depth + 0.02f);
+	PushWallQuad(r, x - span - 0.10f, y, x + span + 0.10f, y, nuki, nuki + 0.16f, beam, depth + 0.01f, worldZ);
+	PushWallQuad(r, x - span - 0.34f, y, x + span + 0.34f, y, kasagi, kasagi + 0.22f, beam, depth + 0.02f, worldZ);
 }
 
-void Game::DrawLantern(const Prop& prop)
+void Game::DrawLantern(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1250,16 +1470,16 @@ void Game::DrawLantern(const Prop& prop)
 	const float depth = x + y;
 	const float fog = FogFactor(x, y);
 
-	PushShadow(x, y, 7.0f, 3.0f, depth - 0.02f);
+	PushShadow(x, y, 7.0f, 3.0f, depth - 0.02f, worldZ);
 
 	// Post.
 	PushWallQuad(r, x - 0.06f, y, x + 0.06f, y, 0.0f, 1.05f,
-		Lit(RGBA(0.22f, 0.19f, 0.16f), x, y), depth);
+		Lit(RGBA(0.22f, 0.19f, 0.16f), x, y), depth, worldZ);
 
 	// The halo goes down first so the paper box sits inside it.
 	const float flicker = 1.0f + 0.10f * sinf(m_Time * 7.1f + x * 3.0f) + 0.06f * sinf(m_Time * 13.0f + y);
 	float gx, gy;
-	r->WorldToScreen(x, y, 1.28f, &gx, &gy);
+	r->WorldToScreen(x, y, 1.28f + worldZ, &gx, &gy);
 
 	for (int i = 3; i >= 1; --i)
 	{
@@ -1270,13 +1490,13 @@ void Game::DrawLantern(const Prop& prop)
 
 	// Paper box, self-lit.
 	const Color paper = Mix(RGBA(1.0f, 0.78f, 0.44f), COL_FOG, fog * 0.65f);
-	PushWallQuad(r, x - 0.17f, y, x + 0.17f, y, 1.05f, 1.52f, paper, depth + 0.01f);
+	PushWallQuad(r, x - 0.17f, y, x + 0.17f, y, 1.05f, 1.52f, paper, depth + 0.01f, worldZ);
 
 	const Color cap = Lit(RGBA(0.20f, 0.17f, 0.15f), x, y);
-	PushWallQuad(r, x - 0.21f, y, x + 0.21f, y, 1.52f, 1.60f, cap, depth + 0.02f);
+	PushWallQuad(r, x - 0.21f, y, x + 0.21f, y, 1.52f, 1.60f, cap, depth + 0.02f, worldZ);
 }
 
-void Game::DrawWell(const Prop& prop)
+void Game::DrawWell(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1285,9 +1505,9 @@ void Game::DrawWell(const Prop& prop)
 	const float depth = x + y;
 
 	float bx, by;
-	r->WorldToScreen(x, y, 0.0f, &bx, &by);
+	r->WorldToScreen(x, y, worldZ, &bx, &by);
 
-	PushShadow(x, y, 20.0f, 9.0f, depth - 0.03f);
+	PushShadow(x, y, 20.0f, 9.0f, depth - 0.03f, worldZ);
 
 	const Color stone = Lit(RGBA(0.38f, 0.38f, 0.36f), x, y);
 	const Color hole = Lit(RGBA(0.05f, 0.05f, 0.06f), x, y);
@@ -1296,20 +1516,20 @@ void Game::DrawWell(const Prop& prop)
 	r->PushEllipse(bx, by - 8.0f, 13.0f, 6.5f, hole, depth - 0.01f, 16);
 
 	const Color post = Lit(RGBA(0.24f, 0.20f, 0.17f), x, y);
-	PushWallQuad(r, x - 0.5f, y, x - 0.38f, y, 0.25f, 1.5f, post, depth);
-	PushWallQuad(r, x + 0.38f, y, x + 0.5f, y, 0.25f, 1.5f, post, depth);
+	PushWallQuad(r, x - 0.5f, y, x - 0.38f, y, 0.25f, 1.5f, post, depth, worldZ);
+	PushWallQuad(r, x + 0.38f, y, x + 0.5f, y, 0.25f, 1.5f, post, depth, worldZ);
 
 	// Small roof over the shaft.
 	float ax, ay, cx2, cy2, apexX, apexY;
-	r->WorldToScreen(x - 0.72f, y, 1.5f, &ax, &ay);
-	r->WorldToScreen(x + 0.72f, y, 1.5f, &cx2, &cy2);
-	r->WorldToScreen(x, y, 2.0f, &apexX, &apexY);
+	r->WorldToScreen(x - 0.72f, y, 1.5f + worldZ, &ax, &ay);
+	r->WorldToScreen(x + 0.72f, y, 1.5f + worldZ, &cx2, &cy2);
+	r->WorldToScreen(x, y, 2.0f + worldZ, &apexX, &apexY);
 
 	const float roof[6] = { ax, ay, cx2, cy2, apexX, apexY };
 	r->PushPolygon(roof, 3, Lit(COL_THATCH, x, y), depth + 0.02f);
 }
 
-void Game::DrawCart(const Prop& prop)
+void Game::DrawCart(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1317,23 +1537,23 @@ void Game::DrawCart(const Prop& prop)
 	const float y = prop.y;
 	const float depth = x + y;
 
-	PushShadow(x, y, 17.0f, 7.0f, depth - 0.03f);
+	PushShadow(x, y, 17.0f, 7.0f, depth - 0.03f, worldZ);
 
 	const Color wood = Lit(RGBA(0.33f, 0.27f, 0.21f), x, y);
 	const Color darkWood = Lit(RGBA(0.22f, 0.18f, 0.14f), x, y);
 
-	PushFlatQuad(r, x - 0.55f, y - 0.35f, x + 0.55f, y + 0.35f, 0.42f, wood, depth);
-	PushWallQuad(r, x + 0.55f, y - 0.35f, x + 0.55f, y + 0.35f, 0.30f, 0.55f, darkWood, depth + 0.01f);
-	PushWallQuad(r, x + 0.55f, y + 0.35f, x - 0.55f, y + 0.35f, 0.30f, 0.55f, darkWood, depth + 0.01f);
+	PushFlatQuad(r, x - 0.55f, y - 0.35f, x + 0.55f, y + 0.35f, 0.42f, wood, depth, worldZ);
+	PushWallQuad(r, x + 0.55f, y - 0.35f, x + 0.55f, y + 0.35f, 0.30f, 0.55f, darkWood, depth + 0.01f, worldZ);
+	PushWallQuad(r, x + 0.55f, y + 0.35f, x - 0.55f, y + 0.35f, 0.30f, 0.55f, darkWood, depth + 0.01f, worldZ);
 
 	float wx1, wy1, wx2, wy2;
-	r->WorldToScreen(x - 0.4f, y + 0.36f, 0.22f, &wx1, &wy1);
-	r->WorldToScreen(x + 0.4f, y + 0.36f, 0.22f, &wx2, &wy2);
+	r->WorldToScreen(x - 0.4f, y + 0.36f, 0.22f + worldZ, &wx1, &wy1);
+	r->WorldToScreen(x + 0.4f, y + 0.36f, 0.22f + worldZ, &wx2, &wy2);
 	r->PushEllipse(wx1, wy1, 8.0f, 8.0f, darkWood, depth + 0.02f, 12);
 	r->PushEllipse(wx2, wy2, 8.0f, 8.0f, darkWood, depth + 0.02f, 12);
 }
 
-void Game::DrawDock(const Prop& prop)
+void Game::DrawDock(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1347,15 +1567,15 @@ void Game::DrawDock(const Prop& prop)
 	{
 		const float px = x + (float)i * 0.52f;
 		PushFlatQuad(r, px, y - 0.62f, px + 0.44f, y + 0.62f, 0.14f,
-			(i % 2 == 0) ? plank : darkPlank, px + y);
+			(i % 2 == 0) ? plank : darkPlank, px + y, worldZ);
 	}
 
 	// Mooring post.
 	PushWallQuad(r, x + 2.5f, y + 0.5f, x + 2.62f, y + 0.5f, 0.0f, 0.7f,
-		Lit(RGBA(0.20f, 0.17f, 0.14f), x, y), x + 2.5f + y + 0.5f + 0.01f);
+		Lit(RGBA(0.20f, 0.17f, 0.14f), x, y), x + 2.5f + y + 0.5f + 0.01f, worldZ);
 }
 
-void Game::DrawStone(const Prop& prop)
+void Game::DrawStone(const Prop& prop, float worldZ)
 {
 	Renderer* r = m_Renderer;
 
@@ -1363,10 +1583,10 @@ void Game::DrawStone(const Prop& prop)
 	const float y = prop.y;
 	const float depth = x + y;
 
-	PushShadow(x, y, 9.0f, 4.0f, depth - 0.02f);
+	PushShadow(x, y, 9.0f, 4.0f, depth - 0.02f, worldZ);
 
 	float bx, by;
-	r->WorldToScreen(x, y, 0.0f, &bx, &by);
+	r->WorldToScreen(x, y, worldZ, &bx, &by);
 
 	const Color stone = Lit(RGBA(0.40f, 0.41f, 0.38f), x, y);
 	const float body[8] =
@@ -1389,7 +1609,7 @@ void Game::DrawStone(const Prop& prop)
 // lantern are separate models stacked on top, so a villager is a small
 // composition rather than its own baked shape.
 void Game::DrawPerson(float worldX, float worldY, float bodyHeight, const Color& robe,
-	const Color& trim, bool hat, bool sword, bool lantern, float bobPixels)
+	const Color& trim, bool hat, bool sword, bool lantern, float bobPixels, float worldZ)
 {
 	const Model* person = m_Models->Find("person");
 
@@ -1400,7 +1620,7 @@ void Game::DrawPerson(float worldX, float worldY, float bodyHeight, const Color&
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+	m_Renderer->WorldToScreen(worldX, worldY, worldZ, &screenX, &screenY);
 	screenY += bobPixels;
 
 	// Callers supply world-height units, while cached vertices are in pixels.
@@ -1452,51 +1672,31 @@ void Game::DrawPerson(float worldX, float worldY, float bodyHeight, const Color&
 	}
 }
 
-void Game::DrawMotes()
+void Game::DrawMist(const Mote& wisp, size_t index)
 {
-	// Mist first: broad, low, and almost transparent.
-	for (size_t i = 0; i < m_Mist.size(); ++i)
-	{
-		const Mote& wisp = m_Mist[i];
+	const ActorPosition position = wisp.actor->GetWorldPosition();
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-		float sx, sy;
-		m_Renderer->WorldToScreen(wisp.x, wisp.y, wisp.z, &sx, &sy);
+	const float breathe = 1.0f + 0.12f * sinf(m_Time * 0.4f + (float)index);
+	const Color haze = RGBA(0.55f, 0.62f, 0.70f, 0.055f);
+	m_Renderer->PushEllipse(screenX, screenY, 62.0f * wisp.size * 0.4f * breathe,
+		20.0f * wisp.size * 0.4f, haze, position.x + position.y + 0.05f, 16);
+}
 
-		if (!OnScreen(sx, sy, 220.0f))
-		{
-			continue;
-		}
+void Game::DrawMote(const Mote& mote)
+{
+	const ActorPosition position = mote.actor->GetWorldPosition();
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-		const float breathe = 1.0f + 0.12f * sinf(m_Time * 0.4f + (float)i);
-		const Color haze = RGBA(0.55f, 0.62f, 0.70f, 0.055f);
-		m_Renderer->PushEllipse(sx, sy, 62.0f * wisp.size * 0.4f * breathe,
-			20.0f * wisp.size * 0.4f, haze, wisp.x + wisp.y + 0.05f, 16);
-	}
-
-	// Embers.
-	for (size_t i = 0; i < m_Motes.size(); ++i)
-	{
-		const Mote& mote = m_Motes[i];
-
-		if (mote.life <= 0.0f)
-		{
-			continue;
-		}
-
-		float sx, sy;
-		m_Renderer->WorldToScreen(mote.x, mote.y, mote.z, &sx, &sy);
-
-		if (!OnScreen(sx, sy, 40.0f))
-		{
-			continue;
-		}
-
-		const float t = mote.life / mote.maxLife;
-		const float alpha = t * t * 0.75f * (1.0f - FogFactor(mote.x, mote.y));
-		const Color ember = RGBA(1.0f, 0.62f + 0.2f * t, 0.30f, alpha);
-
-		m_Renderer->PushEllipse(sx, sy, mote.size, mote.size, ember, mote.x + mote.y + 1.0f, 6);
-	}
+	const float remaining = mote.life / mote.maxLife;
+	const float alpha = remaining * remaining * 0.75f * (1.0f - FogFactor(position.x, position.y));
+	const Color ember = RGBA(1.0f, 0.62f + 0.2f * remaining, 0.30f, alpha);
+	m_Renderer->PushEllipse(screenX, screenY, mote.size, mote.size, ember,
+		position.x + position.y + 1.0f, 6);
 }
 
 void Game::DrawAtmosphere()
@@ -1558,6 +1758,7 @@ void Game::DrawQuestGuide()
 	}
 
 	const Npc* target = NULL;
+	const ActorPosition player = m_PlayerActor->GetWorldPosition();
 	float nearestDistance = 1e9f;
 	const bool needsElder = !m_MetElder || m_ClueMask == CLUE_ALL;
 
@@ -1568,13 +1769,14 @@ void Game::DrawQuestGuide()
 		const bool relevant = needsElder ? npc.id == "elder"
 			: bit != 0 && (m_ClueMask & bit) == 0;
 
-		if (!relevant)
+		if (!relevant || !npc.actor->IsVisibleInHierarchy())
 		{
 			continue;
 		}
 
-		const float dx = npc.x - m_PlayerX;
-		const float dy = npc.y - m_PlayerY;
+		const ActorPosition position = npc.actor->GetWorldPosition();
+		const float dx = position.x - player.x;
+		const float dy = position.y - player.y;
 		const float distance = dx * dx + dy * dy;
 
 		if (distance < nearestDistance)
@@ -1595,7 +1797,8 @@ void Game::DrawQuestGuide()
 	const Color gold = RGBA(0.95f, 0.80f, 0.45f, 0.95f);
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	r->WorldToScreen(target->x, target->y, 2.4f, &screenX, &screenY);
+	const ActorPosition position = target->actor->GetWorldPosition();
+	r->WorldToScreen(position.x, position.y, position.z + 2.4f, &screenX, &screenY);
 
 	// Keep the destination visible even when its villager is off screen.
 	const float limitX = fmaxf(1.0f, halfWidth - GUIDE_EDGE_MARGIN);
@@ -1716,6 +1919,16 @@ void Game::DrawHud()
 		r->PushText(m_ToastText, 0.0f, top + 140.0f, 18, FONT_SERIF, true,
 			RGBA(0.93f, 0.86f, 0.72f, alpha), ALIGN_CENTER);
 	}
+}
+
+void Game::DrawTutorialSkipHint()
+{
+	const float right = m_Renderer->GetWidth() * 0.5f;
+	const float bottom = m_Renderer->GetHeight() * 0.5f;
+
+	m_Renderer->PushText(m_Dialogue->Line("ui_tutorial_skip"), right - SKIP_HINT_SIDE_MARGIN,
+		bottom - SKIP_HINT_BOTTOM_MARGIN, SKIP_HINT_FONT_SIZE, FONT_UI, false,
+		RGBA(0.90f, 0.82f, 0.65f, 0.95f), ALIGN_RIGHT);
 }
 
 void Game::DrawDialogue()
@@ -1879,37 +2092,17 @@ void Game::Render()
 {
 	m_Renderer->SetCamera(m_CameraX, m_CameraY);
 	m_Renderer->BeginFrame(COL_SKY, m_Time);
-
-	if (m_State != STATE_ENDING || m_Fade < 0.999f)
-	{
-		DrawGround();
-		DrawScenery();
-		DrawMotes();
-	}
-
-	DrawAtmosphere();
-
-	if (m_State == STATE_INTRO)
-	{
-		DrawIntro();
-	}
-	else if (m_State == STATE_ENDING)
-	{
-		DrawEnding();
-	}
-	else
-	{
-		DrawHud();
-
-		if (m_State == STATE_DIALOGUE)
-		{
-			DrawDialogue();
-		}
-		else if (m_State == STATE_CLUES)
-		{
-			DrawClueList();
-		}
-	}
-
+	UpdateSceneState();
+	m_SceneGraph.Render(*m_Renderer);
 	m_Renderer->EndFrame();
+}
+
+SceneGraph& Game::GetSceneGraph()
+{
+	return m_SceneGraph;
+}
+
+const SceneGraph& Game::GetSceneGraph() const
+{
+	return m_SceneGraph;
 }

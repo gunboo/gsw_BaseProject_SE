@@ -72,6 +72,9 @@ WASD 이동 · E 대화 · Tab 단서
 @ui_controls
 WASD 이동   Shift 달리기   E 대화·조사   Tab 단서   Esc 종료
 
+@ui_tutorial_skip
+[1] 튜토리얼 건너뛰기 · 제1레벨
+
 # ---------------------------------------------------------------- elder
 @elder_intro
 $촌장 사이토

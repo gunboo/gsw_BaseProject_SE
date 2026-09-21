@@ -11,6 +11,28 @@ namespace
 
 	const int MAP_WIDTH = 56;
 	const int MAP_HEIGHT = 46;
+	const int CHUNK_SIZE = 8;
+	const float GROUND_BOUND_HALF_WIDTH = 35.0f;
+	const float GROUND_BOUND_HALF_HEIGHT = 19.0f;
+	const float SCENERY_BOUND_HALF_WIDTH = 100.0f;
+	const float SCENERY_BOUND_TOP = 160.0f;
+	const float SCENERY_BOUND_BOTTOM = 40.0f;
+	const float PLAYER_BOUND_HALF_WIDTH = 60.0f;
+	const float PLAYER_BOUND_TOP = 110.0f;
+	const float PLAYER_BOUND_BOTTOM = 35.0f;
+	const float SWING_BOUND_HALF_WIDTH = 64.0f;
+	const float SWING_BOUND_TOP = 56.0f;
+	const float SWING_BOUND_BOTTOM = 40.0f;
+	const float ENEMY_BOUND_HALF_WIDTH = 80.0f;
+	const float ENEMY_BOUND_TOP = 130.0f;
+	const float ENEMY_BOUND_BOTTOM = 48.0f;
+	const float PICKUP_BOUND_HALF_WIDTH = 32.0f;
+	const float PICKUP_BOUND_TOP = 48.0f;
+	const float PICKUP_BOUND_BOTTOM = 24.0f;
+	const float FLOATING_TEXT_BOUND_HORIZONTAL_MARGIN = 4.0f;
+	const float FLOATING_TEXT_BOUND_TOP = 48.0f;
+	const float FLOATING_TEXT_BOUND_HEIGHT_SCALE = 2.0f;
+	const float FLOATING_TEXT_HEIGHT_OFFSET = 1.1f;
 
 	const int ENEMY_POPULATION = 16;
 	const float RESPAWN_MIN = 5.0f;
@@ -118,6 +140,19 @@ namespace
 		return value;
 	}
 
+	void SetWorldPosition(Actor& actor, float x, float y, float z)
+	{
+		const ActorPosition local = actor.GetPosition();
+		const ActorPosition world = actor.GetWorldPosition();
+
+		actor.SetPosition(x - world.x + local.x, y - world.y + local.y, z - world.z + local.z);
+	}
+
+	void SetWorldPosition(Actor& actor, float x, float y)
+	{
+		SetWorldPosition(actor, x, y, actor.GetWorldPosition().z);
+	}
+
 	unsigned int HashInt(int x, int y)
 	{
 		unsigned int h = (unsigned int)(x * 73856093) ^ (unsigned int)(y * 19349663);
@@ -133,13 +168,17 @@ Level::Level()
 	: m_Renderer(NULL)
 	, m_Models(NULL)
 	, m_Dialogue(NULL)
+	, m_SimulationActor(NULL)
+	, m_PlayerActor(NULL)
+	, m_PickupActors(NULL)
+	, m_FloatingTextActors(NULL)
+	, m_StatsActor(NULL)
+	, m_DownedActor(NULL)
 	, m_State(LEVEL_PLAY)
 	, m_WantsExit(false)
 	, m_Time(0.0f)
 	, m_StateTime(0.0f)
 	, m_Fade(1.0f)
-	, m_PlayerX(0.0f)
-	, m_PlayerY(0.0f)
 	, m_FacingX(0.7071f)
 	, m_FacingY(0.7071f)
 	, m_Stride(0.0f)
@@ -174,10 +213,9 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 		return false;
 	}
 
-	m_PlayerX = m_World.GetPlayerStartX();
-	m_PlayerY = m_World.GetPlayerStartY();
-	m_CameraX = m_PlayerX;
-	m_CameraY = m_PlayerY;
+	BuildSceneGraph();
+	m_CameraX = PlayerPosition().x;
+	m_CameraY = PlayerPosition().y;
 	m_Lighting.SetViewer(m_CameraX, m_CameraY);
 
 	m_Stats.Reset();
@@ -187,8 +225,6 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 	m_Lighting.SetAmbient(RGBA(0.46f, 0.52f, 0.66f));
 	m_Lighting.SetFog(COL_FOG, 10.0f, 22.0f, 0.85f);
 
-	m_Enemies.resize(ENEMY_POPULATION);
-
 	for (int i = 0; i < ENEMY_POPULATION; ++i)
 	{
 		SpawnEnemy(i, true);
@@ -197,8 +233,205 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 	m_State = LEVEL_PLAY;
 	m_StateTime = 0.0f;
 	m_Fade = 1.0f;
+	SyncSceneState();
+	UpdateLights();
 
 	return true;
+}
+
+SceneGraph& Level::GetSceneGraph()
+{
+	return m_SceneGraph;
+}
+
+const SceneGraph& Level::GetSceneGraph() const
+{
+	return m_SceneGraph;
+}
+
+void Level::BuildSceneGraph()
+{
+	m_SceneGraph.Clear();
+	m_Enemies.clear();
+	m_Pickups.clear();
+	m_FloatingText.clear();
+
+	Actor* environment = m_SceneGraph.CreateActor("environment");
+	environment->SetActive(false);
+	BuildEnvironment(environment);
+
+	m_SimulationActor = m_SceneGraph.CreateActor("simulation");
+	m_SimulationActor->SetUpdateCallback([this](Actor&, float deltaSeconds)
+	{
+		UpdateSimulation(deltaSeconds);
+	});
+
+	m_PlayerActor = m_SceneGraph.CreateActor("player", m_SimulationActor);
+	m_PlayerActor->SetPosition(m_World.GetPlayerStartX(), m_World.GetPlayerStartY());
+	m_PlayerActor->SetRenderBounds(-PLAYER_BOUND_HALF_WIDTH, -PLAYER_BOUND_TOP,
+		PLAYER_BOUND_HALF_WIDTH, PLAYER_BOUND_BOTTOM);
+	m_PlayerActor->SetUpdateCallback([this](Actor&, float deltaSeconds)
+	{
+		if (m_State == LEVEL_PLAY)
+		{
+			UpdatePlayer(deltaSeconds);
+
+			if (m_AttackHeld)
+			{
+				Attack();
+			}
+		}
+	});
+	m_PlayerActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawPlayer();
+	});
+
+	Actor* swing = m_SceneGraph.CreateActor("swing", m_PlayerActor);
+	swing->SetPosition(0.0f, 0.0f, 0.55f);
+	swing->SetRenderBounds(-SWING_BOUND_HALF_WIDTH, -SWING_BOUND_TOP,
+		SWING_BOUND_HALF_WIDTH, SWING_BOUND_BOTTOM);
+	swing->SetRenderCallback([this](const Actor& actor, Renderer&)
+	{
+		DrawSwing(actor);
+	});
+
+	Actor* enemies = m_SceneGraph.CreateActor("enemies", m_SimulationActor);
+	m_Enemies.resize(ENEMY_POPULATION);
+
+	for (int i = 0; i < ENEMY_POPULATION; ++i)
+	{
+		Actor* actor = m_SceneGraph.CreateActor("enemy_" + std::to_string(i), enemies);
+		m_Enemies[i].actor = actor;
+		actor->SetRenderBounds(-ENEMY_BOUND_HALF_WIDTH, -ENEMY_BOUND_TOP,
+			ENEMY_BOUND_HALF_WIDTH, ENEMY_BOUND_BOTTOM);
+		actor->SetUpdateCallback([this, i](Actor&, float deltaSeconds)
+		{
+			UpdateEnemy(i, deltaSeconds);
+		});
+		actor->SetRenderCallback([this, i](const Actor&, Renderer&)
+		{
+			DrawEnemy(i);
+		});
+	}
+
+	m_PickupActors = m_SceneGraph.CreateActor("pickups", m_SimulationActor);
+	m_FloatingTextActors = m_SceneGraph.CreateActor("floating_text", m_SimulationActor);
+
+	Actor* camera = m_SceneGraph.CreateActor("camera_and_lights", m_SimulationActor);
+	camera->SetUpdateCallback([this](Actor&, float deltaSeconds)
+	{
+		UpdateCamera(deltaSeconds);
+	});
+
+	Actor* interfaceActors = m_SceneGraph.CreateActor("interface");
+	interfaceActors->SetActive(false);
+
+	Actor* atmosphere = m_SceneGraph.CreateActor("atmosphere", interfaceActors);
+	atmosphere->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawAtmosphere();
+	});
+
+	Actor* hud = m_SceneGraph.CreateActor("hud", interfaceActors);
+	hud->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawHud();
+	});
+
+	m_StatsActor = m_SceneGraph.CreateActor("stats_panel", interfaceActors);
+	m_StatsActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawStatsScreen();
+	});
+
+	m_DownedActor = m_SceneGraph.CreateActor("downed_panel", interfaceActors);
+	m_DownedActor->SetRenderCallback([this](const Actor&, Renderer&)
+	{
+		DrawDownedScreen();
+	});
+}
+
+void Level::BuildEnvironment(Actor* environment)
+{
+	const int width = m_World.GetWidth();
+	const int height = m_World.GetHeight();
+	const Model* treeModels[] =
+	{
+		m_Models->Find("tree_cedar_small"),
+		m_Models->Find("tree_cedar_tall"),
+		m_Models->Find("tree_broadleaf"),
+		m_Models->Find("tree_cedar_mid")
+	};
+	const Model* bush = m_Models->Find("bush");
+	const Model* rock = m_Models->Find("rock");
+
+	for (int chunkY = 0; chunkY < height; chunkY += CHUNK_SIZE)
+	{
+		for (int chunkX = 0; chunkX < width; chunkX += CHUNK_SIZE)
+		{
+			Actor* chunk = m_SceneGraph.CreateActor("chunk_" + std::to_string(chunkX)
+				+ "_" + std::to_string(chunkY), environment);
+			chunk->SetPosition((float)chunkX, (float)chunkY);
+
+			for (int y = chunkY; y < chunkY + CHUNK_SIZE && y < height; ++y)
+			{
+				for (int x = chunkX; x < chunkX + CHUNK_SIZE && x < width; ++x)
+				{
+					const std::string suffix = std::to_string(x) + "_" + std::to_string(y);
+					Actor* ground = m_SceneGraph.CreateActor("ground_" + suffix, chunk);
+					ground->SetPosition((float)(x - chunkX) + 0.5f, (float)(y - chunkY) + 0.5f);
+					ground->SetRenderBounds(-GROUND_BOUND_HALF_WIDTH, -GROUND_BOUND_HALF_HEIGHT,
+						GROUND_BOUND_HALF_WIDTH, GROUND_BOUND_HALF_HEIGHT);
+					ground->SetRenderCallback([this, x, y](const Actor& actor, Renderer&)
+					{
+						DrawGround(actor, x, y);
+					});
+
+					const TileType tile = m_World.GetTile(x, y);
+
+					if (tile != TILE_TREE && tile != TILE_BUSH && tile != TILE_ROCK)
+					{
+						continue;
+					}
+
+					const unsigned int hash = HashInt(x, y);
+					const Model* model = rock;
+
+					if (tile == TILE_TREE)
+					{
+						model = treeModels[(hash >> 16) % 4];
+					}
+					else if (tile == TILE_BUSH)
+					{
+						model = bush;
+					}
+
+					Actor* scenery = m_SceneGraph.CreateActor("scenery_" + suffix, chunk);
+					scenery->SetPosition((float)(x - chunkX) + 0.30f + (float)(hash % 40) * 0.01f,
+						(float)(y - chunkY) + 0.30f + (float)((hash >> 8) % 40) * 0.01f);
+					scenery->SetRenderBounds(-SCENERY_BOUND_HALF_WIDTH, -SCENERY_BOUND_TOP,
+						SCENERY_BOUND_HALF_WIDTH, SCENERY_BOUND_BOTTOM);
+					scenery->SetRenderCallback([this, model](const Actor& actor, Renderer&)
+					{
+						DrawScenery(actor, model);
+					});
+				}
+			}
+		}
+	}
+}
+
+void Level::SyncSceneState()
+{
+	m_SimulationActor->SetActive(m_State != LEVEL_STATS);
+	m_StatsActor->SetVisible(m_State == LEVEL_STATS);
+	m_DownedActor->SetVisible(m_State == LEVEL_DOWNED);
+}
+
+ActorPosition Level::PlayerPosition() const
+{
+	return m_PlayerActor->GetWorldPosition();
 }
 
 std::wstring Level::Text(const char* key) const
@@ -227,9 +460,11 @@ void Level::SpawnEnemy(int index, bool awayFromPlayer)
 {
 	const std::vector<int>& open = m_World.GetOpenCells();
 	Enemy& enemy = m_Enemies[index];
+	const ActorPosition player = PlayerPosition();
 
 	// Defer spawning if every reachable tile is too close to the player.
 	enemy.alive = false;
+	enemy.actor->SetVisible(false);
 	enemy.respawnTimer = SPAWN_RETRY_DELAY;
 
 	if (open.empty())
@@ -249,8 +484,8 @@ void Level::SpawnEnemy(int index, bool awayFromPlayer)
 		const float candidateX = (float)(cell % m_World.GetWidth()) + 0.5f;
 		const float candidateY = (float)(cell / m_World.GetWidth()) + 0.5f;
 
-		const float dx = candidateX - m_PlayerX;
-		const float dy = candidateY - m_PlayerY;
+		const float dx = candidateX - player.x;
+		const float dy = candidateY - player.y;
 		const float distanceSquared = dx * dx + dy * dy;
 
 		if ((awayFromPlayer && distanceSquared < RESPAWN_MIN_DISTANCE * RESPAWN_MIN_DISTANCE)
@@ -289,8 +524,7 @@ void Level::SpawnEnemy(int index, bool awayFromPlayer)
 	const EnemyProfile& profile = ENEMY_PROFILES[kind];
 
 	enemy.kind = kind;
-	enemy.x = x;
-	enemy.y = y;
+	SetWorldPosition(*enemy.actor, x, y);
 	enemy.maxHealth = profile.health;
 	enemy.health = profile.health;
 	enemy.attackTimer = 0.0f;
@@ -300,56 +534,108 @@ void Level::SpawnEnemy(int index, bool awayFromPlayer)
 	enemy.wanderY = 0.0f;
 	enemy.phase = m_Rng.Range(0.0f, TWO_PI);
 	enemy.alive = true;
+	enemy.actor->SetVisible(true);
 	enemy.respawnTimer = 0.0f;
 }
 
 void Level::SpawnPickup(PickupKind kind, float x, float y, int value)
 {
-	Pickup pickup;
-	pickup.kind = kind;
-	pickup.x = x + m_Rng.Range(-PICKUP_SCATTER, PICKUP_SCATTER);
-	pickup.y = y + m_Rng.Range(-PICKUP_SCATTER, PICKUP_SCATTER);
+	size_t index = 0;
 
-	// A tile centre is reachable in the generated map even if the enemy died
-	// against a wall and the visual scatter would put its drop inside it.
-	if (m_World.IsBlocked(pickup.x, pickup.y, PLAYER_RADIUS))
+	while (index < m_Pickups.size() && m_Pickups[index].actor->IsActive())
 	{
-		pickup.x = floorf(x) + 0.5f;
-		pickup.y = floorf(y) + 0.5f;
+		++index;
 	}
 
+	if (index == m_Pickups.size())
+	{
+		Pickup pickup = {};
+		pickup.actor = m_SceneGraph.CreateActor("pickup_" + std::to_string(index), m_PickupActors);
+		pickup.actor->SetRenderBounds(-PICKUP_BOUND_HALF_WIDTH, -PICKUP_BOUND_TOP,
+			PICKUP_BOUND_HALF_WIDTH, PICKUP_BOUND_BOTTOM);
+		pickup.actor->SetUpdateCallback([this, index](Actor&, float deltaSeconds)
+		{
+			UpdatePickup((int)index, deltaSeconds);
+		});
+		pickup.actor->SetRenderCallback([this, index](const Actor&, Renderer&)
+		{
+			DrawPickup((int)index);
+		});
+		m_Pickups.push_back(pickup);
+	}
+
+	Pickup& pickup = m_Pickups[index];
+	float worldX = x + m_Rng.Range(-PICKUP_SCATTER, PICKUP_SCATTER);
+	float worldY = y + m_Rng.Range(-PICKUP_SCATTER, PICKUP_SCATTER);
+
+	// Keep scattered drops on the reachable collision map.
+	if (m_World.IsBlocked(worldX, worldY, PLAYER_RADIUS))
+	{
+		worldX = floorf(x) + 0.5f;
+		worldY = floorf(y) + 0.5f;
+	}
+
+	SetWorldPosition(*pickup.actor, worldX, worldY);
+	pickup.kind = kind;
 	pickup.phase = m_Rng.Range(0.0f, TWO_PI);
 	pickup.life = PICKUP_LIFETIME;
 	pickup.value = value;
-	pickup.active = true;
-
-	m_Pickups.push_back(pickup);
+	pickup.actor->SetActive(true);
+	pickup.actor->SetVisible(true);
 }
 
-void Level::AddFloatingText(const std::wstring& text, float x, float y, const Color& color, int size)
+void Level::AddFloatingText(const std::wstring& text, const ActorPosition& position, const Color& color, int size)
 {
-	FloatingText entry;
+	size_t index = 0;
+
+	while (index < m_FloatingText.size() && m_FloatingText[index].actor->IsActive())
+	{
+		++index;
+	}
+
+	if (index == m_FloatingText.size())
+	{
+		FloatingText entry = {};
+		entry.actor = m_SceneGraph.CreateActor("floating_text_" + std::to_string(index), m_FloatingTextActors);
+		entry.actor->SetUpdateCallback([this, index](Actor&, float deltaSeconds)
+		{
+			UpdateFloatingText((int)index, deltaSeconds);
+		});
+		entry.actor->SetRenderCallback([this, index](const Actor&, Renderer&)
+		{
+			DrawFloatingText((int)index);
+		});
+		m_FloatingText.push_back(entry);
+	}
+
+	// Slots never move logically: callbacks capture indices, not vector addresses.
+	FloatingText& entry = m_FloatingText[index];
 	entry.text = text;
-	entry.x = x;
-	entry.y = y;
+	SetWorldPosition(*entry.actor, position.x, position.y, position.z + FLOATING_TEXT_HEIGHT_OFFSET);
 	entry.rise = 0.0f;
 	entry.maxLife = 1.1f;
 	entry.life = entry.maxLife;
 	entry.color = color;
 	entry.size = size;
 
-	m_FloatingText.push_back(entry);
+	const float halfWidth = m_Renderer->MeasureTextWidth(text, size, FONT_SERIF, true) * 0.5f
+		+ FLOATING_TEXT_BOUND_HORIZONTAL_MARGIN;
+	entry.actor->SetRenderBounds(-halfWidth, -FLOATING_TEXT_BOUND_TOP,
+		halfWidth, (float)size * FLOATING_TEXT_BOUND_HEIGHT_SCALE);
+	entry.actor->SetActive(true);
+	entry.actor->SetVisible(true);
 }
 
 // ---------------------------------------------------------------- combat
 
 void Level::Attack()
 {
-	if (m_SwingCooldown > 0.0f || m_State != LEVEL_PLAY)
+	if (m_SwingCooldown > 0.0f || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
 	{
 		return;
 	}
 
+	const ActorPosition player = PlayerPosition();
 	m_SwingCooldown = m_Stats.AttackInterval();
 	m_SwingAnim = SWING_DURATION;
 
@@ -357,13 +643,14 @@ void Level::Attack()
 	{
 		const Enemy& enemy = m_Enemies[i];
 
-		if (!enemy.alive)
+		if (!enemy.alive || !enemy.actor->IsActiveInHierarchy())
 		{
 			continue;
 		}
 
-		const float dx = enemy.x - m_PlayerX;
-		const float dy = enemy.y - m_PlayerY;
+		const ActorPosition position = enemy.actor->GetWorldPosition();
+		const float dx = position.x - player.x;
+		const float dy = position.y - player.y;
 		const float distance = sqrtf(dx * dx + dy * dy);
 
 		if (distance > ATTACK_RANGE || distance < 0.0001f)
@@ -401,28 +688,28 @@ void Level::DamageEnemy(int index, float amount, bool critical)
 	wchar_t buffer[32];
 	swprintf_s(buffer, 32, L"%d", (int)(amount + 0.5f));
 
-	AddFloatingText(buffer, enemy.x, enemy.y, critical ? COL_DAMAGE_CRIT : COL_DAMAGE_DEALT,
+	AddFloatingText(buffer, enemy.actor->GetWorldPosition(), critical ? COL_DAMAGE_CRIT : COL_DAMAGE_DEALT,
 		critical ? 22 : 18);
 
 	// A shove, so a hit reads even when it does not kill.
-	const float dx = enemy.x - m_PlayerX;
-	const float dy = enemy.y - m_PlayerY;
+	const float dx = enemy.actor->GetWorldPosition().x - PlayerPosition().x;
+	const float dy = enemy.actor->GetWorldPosition().y - PlayerPosition().y;
 	const float distance = sqrtf(dx * dx + dy * dy);
 
 	if (distance > 0.0001f)
 	{
 		const float knockback = 0.22f;
-		const float pushX = enemy.x + dx / distance * knockback;
-		const float pushY = enemy.y + dy / distance * knockback;
+		const float pushX = enemy.actor->GetWorldPosition().x + dx / distance * knockback;
+		const float pushY = enemy.actor->GetWorldPosition().y + dy / distance * knockback;
 
-		if (!m_World.IsBlocked(pushX, enemy.y, ENEMY_RADIUS))
+		if (!m_World.IsBlocked(pushX, enemy.actor->GetWorldPosition().y, ENEMY_RADIUS))
 		{
-			enemy.x = pushX;
+			SetWorldPosition(*enemy.actor, pushX, enemy.actor->GetWorldPosition().y);
 		}
 
-		if (!m_World.IsBlocked(enemy.x, pushY, ENEMY_RADIUS))
+		if (!m_World.IsBlocked(enemy.actor->GetWorldPosition().x, pushY, ENEMY_RADIUS))
 		{
-			enemy.y = pushY;
+			SetWorldPosition(*enemy.actor, enemy.actor->GetWorldPosition().x, pushY);
 		}
 	}
 
@@ -435,29 +722,31 @@ void Level::DamageEnemy(int index, float amount, bool critical)
 void Level::KillEnemy(int index)
 {
 	Enemy& enemy = m_Enemies[index];
+	const ActorPosition position = enemy.actor->GetWorldPosition();
 	const EnemyProfile& profile = ENEMY_PROFILES[enemy.kind];
 
 	enemy.alive = false;
+	enemy.actor->SetVisible(false);
 	enemy.respawnTimer = m_Rng.Range(RESPAWN_MIN, RESPAWN_MAX);
 	++m_Kills;
 
-	SpawnPickup(PICKUP_ORB, enemy.x, enemy.y, profile.experience);
+	SpawnPickup(PICKUP_ORB, position.x, position.y, profile.experience);
 
 	const float roll = m_Rng.NextFloat();
 
 	if (roll < WHETSTONE_CHANCE)
 	{
-		SpawnPickup(PICKUP_WHETSTONE, enemy.x, enemy.y, 1);
+		SpawnPickup(PICKUP_WHETSTONE, position.x, position.y, 1);
 	}
 	else if (roll < WHETSTONE_CHANCE + POTION_CHANCE)
 	{
-		SpawnPickup(PICKUP_POTION, enemy.x, enemy.y, (int)POTION_HEAL);
+		SpawnPickup(PICKUP_POTION, position.x, position.y, (int)POTION_HEAL);
 	}
 }
 
 void Level::DamagePlayer(float amount)
 {
-	if (m_HurtFlash > 0.0f || m_State != LEVEL_PLAY)
+	if (m_HurtFlash > 0.0f || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
 	{
 		return;
 	}
@@ -470,7 +759,7 @@ void Level::DamagePlayer(float amount)
 	wchar_t buffer[32];
 	swprintf_s(buffer, 32, L"-%d", (int)(reduced + 0.5f));
 
-	AddFloatingText(buffer, m_PlayerX, m_PlayerY, COL_DAMAGE_TAKEN, 20);
+	AddFloatingText(buffer, PlayerPosition(), COL_DAMAGE_TAKEN, 20);
 
 	if (m_Stats.health <= 0.0f)
 	{
@@ -493,14 +782,14 @@ void Level::GrantExperience(int amount)
 		wchar_t buffer[64];
 		swprintf_s(buffer, 64, L"%s  %d", Text("ui_lv_levelup").c_str(), m_Stats.level);
 
-		AddFloatingText(buffer, m_PlayerX, m_PlayerY, COL_DAMAGE_CRIT, 24);
+		AddFloatingText(buffer, PlayerPosition(), COL_DAMAGE_CRIT, 24);
 	}
 	else if (beforeLevel == m_Stats.level)
 	{
 		wchar_t buffer[32];
 		swprintf_s(buffer, 32, L"+%d", amount);
 
-		AddFloatingText(buffer, m_PlayerX, m_PlayerY, COL_EXPERIENCE, 16);
+		AddFloatingText(buffer, PlayerPosition(), COL_EXPERIENCE, 16);
 	}
 }
 
@@ -508,7 +797,8 @@ void Level::CollectPickup(int index)
 {
 	Pickup& pickup = m_Pickups[index];
 
-	pickup.active = false;
+	pickup.actor->SetActive(false);
+	pickup.actor->SetVisible(false);
 
 	if (pickup.kind == PICKUP_ORB)
 	{
@@ -524,29 +814,29 @@ void Level::CollectPickup(int index)
 		wchar_t buffer[32];
 		swprintf_s(buffer, 32, L"+%d", (int)(m_Stats.health - before + 0.5f));
 
-		AddFloatingText(buffer, m_PlayerX, m_PlayerY, COL_HEAL, 18);
+		AddFloatingText(buffer, PlayerPosition(), COL_HEAL, 18);
 
 		return;
 	}
 
 	// Whetstone: a free permanent point, not a consumable.
 	++m_Stats.invested[STAT_STRENGTH];
-	AddFloatingText(Text("ui_lv_got_whetstone"), m_PlayerX, m_PlayerY, COL_DAMAGE_CRIT, 18);
+	AddFloatingText(Text("ui_lv_got_whetstone"), PlayerPosition(), COL_DAMAGE_CRIT, 18);
 }
 
 // ---------------------------------------------------------------- update
 
 void Level::Update(float deltaSeconds)
 {
-	// Allocation pauses combat timers and drop lifetimes as well as enemies.
-	if (m_State == LEVEL_STATS)
-	{
-		return;
-	}
+	SyncSceneState();
+	m_SceneGraph.Update(deltaSeconds);
+	SyncSceneState();
+}
 
+void Level::UpdateSimulation(float deltaSeconds)
+{
 	m_Time += deltaSeconds;
 	m_StateTime += deltaSeconds;
-
 	m_Fade = Clamp(m_Fade - deltaSeconds / 1.2f, 0.0f, 1.0f);
 
 	if (m_SwingCooldown > 0.0f)
@@ -575,40 +865,20 @@ void Level::Update(float deltaSeconds)
 
 		if (m_DownedTimer <= 0.0f)
 		{
-			m_PlayerX = m_World.GetPlayerStartX();
-			m_PlayerY = m_World.GetPlayerStartY();
+			SetWorldPosition(*m_PlayerActor, m_World.GetPlayerStartX(), m_World.GetPlayerStartY());
 			m_Stats.health = m_Stats.MaxHealth() * RESPAWN_HEALTH_FRACTION;
 			m_HurtFlash = INVULNERABLE_TIME;
 			m_State = LEVEL_PLAY;
 			m_StateTime = 0.0f;
 		}
 	}
+}
 
-	if (m_State == LEVEL_PLAY)
-	{
-		UpdatePlayer(deltaSeconds);
-
-		// Holding the key keeps swinging at the stat-derived interval. Grinding
-		// should not be a test of how fast the player can tap.
-		if (m_AttackHeld)
-		{
-			Attack();
-		}
-
-		UpdateEnemies(deltaSeconds);
-	}
-
-	if (m_State == LEVEL_PLAY)
-	{
-		UpdatePickups(deltaSeconds);
-	}
-
-	UpdateEffects(deltaSeconds);
-
+void Level::UpdateCamera(float deltaSeconds)
+{
 	const float follow = Clamp(deltaSeconds * 6.0f, 0.0f, 1.0f);
-	m_CameraX += (m_PlayerX - m_CameraX) * follow;
-	m_CameraY += (m_PlayerY - m_CameraY) * follow;
-
+	m_CameraX += (PlayerPosition().x - m_CameraX) * follow;
+	m_CameraY += (PlayerPosition().y - m_CameraY) * follow;
 	m_Lighting.SetViewer(m_CameraX, m_CameraY);
 	m_Lighting.SetTime(m_Time);
 	UpdateLights();
@@ -663,196 +933,170 @@ void Level::UpdatePlayer(float deltaSeconds)
 	const float stepX = dx * speed * deltaSeconds;
 	const float stepY = dy * speed * deltaSeconds;
 
-	if (!m_World.IsBlocked(m_PlayerX + stepX, m_PlayerY, PLAYER_RADIUS))
+	if (!m_World.IsBlocked(PlayerPosition().x + stepX, PlayerPosition().y, PLAYER_RADIUS))
 	{
-		m_PlayerX += stepX;
+		SetWorldPosition(*m_PlayerActor, PlayerPosition().x + stepX, PlayerPosition().y);
 	}
 
-	if (!m_World.IsBlocked(m_PlayerX, m_PlayerY + stepY, PLAYER_RADIUS))
+	if (!m_World.IsBlocked(PlayerPosition().x, PlayerPosition().y + stepY, PLAYER_RADIUS))
 	{
-		m_PlayerY += stepY;
+		SetWorldPosition(*m_PlayerActor, PlayerPosition().x, PlayerPosition().y + stepY);
 	}
 
 	m_Stride += deltaSeconds * (m_Running ? 13.0f : 9.0f);
 }
 
-void Level::UpdateEnemies(float deltaSeconds)
+void Level::UpdateEnemy(int index, float deltaSeconds)
 {
-	for (size_t i = 0; i < m_Enemies.size(); ++i)
+	Enemy& enemy = m_Enemies[index];
+
+	if (m_State != LEVEL_PLAY)
 	{
-		Enemy& enemy = m_Enemies[i];
+		return;
+	}
 
-		if (m_State != LEVEL_PLAY)
+	if (!enemy.alive)
+	{
+		enemy.respawnTimer -= deltaSeconds;
+
+		if (enemy.respawnTimer <= 0.0f)
 		{
-			break;
+			SpawnEnemy(index, true);
 		}
 
-		if (!enemy.alive)
-		{
-			enemy.respawnTimer -= deltaSeconds;
+		return;
+	}
 
-			if (enemy.respawnTimer <= 0.0f)
+	if (enemy.hitFlash > 0.0f)
+	{
+		enemy.hitFlash -= deltaSeconds;
+	}
+
+	if (enemy.attackTimer > 0.0f)
+	{
+		enemy.attackTimer -= deltaSeconds;
+	}
+
+	const EnemyProfile& profile = ENEMY_PROFILES[enemy.kind];
+
+	const float dx = PlayerPosition().x - enemy.actor->GetWorldPosition().x;
+	const float dy = PlayerPosition().y - enemy.actor->GetWorldPosition().y;
+	const float distance = sqrtf(dx * dx + dy * dy);
+
+	float moveX = 0.0f;
+	float moveY = 0.0f;
+
+	if (distance < profile.aggroRange && distance > 0.0001f)
+	{
+		moveX = dx / distance;
+		moveY = dy / distance;
+
+		if (distance <= profile.attackRange)
+		{
+			moveX = 0.0f;
+			moveY = 0.0f;
+
+			if (enemy.attackTimer <= 0.0f)
 			{
-				SpawnEnemy((int)i, true);
-			}
-
-			continue;
-		}
-
-		if (enemy.hitFlash > 0.0f)
-		{
-			enemy.hitFlash -= deltaSeconds;
-		}
-
-		if (enemy.attackTimer > 0.0f)
-		{
-			enemy.attackTimer -= deltaSeconds;
-		}
-
-		const EnemyProfile& profile = ENEMY_PROFILES[enemy.kind];
-
-		const float dx = m_PlayerX - enemy.x;
-		const float dy = m_PlayerY - enemy.y;
-		const float distance = sqrtf(dx * dx + dy * dy);
-
-		float moveX = 0.0f;
-		float moveY = 0.0f;
-
-		if (distance < profile.aggroRange && distance > 0.0001f)
-		{
-			moveX = dx / distance;
-			moveY = dy / distance;
-
-			if (distance <= profile.attackRange)
-			{
-				moveX = 0.0f;
-				moveY = 0.0f;
-
-				if (enemy.attackTimer <= 0.0f)
-				{
-					enemy.attackTimer = profile.attackInterval;
-					DamagePlayer(profile.damage);
-				}
+				enemy.attackTimer = profile.attackInterval;
+				DamagePlayer(profile.damage);
 			}
 		}
-		else
+	}
+	else
+	{
+		enemy.wanderTimer -= deltaSeconds;
+
+		if (enemy.wanderTimer <= 0.0f)
 		{
-			enemy.wanderTimer -= deltaSeconds;
-
-			if (enemy.wanderTimer <= 0.0f)
-			{
-				const float angle = m_Rng.Range(0.0f, TWO_PI);
-				enemy.wanderX = cosf(angle);
-				enemy.wanderY = sinf(angle);
-				enemy.wanderTimer = m_Rng.Range(1.2f, 3.2f);
-			}
-
-			moveX = enemy.wanderX * 0.45f;
-			moveY = enemy.wanderY * 0.45f;
+			const float angle = m_Rng.Range(0.0f, TWO_PI);
+			enemy.wanderX = cosf(angle);
+			enemy.wanderY = sinf(angle);
+			enemy.wanderTimer = m_Rng.Range(1.2f, 3.2f);
 		}
 
-		const float stepX = moveX * profile.speed * deltaSeconds;
-		const float stepY = moveY * profile.speed * deltaSeconds;
+		moveX = enemy.wanderX * 0.45f;
+		moveY = enemy.wanderY * 0.45f;
+	}
 
-		if (!m_World.IsBlocked(enemy.x + stepX, enemy.y, ENEMY_RADIUS))
-		{
-			enemy.x += stepX;
-		}
-		else
-		{
-			enemy.wanderTimer = 0.0f;
-		}
+	const float stepX = moveX * profile.speed * deltaSeconds;
+	const float stepY = moveY * profile.speed * deltaSeconds;
 
-		if (!m_World.IsBlocked(enemy.x, enemy.y + stepY, ENEMY_RADIUS))
-		{
-			enemy.y += stepY;
-		}
-		else
-		{
-			enemy.wanderTimer = 0.0f;
-		}
+	if (!m_World.IsBlocked(enemy.actor->GetWorldPosition().x + stepX, enemy.actor->GetWorldPosition().y, ENEMY_RADIUS))
+	{
+		SetWorldPosition(*enemy.actor, enemy.actor->GetWorldPosition().x + stepX, enemy.actor->GetWorldPosition().y);
+	}
+	else
+	{
+		enemy.wanderTimer = 0.0f;
+	}
+
+	if (!m_World.IsBlocked(enemy.actor->GetWorldPosition().x, enemy.actor->GetWorldPosition().y + stepY, ENEMY_RADIUS))
+	{
+		SetWorldPosition(*enemy.actor, enemy.actor->GetWorldPosition().x, enemy.actor->GetWorldPosition().y + stepY);
+	}
+	else
+	{
+		enemy.wanderTimer = 0.0f;
 	}
 }
 
-void Level::UpdatePickups(float deltaSeconds)
+void Level::UpdatePickup(int index, float deltaSeconds)
 {
-	for (size_t i = 0; i < m_Pickups.size(); ++i)
+	if (m_State != LEVEL_PLAY)
 	{
-		Pickup& pickup = m_Pickups[i];
+		return;
+	}
 
-		if (!pickup.active)
+	Pickup& pickup = m_Pickups[index];
+	pickup.life -= deltaSeconds;
+
+	if (pickup.life <= 0.0f)
+	{
+		pickup.actor->SetActive(false);
+		pickup.actor->SetVisible(false);
+		return;
+	}
+
+	const ActorPosition position = pickup.actor->GetWorldPosition();
+	const float dx = PlayerPosition().x - position.x;
+	const float dy = PlayerPosition().y - position.y;
+	const float distance = sqrtf(dx * dx + dy * dy);
+
+	if (pickup.kind == PICKUP_ORB && distance < ORB_MAGNET_RANGE && distance > 0.0001f)
+	{
+		const float pull = Clamp(ORB_MAGNET_SPEED * deltaSeconds
+			* (1.0f - distance / ORB_MAGNET_RANGE), 0.0f, distance);
+		const float nextX = position.x + dx / distance * pull;
+		const float nextY = position.y + dy / distance * pull;
+
+		if (!m_World.IsBlocked(nextX, position.y, PLAYER_RADIUS))
 		{
-			continue;
+			SetWorldPosition(*pickup.actor, nextX, position.y, position.z);
 		}
 
-		pickup.life -= deltaSeconds;
-
-		if (pickup.life <= 0.0f)
+		if (!m_World.IsBlocked(pickup.actor->GetWorldPosition().x, nextY, PLAYER_RADIUS))
 		{
-			pickup.active = false;
-			continue;
-		}
-
-		const float dx = m_PlayerX - pickup.x;
-		const float dy = m_PlayerY - pickup.y;
-		const float distance = sqrtf(dx * dx + dy * dy);
-
-		// Experience drifts toward the player so that a fight does not end with
-		// a cleanup lap around the clearing.
-		if (pickup.kind == PICKUP_ORB && distance < ORB_MAGNET_RANGE && distance > 0.0001f)
-		{
-			const float pull = Clamp(ORB_MAGNET_SPEED * deltaSeconds
-				* (1.0f - distance / ORB_MAGNET_RANGE), 0.0f, distance);
-			const float nextX = pickup.x + dx / distance * pull;
-			const float nextY = pickup.y + dy / distance * pull;
-
-			if (!m_World.IsBlocked(nextX, pickup.y, PLAYER_RADIUS))
-			{
-				pickup.x = nextX;
-			}
-
-			if (!m_World.IsBlocked(pickup.x, nextY, PLAYER_RADIUS))
-			{
-				pickup.y = nextY;
-			}
-		}
-
-		if (distance < PICKUP_RANGE)
-		{
-			CollectPickup((int)i);
+			SetWorldPosition(*pickup.actor, pickup.actor->GetWorldPosition().x, nextY, position.z);
 		}
 	}
 
-	// Compact once the list has collected some corpses.
-	if (m_Pickups.size() > 64)
+	if (distance < PICKUP_RANGE)
 	{
-		std::vector<Pickup> alive;
-
-		for (size_t i = 0; i < m_Pickups.size(); ++i)
-		{
-			if (m_Pickups[i].active)
-			{
-				alive.push_back(m_Pickups[i]);
-			}
-		}
-
-		m_Pickups.swap(alive);
+		CollectPickup(index);
 	}
 }
 
-void Level::UpdateEffects(float deltaSeconds)
+void Level::UpdateFloatingText(int index, float deltaSeconds)
 {
-	for (size_t i = 0; i < m_FloatingText.size(); ++i)
-	{
-		FloatingText& entry = m_FloatingText[i];
+	FloatingText& entry = m_FloatingText[index];
+	entry.life -= deltaSeconds;
+	entry.rise += deltaSeconds * 34.0f;
 
-		entry.life -= deltaSeconds;
-		entry.rise += deltaSeconds * 34.0f;
-	}
-
-	while (!m_FloatingText.empty() && m_FloatingText.front().life <= 0.0f)
+	if (entry.life <= 0.0f)
 	{
-		m_FloatingText.erase(m_FloatingText.begin());
+		entry.actor->SetActive(false);
+		entry.actor->SetVisible(false);
 	}
 }
 
@@ -861,18 +1105,21 @@ void Level::UpdateLights()
 	// Few enough lights that rebuilding beats tracking indices across respawns.
 	m_Lighting.Clear();
 
-	m_Lighting.AddLight(m_PlayerX, m_PlayerY - 0.15f, 5.0f, 1.25f, COL_FLAME, true);
+	if (m_PlayerActor->IsVisibleInHierarchy())
+	{
+		m_Lighting.AddLight(PlayerPosition().x, PlayerPosition().y - 0.15f, 5.0f, 1.25f, COL_FLAME, true);
+	}
 
 	for (size_t i = 0; i < m_Enemies.size(); ++i)
 	{
 		const Enemy& enemy = m_Enemies[i];
 
-		if (!enemy.alive || !ENEMY_PROFILES[enemy.kind].glows)
+		if (!enemy.alive || !enemy.actor->IsVisibleInHierarchy() || !ENEMY_PROFILES[enemy.kind].glows)
 		{
 			continue;
 		}
 
-		m_Lighting.AddLight(enemy.x, enemy.y, 4.0f, 1.15f, COL_WISP_LIGHT, true);
+		m_Lighting.AddLight(enemy.actor->GetWorldPosition().x, enemy.actor->GetWorldPosition().y, 4.0f, 1.15f, COL_WISP_LIGHT, true);
 	}
 }
 
@@ -927,6 +1174,7 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 		m_State = (m_State == LEVEL_STATS) ? LEVEL_PLAY : LEVEL_STATS;
 		m_AttackHeld = false;
 		m_Moving = false;
+		SyncSceneState();
 		return;
 	}
 
@@ -938,7 +1186,7 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 
 			if (m_Stats.Spend(stat))
 			{
-				AddFloatingText(Text(STAT_NAME_KEYS[stat]), m_PlayerX, m_PlayerY, COL_DAMAGE_CRIT, 18);
+				AddFloatingText(Text(STAT_NAME_KEYS[stat]), PlayerPosition(), COL_DAMAGE_CRIT, 18);
 			}
 		}
 
@@ -953,271 +1201,166 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 
 // ---------------------------------------------------------------- drawing
 
-bool Level::OnScreen(float screenX, float screenY, float margin) const
+void Level::DrawGround(const Actor& actor, int x, int y)
 {
-	const float halfWidth = m_Renderer->GetWidth() * 0.5f + margin;
-	const float halfHeight = m_Renderer->GetHeight() * 0.5f + margin;
+	const ActorPosition position = actor.GetWorldPosition();
+	const TileType tile = m_World.GetTile(x, y);
+	Color base;
 
-	return screenX > -halfWidth && screenX < halfWidth
-		&& screenY > -halfHeight && screenY < halfHeight;
-}
-
-void Level::DrawGround()
-{
-	const int width = m_World.GetWidth();
-	const int height = m_World.GetHeight();
-
-	for (int y = 0; y < height; ++y)
+	switch (tile)
 	{
-		for (int x = 0; x < width; ++x)
-		{
-			float screenX = 0.0f;
-			float screenY = 0.0f;
-			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &screenX, &screenY);
+	case TILE_TALLGRASS: base = COL_TALLGRASS; break;
+	case TILE_DIRT:      base = COL_DIRT; break;
+	case TILE_STONE:     base = COL_STONE; break;
+	case TILE_SAND:      base = COL_SAND; break;
+	case TILE_WATER:     base = COL_WATER; break;
+	default:             base = COL_GRASS; break;
+	}
 
-			if (!OnScreen(screenX, screenY, 64.0f))
-			{
-				continue;
-			}
+	if (tile != TILE_WATER)
+	{
+		const float shade = 1.0f + ((float)(HashInt(x, y) % 100) * 0.01f - 0.5f) * 0.09f;
+		base.r *= shade;
+		base.g *= shade;
+		base.b *= shade;
+	}
 
-			const TileType tile = m_World.GetTile(x, y);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
+	const Color lit = m_Lighting.Apply(base, position.x, position.y);
 
-			Color base;
+	if (tile == TILE_WATER)
+	{
+		m_Renderer->SetAnim(ANIM_WATER, (float)x * 0.62f + (float)y * 0.44f, 1.6f);
+	}
 
-			switch (tile)
-			{
-			case TILE_TALLGRASS: base = COL_TALLGRASS; break;
-			case TILE_DIRT:      base = COL_DIRT; break;
-			case TILE_STONE:     base = COL_STONE; break;
-			case TILE_SAND:      base = COL_SAND; break;
-			case TILE_WATER:     base = COL_WATER; break;
-			default:             base = COL_GRASS; break;
-			}
+	m_Renderer->PushDiamond(screenX, screenY, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
+		lit, -100000.0f + (position.x + position.y - 1.0f) * 0.01f);
 
-			if (tile != TILE_WATER)
-			{
-				const float shade = 1.0f + ((float)(HashInt(x, y) % 100) * 0.01f - 0.5f) * 0.09f;
-				base.r *= shade;
-				base.g *= shade;
-				base.b *= shade;
-			}
-
-			const Color lit = m_Lighting.Apply(base, (float)x + 0.5f, (float)y + 0.5f);
-
-			if (tile == TILE_WATER)
-			{
-				// The swell and the shimmer both live in Batch.vs. Neighbouring
-				// tiles get different phases, which is what makes it a wave and
-				// not a whole lake bobbing in unison.
-				m_Renderer->SetAnim(ANIM_WATER, (float)x * 0.62f + (float)y * 0.44f, 1.6f);
-			}
-
-			m_Renderer->PushDiamond(screenX, screenY, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
-				lit, -100000.0f + (float)(x + y) * 0.01f);
-
-			if (tile == TILE_WATER)
-			{
-				m_Renderer->ClearAnim();
-			}
-		}
+	if (tile == TILE_WATER)
+	{
+		m_Renderer->ClearAnim();
 	}
 }
 
-void Level::DrawScenery()
+void Level::DrawScenery(const Actor& actor, const Model* model)
 {
-	const int width = m_World.GetWidth();
-	const int height = m_World.GetHeight();
-
-	const Model* cedarSmall = m_Models->Find("tree_cedar_small");
-	const Model* cedarMid = m_Models->Find("tree_cedar_mid");
-	const Model* cedarTall = m_Models->Find("tree_cedar_tall");
-	const Model* broadleaf = m_Models->Find("tree_broadleaf");
-	const Model* bush = m_Models->Find("bush");
-	const Model* rock = m_Models->Find("rock");
-
-	for (int y = 0; y < height; ++y)
+	if (model == NULL)
 	{
-		for (int x = 0; x < width; ++x)
-		{
-			const TileType tile = m_World.GetTile(x, y);
+		return;
+	}
 
-			if (tile != TILE_TREE && tile != TILE_BUSH && tile != TILE_ROCK)
-			{
-				continue;
-			}
+	const ActorPosition position = actor.GetWorldPosition();
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
+	const ShadeParams shade = m_Lighting.Shade(position.x, position.y, RGBA(1.0f, 1.0f, 1.0f));
 
-			const unsigned int hash = HashInt(x, y);
-			const float worldX = (float)x + 0.30f + (float)(hash % 40) * 0.01f;
-			const float worldY = (float)y + 0.30f + (float)((hash >> 8) % 40) * 0.01f;
+	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, position.x + position.y, shade);
+}
 
-			float screenX = 0.0f;
-			float screenY = 0.0f;
-			m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+void Level::DrawEnemy(int index)
+{
+	const Enemy& enemy = m_Enemies[index];
 
-			if (!OnScreen(screenX, screenY, 180.0f))
-			{
-				continue;
-			}
+	if (!enemy.alive)
+	{
+		return;
+	}
 
-			const Model* model = rock;
+	const ActorPosition position = enemy.actor->GetWorldPosition();
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-			if (tile == TILE_TREE)
-			{
-				const unsigned int pick = (hash >> 16) % 4;
+	const Model* model = ModelFor(enemy.kind);
 
-				if (pick == 0)
-				{
-					model = cedarSmall;
-				}
-				else if (pick == 1)
-				{
-					model = cedarTall;
-				}
-				else if (pick == 2)
-				{
-					model = broadleaf;
-				}
-				else
-				{
-					model = cedarMid;
-				}
-			}
-			else if (tile == TILE_BUSH)
-			{
-				model = bush;
-			}
+	if (model == NULL)
+	{
+		return;
+	}
 
-			if (model == NULL)
-			{
-				continue;
-			}
+	const EnemyProfile& profile = ENEMY_PROFILES[enemy.kind];
 
-			const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
+	Color tint = RGBA(1.0f, 1.0f, 1.0f);
 
-			DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
-		}
+	if (enemy.hitFlash > 0.0f)
+	{
+		tint = RGBA(2.4f, 2.0f, 2.0f);
+	}
+
+	ShadeParams shade = m_Lighting.Shade(position.x, position.y, tint);
+
+	if (enemy.hitFlash > 0.0f)
+	{
+		// Flash the whole silhouette, tinted or not.
+		shade.light = RGBA(2.2f, 1.9f, 1.9f);
+	}
+
+	const float bob = sinf(m_Time * 2.2f + enemy.phase) * 2.0f;
+
+	DrawModel(m_Renderer, *model, screenX, screenY + bob, profile.scale,
+		position.x + position.y, shade);
+
+	// Health pip above anything that has been hurt.
+	if (enemy.health < enemy.maxHealth)
+	{
+		const float barWidth = 30.0f;
+		const float fill = Clamp(enemy.health / enemy.maxHealth, 0.0f, 1.0f);
+		const float barY = screenY - 52.0f * profile.scale;
+
+		m_Renderer->PushRect(screenX - barWidth * 0.5f, barY, barWidth, 4.0f,
+			RGBA(0.06f, 0.06f, 0.08f, 0.80f), position.x + position.y + 0.5f);
+		m_Renderer->PushRect(screenX - barWidth * 0.5f, barY, barWidth * fill, 4.0f,
+			COL_SHU, position.x + position.y + 0.51f);
 	}
 }
 
-void Level::DrawEnemies()
+void Level::DrawPickup(int index)
 {
-	for (size_t i = 0; i < m_Enemies.size(); ++i)
+	const Pickup& pickup = m_Pickups[index];
+	const ActorPosition position = pickup.actor->GetWorldPosition();
+
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
+
+	const Model* model = ModelFor(pickup.kind);
+
+	if (model == NULL)
 	{
-		const Enemy& enemy = m_Enemies[i];
-
-		if (!enemy.alive)
-		{
-			continue;
-		}
-
-		float screenX = 0.0f;
-		float screenY = 0.0f;
-		m_Renderer->WorldToScreen(enemy.x, enemy.y, 0.0f, &screenX, &screenY);
-
-		if (!OnScreen(screenX, screenY, 140.0f))
-		{
-			continue;
-		}
-
-		const Model* model = ModelFor(enemy.kind);
-
-		if (model == NULL)
-		{
-			continue;
-		}
-
-		const EnemyProfile& profile = ENEMY_PROFILES[enemy.kind];
-
-		Color tint = RGBA(1.0f, 1.0f, 1.0f);
-
-		if (enemy.hitFlash > 0.0f)
-		{
-			tint = RGBA(2.4f, 2.0f, 2.0f);
-		}
-
-		ShadeParams shade = m_Lighting.Shade(enemy.x, enemy.y, tint);
-
-		if (enemy.hitFlash > 0.0f)
-		{
-			// Flash the whole silhouette, tinted or not.
-			shade.light = RGBA(2.2f, 1.9f, 1.9f);
-		}
-
-		const float bob = sinf(m_Time * 2.2f + enemy.phase) * 2.0f;
-
-		DrawModel(m_Renderer, *model, screenX, screenY + bob, profile.scale,
-			enemy.x + enemy.y, shade);
-
-		// Health pip above anything that has been hurt.
-		if (enemy.health < enemy.maxHealth)
-		{
-			const float barWidth = 30.0f;
-			const float fill = Clamp(enemy.health / enemy.maxHealth, 0.0f, 1.0f);
-			const float barY = screenY - 52.0f * profile.scale;
-
-			m_Renderer->PushRect(screenX - barWidth * 0.5f, barY, barWidth, 4.0f,
-				RGBA(0.06f, 0.06f, 0.08f, 0.80f), enemy.x + enemy.y + 0.5f);
-			m_Renderer->PushRect(screenX - barWidth * 0.5f, barY, barWidth * fill, 4.0f,
-				COL_SHU, enemy.x + enemy.y + 0.51f);
-		}
+		return;
 	}
-}
 
-void Level::DrawPickups()
-{
-	for (size_t i = 0; i < m_Pickups.size(); ++i)
+	// Blink out over the last two seconds so a vanishing drop is not a
+	// surprise.
+	float alpha = 1.0f;
+
+	if (pickup.life < 2.0f)
 	{
-		const Pickup& pickup = m_Pickups[i];
-
-		if (!pickup.active)
-		{
-			continue;
-		}
-
-		float screenX = 0.0f;
-		float screenY = 0.0f;
-		m_Renderer->WorldToScreen(pickup.x, pickup.y, 0.0f, &screenX, &screenY);
-
-		if (!OnScreen(screenX, screenY, 80.0f))
-		{
-			continue;
-		}
-
-		const Model* model = ModelFor(pickup.kind);
-
-		if (model == NULL)
-		{
-			continue;
-		}
-
-		// Blink out over the last two seconds so a vanishing drop is not a
-		// surprise.
-		float alpha = 1.0f;
-
-		if (pickup.life < 2.0f)
-		{
-			alpha = (sinf(pickup.life * 18.0f) * 0.5f + 0.5f) * 0.8f + 0.2f;
-		}
-
-		const float bob = sinf(m_Time * 2.6f + pickup.phase) * 2.5f;
-		const ShadeParams shade = m_Lighting.Shade(pickup.x, pickup.y, RGBA(1.0f, 1.0f, 1.0f, alpha));
-
-		DrawModel(m_Renderer, *model, screenX, screenY + bob, 1.0f, pickup.x + pickup.y, shade);
+		alpha = (sinf(pickup.life * 18.0f) * 0.5f + 0.5f) * 0.8f + 0.2f;
 	}
+
+	const float bob = sinf(m_Time * 2.6f + pickup.phase) * 2.5f;
+	const ShadeParams shade = m_Lighting.Shade(position.x, position.y, RGBA(1.0f, 1.0f, 1.0f, alpha));
+
+	DrawModel(m_Renderer, *model, screenX, screenY + bob, 1.0f, position.x + position.y, shade);
 }
 
 void Level::DrawPlayer()
 {
+	const ActorPosition position = PlayerPosition();
 	const Model* person = m_Models->Find("person");
 	const Model* sword = m_Models->Find("person_sword");
 	const Model* lantern = m_Models->Find("person_lantern");
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
-	m_Renderer->WorldToScreen(m_PlayerX, m_PlayerY, 0.0f, &screenX, &screenY);
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
 	const float stride = m_Moving ? fabsf(sinf(m_Stride)) * 2.6f : 0.0f;
-	const float depth = m_PlayerX + m_PlayerY;
+	const float depth = position.x + position.y;
 
 	Color tint = COL_PLAYER_ROBE;
 
@@ -1226,7 +1369,7 @@ void Level::DrawPlayer()
 		tint = Mix(COL_PLAYER_ROBE, RGBA(1.0f, 0.35f, 0.30f), Clamp(m_HurtFlash / INVULNERABLE_TIME, 0.0f, 1.0f));
 	}
 
-	const ShadeParams shade = m_Lighting.Shade(m_PlayerX, m_PlayerY, tint);
+	const ShadeParams shade = m_Lighting.Shade(position.x, position.y, tint);
 
 	if (person != NULL)
 	{
@@ -1244,7 +1387,7 @@ void Level::DrawPlayer()
 	}
 }
 
-void Level::DrawSwing()
+void Level::DrawSwing(const Actor& actor)
 {
 	if (m_SwingAnim <= 0.0f)
 	{
@@ -1253,10 +1396,11 @@ void Level::DrawSwing()
 
 	const float progress = 1.0f - m_SwingAnim / SWING_DURATION;
 	const float alpha = (1.0f - progress) * 0.55f;
+	const ActorPosition position = actor.GetWorldPosition();
 
 	float originX = 0.0f;
 	float originY = 0.0f;
-	m_Renderer->WorldToScreen(m_PlayerX, m_PlayerY, 0.55f, &originX, &originY);
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &originX, &originY);
 
 	// The arc is drawn in screen space, swept through the facing direction.
 	const float facingAngle = atan2f((m_FacingX + m_FacingY) * Renderer::TileHalfHeight(),
@@ -1284,33 +1428,26 @@ void Level::DrawSwing()
 		};
 
 		m_Renderer->PushPolygon(xy, 4, RGBA(0.92f, 0.94f, 0.98f, alpha * taper),
-			m_PlayerX + m_PlayerY + 0.6f);
+			position.x + position.y + 0.6f);
 	}
 }
 
-void Level::DrawFloatingText()
+void Level::DrawFloatingText(int index)
 {
-	for (size_t i = 0; i < m_FloatingText.size(); ++i)
-	{
-		const FloatingText& entry = m_FloatingText[i];
+	const FloatingText& entry = m_FloatingText[index];
+	const ActorPosition position = entry.actor->GetWorldPosition();
 
-		float screenX = 0.0f;
-		float screenY = 0.0f;
-		m_Renderer->WorldToScreen(entry.x, entry.y, 1.1f, &screenX, &screenY);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-		if (!OnScreen(screenX, screenY, 60.0f))
-		{
-			continue;
-		}
+	const float fade = Clamp(entry.life / entry.maxLife, 0.0f, 1.0f);
 
-		const float fade = Clamp(entry.life / entry.maxLife, 0.0f, 1.0f);
+	Color color = entry.color;
+	color.a = fade;
 
-		Color color = entry.color;
-		color.a = fade;
-
-		m_Renderer->PushText(entry.text, screenX, screenY - entry.rise, entry.size, FONT_SERIF, true,
-			color, ALIGN_CENTER);
-	}
+	m_Renderer->PushText(entry.text, screenX, screenY - entry.rise, entry.size, FONT_SERIF, true,
+		color, ALIGN_CENTER);
 }
 
 void Level::DrawAtmosphere()
@@ -1566,27 +1703,6 @@ void Level::Render()
 {
 	m_Renderer->SetCamera(m_CameraX, m_CameraY);
 	m_Renderer->BeginFrame(COL_SKY, m_Time);
-
-	DrawGround();
-	DrawScenery();
-	DrawPickups();
-	DrawEnemies();
-	DrawPlayer();
-	DrawSwing();
-
-	DrawAtmosphere();
-
-	DrawFloatingText();
-	DrawHud();
-
-	if (m_State == LEVEL_STATS)
-	{
-		DrawStatsScreen();
-	}
-	else if (m_State == LEVEL_DOWNED)
-	{
-		DrawDownedScreen();
-	}
-
+	m_SceneGraph.Render(*m_Renderer);
 	m_Renderer->EndFrame();
 }
