@@ -8,6 +8,7 @@
 bool DialogueDB::Load(const char* path)
 {
 	std::ifstream file(path, std::ios::binary);
+
 	if (file.fail())
 	{
 		std::cout << path << " could not be opened.\n";
@@ -16,8 +17,8 @@ bool DialogueDB::Load(const char* path)
 
 	std::string key;
 	std::wstring speaker;
-
 	std::string line;
+
 	while (std::getline(file, line))
 	{
 		if (!line.empty() && line[line.size() - 1] == '\r')
@@ -62,19 +63,23 @@ bool DialogueDB::Load(const char* path)
 const DialogueBlock* DialogueDB::Find(const std::string& key) const
 {
 	std::map<std::string, DialogueBlock>::const_iterator it = m_Blocks.find(key);
+
 	if (it == m_Blocks.end())
 	{
 		return NULL;
 	}
+
 	return &it->second;
 }
 
 std::wstring DialogueDB::Line(const std::string& key, size_t index) const
 {
 	const DialogueBlock* block = Find(key);
+
 	if (block == NULL || index >= block->lines.size())
 	{
 		return std::wstring();
 	}
+
 	return block->lines[index].text;
 }

@@ -9,28 +9,68 @@ but WITHOUT ANY WARRANTY.
 */
 
 #include "stdafx.h"
+#include <ctime>
 #include <iostream>
 
 #include "Dependencies\glew.h"
 #include "Dependencies\freeglut.h"
 
-#include "Renderer.h"
+#include "Dialogue.h"
 #include "Game.h"
+#include "Level.h"
+#include "Model.h"
+#include "Renderer.h"
 
 namespace
 {
 	const int WINDOW_WIDTH = 1024;
 	const int WINDOW_HEIGHT = 640;
 
+	const char* const DIALOGUE_PATH = "./Data/dialogue.txt";
+	const char* const MODEL_CACHE_PATH = "./Data/models.cache";
+
 	Renderer* g_Renderer = NULL;
-	Game* g_Game = NULL;
+	ModelLibrary* g_Models = NULL;
+	DialogueDB* g_Dialogue = NULL;
+
+	Game* g_Tutorial = NULL;
+	Level* g_Level = NULL;
 
 	int g_PreviousTimeMs = 0;
+
+	// The tutorial hands over to level 1; from then on the level owns the session.
+	bool InLevel()
+	{
+		return g_Level != NULL;
+	}
+
+	void EnterLevel()
+	{
+		const unsigned int seed = (unsigned int)time(NULL);
+
+		g_Level = new Level();
+
+		if (!g_Level->Initialize(g_Renderer, g_Models, g_Dialogue, seed))
+		{
+			std::cout << "Level 1 could not be generated; staying in the tutorial.\n";
+
+			delete g_Level;
+			g_Level = NULL;
+		}
+	}
 }
 
 void RenderScene(void)
 {
-	g_Game->Render();
+	if (InLevel())
+	{
+		g_Level->Render();
+	}
+	else
+	{
+		g_Tutorial->Render();
+	}
+
 	glutSwapBuffers();
 }
 
@@ -46,6 +86,7 @@ void Idle(void)
 	{
 		deltaSeconds = 0.0f;
 	}
+
 	if (deltaSeconds > 0.05f)
 	{
 		// A long stall (dragging the window, a breakpoint) must not teleport
@@ -53,12 +94,32 @@ void Idle(void)
 		deltaSeconds = 0.05f;
 	}
 
-	g_Game->Update(deltaSeconds);
-
-	if (g_Game->WantsExit())
+	if (InLevel())
 	{
-		glutLeaveMainLoop();
-		return;
+		g_Level->Update(deltaSeconds);
+
+		if (g_Level->WantsExit())
+		{
+			glutLeaveMainLoop();
+
+			return;
+		}
+	}
+	else
+	{
+		g_Tutorial->Update(deltaSeconds);
+
+		if (g_Tutorial->WantsNextLevel())
+		{
+			EnterLevel();
+		}
+
+		if (g_Tutorial->WantsExit())
+		{
+			glutLeaveMainLoop();
+
+			return;
+		}
 	}
 
 	glutPostRedisplay();
@@ -72,13 +133,29 @@ void Reshape(int width, int height)
 void KeyInput(unsigned char key, int x, int y)
 {
 	const bool shift = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
-	g_Game->OnKey(key, true, shift);
+
+	if (InLevel())
+	{
+		g_Level->OnKey(key, true, shift);
+	}
+	else
+	{
+		g_Tutorial->OnKey(key, true, shift);
+	}
 }
 
 void KeyUpInput(unsigned char key, int x, int y)
 {
 	const bool shift = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
-	g_Game->OnKey(key, false, shift);
+
+	if (InLevel())
+	{
+		g_Level->OnKey(key, false, shift);
+	}
+	else
+	{
+		g_Tutorial->OnKey(key, false, shift);
+	}
 }
 
 int main(int argc, char** argv)
@@ -94,6 +171,7 @@ int main(int argc, char** argv)
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
 	glewInit();
+
 	if (glewIsSupported("GL_VERSION_3_3"))
 	{
 		std::cout << "GLEW: OpenGL 3.3 is available.\n";
@@ -104,20 +182,51 @@ int main(int argc, char** argv)
 	}
 
 	g_Renderer = new Renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
+
 	if (!g_Renderer->IsInitialized())
 	{
 		std::cout << "Renderer could not be initialized. Check that the working directory is the\n"
 			<< "project folder, so that ./Shaders and ./Data resolve.\n";
 		delete g_Renderer;
+
 		return 1;
 	}
 
-	g_Game = new Game();
-	if (!g_Game->Initialize(g_Renderer))
+	// Shapes are built from primitives on the first run only; every later run
+	// just reads Data/models.cache back.
+	g_Models = new ModelLibrary();
+
+	if (!g_Models->LoadOrBuild(MODEL_CACHE_PATH))
 	{
-		std::cout << "Game data could not be loaded. Check ./Data/village.map and ./Data/dialogue.txt\n";
-		delete g_Game;
+		std::cout << "Model library could not be prepared.\n";
+		delete g_Models;
 		delete g_Renderer;
+
+		return 1;
+	}
+
+	g_Dialogue = new DialogueDB();
+
+	if (!g_Dialogue->Load(DIALOGUE_PATH))
+	{
+		std::cout << "Dialogue could not be loaded. Check " << DIALOGUE_PATH << "\n";
+		delete g_Dialogue;
+		delete g_Models;
+		delete g_Renderer;
+
+		return 1;
+	}
+
+	g_Tutorial = new Game();
+
+	if (!g_Tutorial->Initialize(g_Renderer, g_Models, g_Dialogue))
+	{
+		std::cout << "Tutorial data could not be loaded. Check ./Data/village.map\n";
+		delete g_Tutorial;
+		delete g_Dialogue;
+		delete g_Models;
+		delete g_Renderer;
+
 		return 1;
 	}
 
@@ -135,7 +244,10 @@ int main(int argc, char** argv)
 
 	glutMainLoop();
 
-	delete g_Game;
+	delete g_Level;
+	delete g_Tutorial;
+	delete g_Dialogue;
+	delete g_Models;
 	delete g_Renderer;
 
 	return 0;

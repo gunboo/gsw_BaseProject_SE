@@ -10,6 +10,8 @@
 
 namespace
 {
+	const size_t MAX_CACHED_TEXTS = 512;
+
 	std::wstring MakeCacheKey(const std::wstring& text, int pixelSize, FontFace face, bool bold)
 	{
 		wchar_t prefix[48];
@@ -27,7 +29,17 @@ TextRenderer::~TextRenderer()
 	Shutdown();
 }
 
-void TextRenderer::Shutdown()
+void TextRenderer::BeginFrame()
+{
+	// Changing counters would otherwise keep every past HUD texture forever.
+	// Frame boundaries are safe because no queued TextItem still owns a pointer.
+	if (m_Cache.size() > MAX_CACHED_TEXTS)
+	{
+		ClearTextures();
+	}
+}
+
+void TextRenderer::ClearTextures()
 {
 	for (std::map<std::wstring, TextTexture>::iterator it = m_Cache.begin(); it != m_Cache.end(); ++it)
 	{
@@ -36,7 +48,13 @@ void TextRenderer::Shutdown()
 			glDeleteTextures(1, &it->second.texture);
 		}
 	}
+
 	m_Cache.clear();
+}
+
+void TextRenderer::Shutdown()
+{
+	ClearTextures();
 
 	for (std::map<std::wstring, void*>::iterator it = m_Fonts.begin(); it != m_Fonts.end(); ++it)
 	{
@@ -45,6 +63,7 @@ void TextRenderer::Shutdown()
 			DeleteObject((HFONT)it->second);
 		}
 	}
+
 	m_Fonts.clear();
 }
 
@@ -54,6 +73,7 @@ void* TextRenderer::AcquireFont(int pixelSize, FontFace face, bool bold)
 	swprintf_s(key, 48, L"%d|%d|%d", pixelSize, (int)face, bold ? 1 : 0);
 
 	std::map<std::wstring, void*>::iterator it = m_Fonts.find(key);
+
 	if (it != m_Fonts.end())
 	{
 		return it->second;
@@ -92,6 +112,7 @@ const TextTexture* TextRenderer::Get(const std::wstring& text, int pixelSize, Fo
 	std::wstring key = MakeCacheKey(text, pixelSize, face, bold);
 
 	std::map<std::wstring, TextTexture>::iterator it = m_Cache.find(key);
+
 	if (it != m_Cache.end())
 	{
 		return &it->second;
@@ -104,12 +125,14 @@ const TextTexture* TextRenderer::Rasterize(const std::wstring& cacheKey, const s
 	int pixelSize, FontFace face, bool bold)
 {
 	HFONT font = (HFONT)AcquireFont(pixelSize, face, bold);
+
 	if (font == NULL)
 	{
 		return NULL;
 	}
 
 	HDC dc = CreateCompatibleDC(NULL);
+
 	if (dc == NULL)
 	{
 		return NULL;
@@ -118,6 +141,7 @@ const TextTexture* TextRenderer::Rasterize(const std::wstring& cacheKey, const s
 	HGDIOBJ oldFont = SelectObject(dc, font);
 
 	SIZE extent;
+
 	if (!GetTextExtentPoint32W(dc, text.c_str(), (int)text.length(), &extent))
 	{
 		SelectObject(dc, oldFont);
@@ -147,6 +171,7 @@ const TextTexture* TextRenderer::Rasterize(const std::wstring& cacheKey, const s
 
 	void* bits = NULL;
 	HBITMAP dib = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+
 	if (dib == NULL || bits == NULL)
 	{
 		SelectObject(dc, oldFont);
@@ -166,6 +191,7 @@ const TextTexture* TextRenderer::Rasterize(const std::wstring& cacheKey, const s
 
 	std::vector<unsigned char> pixels((size_t)width * height * 4);
 	const unsigned char* source = (const unsigned char*)bits;
+
 	for (int i = 0; i < width * height; ++i)
 	{
 		unsigned char coverage = source[i * 4 + 2];		// BGRA layout; channels are equal here
@@ -196,6 +222,7 @@ const TextTexture* TextRenderer::Rasterize(const std::wstring& cacheKey, const s
 	entry.height = height;
 
 	m_Cache[cacheKey] = entry;
+
 	return &m_Cache[cacheKey];
 }
 
@@ -207,6 +234,7 @@ std::wstring Utf8ToWide(const std::string& utf8)
 	}
 
 	int needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), NULL, 0);
+
 	if (needed <= 0)
 	{
 		return std::wstring();

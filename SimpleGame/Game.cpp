@@ -19,13 +19,10 @@ namespace
 	const Color COL_WATER = { 0.20f, 0.30f, 0.39f, 1.0f };
 	const Color COL_SAND = { 0.56f, 0.51f, 0.41f, 1.0f };
 
-	const Color COL_AI = { 0.24f, 0.33f, 0.40f, 1.0f };		// 藍  indigo
 	const Color COL_TSUCHI = { 0.48f, 0.38f, 0.28f, 1.0f };		// 土  earth
 	const Color COL_SHIRO = { 0.79f, 0.77f, 0.70f, 1.0f };		// 白  faded white
 	const Color COL_SHU = { 0.66f, 0.24f, 0.16f, 1.0f };		// 朱  vermilion
 
-	const Color COL_FOLIAGE = { 0.19f, 0.26f, 0.21f, 1.0f };
-	const Color COL_TRUNK = { 0.23f, 0.19f, 0.16f, 1.0f };
 	const Color COL_THATCH = { 0.31f, 0.28f, 0.24f, 1.0f };
 	const Color COL_PLASTER = { 0.62f, 0.60f, 0.54f, 1.0f };
 	const Color COL_TIMBER = { 0.25f, 0.21f, 0.18f, 1.0f };
@@ -35,31 +32,48 @@ namespace
 	const Color COL_FLAME = { 1.0f, 0.70f, 0.36f, 1.0f };
 
 	const Color COL_INK = { 0.045f, 0.055f, 0.070f, 1.0f };
-	const Color COL_PAPER = { 0.87f, 0.86f, 0.82f, 1.0f };
 
-	// Night ambient. Blue-biased so that lantern warmth reads as the only heat
-	// in frame, which is the whole point of the palette rule.
-	const float AMBIENT_R = 0.38f;
-	const float AMBIENT_G = 0.45f;
-	const float AMBIENT_B = 0.62f;
+	const float TWO_PI = 6.2831853f;
 
-	const float FOG_NEAR = 8.5f;
-	const float FOG_FAR = 19.0f;
-	const float FOG_MAX = 0.90f;
+	// The person models are baked at this pixel height; other sizes are scales.
+	const float PERSON_MODEL_HEIGHT = 36.0f;
+
+	// The three clues, paired with the UI strings that name them, so that the
+	// HUD pips and the clue list cannot drift out of step with the bit values.
+	const int CLUE_TOTAL = 3;
+	const int CLUE_BITS[CLUE_TOTAL] = { CLUE_SMITH, CLUE_FISHER, CLUE_CHILD };
+	const char* const CLUE_UI_KEYS[CLUE_TOTAL] =
+	{
+		"ui_clue_smith",
+		"ui_clue_fisher",
+		"ui_clue_child"
+	};
 
 	const float PLAYER_RADIUS = 0.28f;
 	const float WALK_SPEED = 3.1f;
 	const float RUN_SPEED = 5.2f;
+	const float GUIDE_EDGE_MARGIN = 46.0f;
+	const float GUIDE_VERTICAL_MARGIN = 120.0f;
+	const float GUIDE_PANEL_WIDTH = 252.0f;
+	const float GUIDE_PANEL_HEIGHT = 60.0f;
 
 	const float DEPTH_OVERLAY = 900000.0f;
 	const float DEPTH_PANEL = 920000.0f;
 	const float DEPTH_PANEL_TOP = 930000.0f;
 
-	float Clampf(float v, float low, float high)
+	float Clamp(float value, float low, float high)
 	{
-		if (v < low) return low;
-		if (v > high) return high;
-		return v;
+		if (value < low)
+		{
+			return low;
+		}
+
+		if (value > high)
+		{
+			return high;
+		}
+
+		return value;
 	}
 
 	unsigned int HashInt(int x, int y)
@@ -68,6 +82,7 @@ namespace
 		h ^= h >> 13;
 		h *= 1274126177u;
 		h ^= h >> 16;
+
 		return h;
 	}
 
@@ -75,12 +90,18 @@ namespace
 	void PushPoly3(Renderer* renderer, const float* xyz, int count, const Color& color, float depth)
 	{
 		float points[32];
-		if (count > 16) count = 16;
+
+		if (count > 16)
+		{
+			count = 16;
+		}
+
 		for (int i = 0; i < count; ++i)
 		{
 			renderer->WorldToScreen(xyz[i * 3 + 0], xyz[i * 3 + 1], xyz[i * 3 + 2],
 				&points[i * 2 + 0], &points[i * 2 + 1]);
 		}
+
 		renderer->PushPolygon(points, count, color, depth);
 	}
 
@@ -115,8 +136,11 @@ namespace
 
 Game::Game()
 	: m_Renderer(NULL)
+	, m_Models(NULL)
+	, m_Dialogue(NULL)
 	, m_State(STATE_INTRO)
 	, m_WantsExit(false)
+	, m_WantsNextLevel(false)
 	, m_Time(0.0f)
 	, m_StateTime(0.0f)
 	, m_Fade(1.0f)
@@ -137,6 +161,7 @@ Game::Game()
 	, m_PageStart(0)
 	, m_PageEnd(0)
 	, m_ToastTimer(0.0f)
+	, m_PlayerLightIndex(-1)
 {
 	for (int i = 0; i < 4; ++i)
 	{
@@ -144,15 +169,13 @@ Game::Game()
 	}
 }
 
-bool Game::Initialize(Renderer* renderer)
+bool Game::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue)
 {
 	m_Renderer = renderer;
+	m_Models = models;
+	m_Dialogue = dialogue;
 
 	if (!m_World.Load("./Data/village.map"))
-	{
-		return false;
-	}
-	if (!m_Dialogue.Load("./Data/dialogue.txt"))
 	{
 		return false;
 	}
@@ -161,9 +184,11 @@ bool Game::Initialize(Renderer* renderer)
 	m_PlayerY = m_World.GetPlayerStartY();
 	m_CameraX = m_PlayerX;
 	m_CameraY = m_PlayerY;
+	m_Lighting.SetViewer(m_CameraX, m_CameraY);
 
 	// Villagers, in the order the map lists them.
 	const std::vector<SpawnPoint>& spawns = m_World.GetNpcSpawns();
+
 	for (size_t i = 0; i < spawns.size(); ++i)
 	{
 		Npc npc;
@@ -176,28 +201,18 @@ bool Game::Initialize(Renderer* renderer)
 	}
 
 	// Light 0 is the lantern the player carries; the rest are fixed.
-	LightSource carried;
-	carried.x = m_PlayerX;
-	carried.y = m_PlayerY;
-	carried.radius = 4.2f;
-	carried.intensity = 1.15f;
-	carried.color = COL_FLAME;
-	m_Lights.push_back(carried);
+	m_PlayerLightIndex = m_Lighting.AddLight(m_PlayerX, m_PlayerY, 4.2f, 1.15f, COL_FLAME, true);
 
 	const std::vector<Prop>& props = m_World.GetProps();
+
 	for (size_t i = 0; i < props.size(); ++i)
 	{
 		if (props[i].type != PROP_LANTERN)
 		{
 			continue;
 		}
-		LightSource light;
-		light.x = props[i].x;
-		light.y = props[i].y;
-		light.radius = 5.0f;
-		light.intensity = 1.45f;
-		light.color = COL_FLAME;
-		m_Lights.push_back(light);
+
+		m_Lighting.AddLight(props[i].x, props[i].y, 5.0f, 1.45f, COL_FLAME, true);
 	}
 
 	// The forge keeps the smith awake; a redder, tighter pool of light.
@@ -207,13 +222,9 @@ bool Game::Initialize(Renderer* renderer)
 		{
 			continue;
 		}
-		LightSource forge;
-		forge.x = m_Npcs[i].x + 0.6f;
-		forge.y = m_Npcs[i].y + 0.3f;
-		forge.radius = 3.4f;
-		forge.intensity = 1.6f;
-		forge.color = RGBA(1.0f, 0.45f, 0.20f);
-		m_Lights.push_back(forge);
+
+		m_Lighting.AddLight(m_Npcs[i].x + 0.6f, m_Npcs[i].y + 0.3f, 3.4f, 1.6f,
+			RGBA(1.0f, 0.45f, 0.20f), true);
 	}
 
 	// Embers drifting off the lanterns.
@@ -250,6 +261,7 @@ bool Game::Initialize(Renderer* renderer)
 	m_State = STATE_INTRO;
 	m_StateTime = 0.0f;
 	m_Fade = 1.0f;
+
 	return true;
 }
 
@@ -267,18 +279,20 @@ void Game::Update(float deltaSeconds)
 
 	if (m_State == STATE_INTRO)
 	{
-		m_Fade = Clampf(1.0f - m_StateTime / 1.8f, 0.0f, 1.0f);
+		m_Fade = Clamp(1.0f - m_StateTime / 1.8f, 0.0f, 1.0f);
+
 		if (m_StateTime > 4.2f)
 		{
 			m_State = STATE_PLAY;
 			m_StateTime = 0.0f;
 		}
+
 		return;
 	}
 
 	if (m_State == STATE_ENDING)
 	{
-		m_Fade = Clampf(m_StateTime / 1.6f, 0.0f, 1.0f);
+		m_Fade = Clamp(m_StateTime / 1.6f, 0.0f, 1.0f);
 		return;
 	}
 
@@ -292,12 +306,13 @@ void Game::Update(float deltaSeconds)
 	}
 
 	// The camera eases toward the player so that stopping does not feel abrupt.
-	const float follow = Clampf(deltaSeconds * 6.0f, 0.0f, 1.0f);
+	const float follow = Clamp(deltaSeconds * 6.0f, 0.0f, 1.0f);
 	m_CameraX += (m_PlayerX - m_CameraX) * follow;
 	m_CameraY += (m_PlayerY - m_CameraY) * follow;
 
-	m_Lights[0].x = m_PlayerX;
-	m_Lights[0].y = m_PlayerY - 0.15f;
+	m_Lighting.SetViewer(m_CameraX, m_CameraY);
+	m_Lighting.SetTime(m_Time);
+	m_Lighting.MoveLight(m_PlayerLightIndex, m_PlayerX, m_PlayerY - 0.15f);
 
 	UpdateInteractionTarget();
 	UpdateMotes(deltaSeconds);
@@ -310,10 +325,29 @@ void Game::UpdatePlayer(float deltaSeconds)
 	float dx = 0.0f;
 	float dy = 0.0f;
 
-	if (m_MoveKey[0]) { dx -= 1.0f; dy -= 1.0f; }		// W
-	if (m_MoveKey[2]) { dx += 1.0f; dy += 1.0f; }		// S
-	if (m_MoveKey[1]) { dx -= 1.0f; dy += 1.0f; }		// A
-	if (m_MoveKey[3]) { dx += 1.0f; dy -= 1.0f; }		// D
+	if (m_MoveKey[MOVE_UP])
+	{
+		dx -= 1.0f;
+		dy -= 1.0f;
+	}
+
+	if (m_MoveKey[MOVE_DOWN])
+	{
+		dx += 1.0f;
+		dy += 1.0f;
+	}
+
+	if (m_MoveKey[MOVE_LEFT])
+	{
+		dx -= 1.0f;
+		dy += 1.0f;
+	}
+
+	if (m_MoveKey[MOVE_RIGHT])
+	{
+		dx += 1.0f;
+		dy -= 1.0f;
+	}
 
 	const float lengthSq = dx * dx + dy * dy;
 	m_Moving = lengthSq > 0.0001f;
@@ -337,6 +371,7 @@ void Game::UpdatePlayer(float deltaSeconds)
 	{
 		m_PlayerX += stepX;
 	}
+
 	if (!m_World.IsBlocked(m_PlayerX, m_PlayerY + stepY, PLAYER_RADIUS))
 	{
 		m_PlayerY += stepY;
@@ -357,6 +392,7 @@ void Game::UpdateInteractionTarget()
 		const float dx = m_Npcs[i].x - m_PlayerX;
 		const float dy = m_Npcs[i].y - m_PlayerY;
 		const float d = sqrtf(dx * dx + dy * dy);
+
 		if (d < 1.6f && d < bestDistance)
 		{
 			bestDistance = d;
@@ -367,10 +403,18 @@ void Game::UpdateInteractionTarget()
 		}
 	}
 
+	// A nearby villager must remain selectable beside a cart or shrine.
+	if (m_TargetKind == INTERACT_NPC)
+	{
+		return;
+	}
+
 	const std::vector<Prop>& props = m_World.GetProps();
+
 	for (size_t i = 0; i < props.size(); ++i)
 	{
 		const Prop& prop = props[i];
+
 		if (prop.type == PROP_LANTERN)
 		{
 			continue;
@@ -384,9 +428,9 @@ void Game::UpdateInteractionTarget()
 		const float dy = centerY - m_PlayerY;
 		const float d = sqrtf(dx * dx + dy * dy);
 
-		// Scenery loses ties against people. The elder stands under a torii and
-		// between two lanterns; without this the prop would steal the prompt.
+		// Keep the existing relative ranking among nearby scenery props.
 		const float score = d * 1.6f;
+
 		if (d < reach && score < bestDistance)
 		{
 			bestDistance = score;
@@ -409,30 +453,32 @@ void Game::UpdateMotes(float deltaSeconds)
 		{
 			// Respawn at a lantern near the player so the effect stays where
 			// the camera is. Light 0 is the carried lantern, so skip it.
-			if (m_Lights.size() < 2)
+			if (m_Lighting.GetLightCount() < 2)
 			{
 				continue;
 			}
 
 			int best = 1;
 			float bestDistance = 1e9f;
-			for (size_t k = 1; k < m_Lights.size(); ++k)
+
+			for (int k = 1; k < m_Lighting.GetLightCount(); ++k)
 			{
-				const float dx = m_Lights[k].x - m_PlayerX;
-				const float dy = m_Lights[k].y - m_PlayerY;
+				const float dx = m_Lighting.GetLight(k).x - m_PlayerX;
+				const float dy = m_Lighting.GetLight(k).y - m_PlayerY;
 				const float d = dx * dx + dy * dy;
-				const unsigned int jitter = HashInt((int)(i * 31 + k), (int)(m_Time * 3.0f));
+				const unsigned int jitter = HashInt((int)(i * 31 + (size_t)k), (int)(m_Time * 3.0f));
 				const float noisy = d + (float)(jitter % 100) * 0.35f;
+
 				if (noisy < bestDistance)
 				{
 					bestDistance = noisy;
-					best = (int)k;
+					best = k;
 				}
 			}
 
 			const unsigned int h = HashInt((int)i, (int)(m_Time * 60.0f));
-			mote.x = m_Lights[best].x + ((float)(h % 100) * 0.01f - 0.5f) * 0.7f;
-			mote.y = m_Lights[best].y + ((float)((h >> 7) % 100) * 0.01f - 0.5f) * 0.7f;
+			mote.x = m_Lighting.GetLight(best).x + ((float)(h % 100) * 0.01f - 0.5f) * 0.7f;
+			mote.y = m_Lighting.GetLight(best).y + ((float)((h >> 7) % 100) * 0.01f - 0.5f) * 0.7f;
 			mote.z = 0.85f + (float)((h >> 14) % 40) * 0.004f;
 			mote.riseSpeed = 0.22f + (float)((h >> 20) % 40) * 0.006f;
 			mote.drift = ((float)((h >> 3) % 100) * 0.01f - 0.5f) * 0.18f;
@@ -450,6 +496,7 @@ void Game::UpdateMotes(float deltaSeconds)
 	{
 		Mote& wisp = m_Mist[i];
 		wisp.x += wisp.drift * deltaSeconds;
+
 		if (wisp.x > (float)m_World.GetWidth() + 4.0f)
 		{
 			wisp.x = -4.0f;
@@ -461,18 +508,36 @@ void Game::UpdateMotes(float deltaSeconds)
 
 int Game::ClueBitForNpc(const std::string& id) const
 {
-	if (id == "smith")  return 1;
-	if (id == "fisher") return 2;
-	if (id == "child")  return 4;
+	if (id == "smith")
+	{
+		return CLUE_SMITH;
+	}
+
+	if (id == "fisher")
+	{
+		return CLUE_FISHER;
+	}
+
+	if (id == "child")
+	{
+		return CLUE_CHILD;
+	}
+
 	return 0;
 }
 
 int Game::ClueCount() const
 {
 	int count = 0;
-	if (m_ClueMask & 1) ++count;
-	if (m_ClueMask & 2) ++count;
-	if (m_ClueMask & 4) ++count;
+
+	for (int bit = CLUE_SMITH; bit <= CLUE_CHILD; bit <<= 1)
+	{
+		if ((m_ClueMask & bit) != 0)
+		{
+			++count;
+		}
+	}
+
 	return count;
 }
 
@@ -484,24 +549,29 @@ std::string Game::DialogueKeyForNpc(const Npc& npc) const
 		{
 			return "elder_intro";
 		}
-		if (ClueCount() < 3)
+
+		if (m_ClueMask != CLUE_ALL)
 		{
 			return "elder_wait";
 		}
+
 		return "elder_final";
 	}
 
 	const int bit = ClueBitForNpc(npc.id);
+
 	if (bit != 0)
 	{
 		if (!m_MetElder)
 		{
 			return npc.id + "_before";
 		}
+
 		if ((m_ClueMask & bit) == 0)
 		{
 			return npc.id + "_clue";
 		}
+
 		return npc.id + "_after";
 	}
 
@@ -535,6 +605,7 @@ void Game::TryInteract()
 	if (m_TargetKind == INTERACT_PROP && m_TargetIndex >= 0)
 	{
 		const std::string key = DialogueKeyForProp(m_World.GetProps()[m_TargetIndex]);
+
 		if (!key.empty())
 		{
 			OpenDialogue(key);
@@ -544,7 +615,8 @@ void Game::TryInteract()
 
 void Game::OpenDialogue(const std::string& key)
 {
-	const DialogueBlock* block = m_Dialogue.Find(key);
+	const DialogueBlock* block = m_Dialogue->Find(key);
+
 	if (block == NULL || block->lines.empty())
 	{
 		std::cout << "dialogue key missing: " << key << "\n";
@@ -570,6 +642,7 @@ void Game::AdvanceDialogue()
 	}
 
 	m_PageStart = m_PageEnd;
+
 	if (m_PageStart >= m_ActiveBlock->lines.size())
 	{
 		CloseDialogue();
@@ -580,6 +653,7 @@ void Game::AdvanceDialogue()
 	// three so the box never overflows.
 	const std::wstring& speaker = m_ActiveBlock->lines[m_PageStart].speaker;
 	m_PageEnd = m_PageStart + 1;
+
 	while (m_PageEnd < m_ActiveBlock->lines.size()
 		&& m_ActiveBlock->lines[m_PageEnd].speaker == speaker
 		&& (m_PageEnd - m_PageStart) < 3)
@@ -614,9 +688,23 @@ void Game::CloseDialogue()
 		return;
 	}
 
-	if (key == "smith_clue")  { m_ClueMask |= 1; ShowToast(m_Dialogue.Line("ui_clue_gained")); }
-	if (key == "fisher_clue") { m_ClueMask |= 2; ShowToast(m_Dialogue.Line("ui_clue_gained")); }
-	if (key == "child_clue")  { m_ClueMask |= 4; ShowToast(m_Dialogue.Line("ui_clue_gained")); }
+	if (key == "smith_clue")
+	{
+		m_ClueMask |= CLUE_SMITH;
+		ShowToast(m_Dialogue->Line("ui_clue_gained"));
+	}
+
+	if (key == "fisher_clue")
+	{
+		m_ClueMask |= CLUE_FISHER;
+		ShowToast(m_Dialogue->Line("ui_clue_gained"));
+	}
+
+	if (key == "child_clue")
+	{
+		m_ClueMask |= CLUE_CHILD;
+		ShowToast(m_Dialogue->Line("ui_clue_gained"));
+	}
 }
 
 void Game::ShowToast(const std::wstring& text)
@@ -641,6 +729,7 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		{
 			m_WantsExit = true;
 		}
+
 		return;
 	}
 
@@ -660,12 +749,31 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 	if (m_State == STATE_INTRO)
 	{
+		// The tutorial can be skipped straight into level 1, which is what you
+		// want when the thing being tested is the level and not the village.
+		if (key == '1')
+		{
+			m_WantsNextLevel = true;
+			return;
+		}
+
 		if (key == 'e' || key == ' ' || key == 13)
 		{
 			m_State = STATE_PLAY;
 			m_StateTime = 0.0f;
 			m_Fade = 0.0f;
 		}
+
+		return;
+	}
+
+	if (m_State == STATE_ENDING)
+	{
+		if (key == 'e' || key == ' ' || key == 13)
+		{
+			m_WantsNextLevel = true;
+		}
+
 		return;
 	}
 
@@ -675,6 +783,7 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		{
 			AdvanceDialogue();
 		}
+
 		return;
 	}
 
@@ -684,6 +793,7 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		{
 			m_State = STATE_PLAY;
 		}
+
 		return;
 	}
 
@@ -704,50 +814,12 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 float Game::FogFactor(float worldX, float worldY) const
 {
-	const float dx = worldX - m_CameraX;
-	const float dy = worldY - m_CameraY;
-	const float distance = sqrtf(dx * dx + dy * dy);
-	const float t = (distance - FOG_NEAR) / (FOG_FAR - FOG_NEAR);
-	return Clampf(t, 0.0f, 1.0f) * FOG_MAX;
+	return m_Lighting.FogFactor(worldX, worldY);
 }
 
 Color Game::Lit(const Color& base, float worldX, float worldY) const
 {
-	Color out;
-	out.r = base.r * AMBIENT_R;
-	out.g = base.g * AMBIENT_G;
-	out.b = base.b * AMBIENT_B;
-	out.a = base.a;
-
-	for (size_t i = 0; i < m_Lights.size(); ++i)
-	{
-		const LightSource& light = m_Lights[i];
-		const float dx = worldX - light.x;
-		const float dy = worldY - light.y;
-		const float distanceSq = dx * dx + dy * dy;
-		if (distanceSq >= light.radius * light.radius)
-		{
-			continue;
-		}
-
-		float falloff = 1.0f - sqrtf(distanceSq) / light.radius;
-		falloff *= falloff;
-
-		// A slow flicker keeps the pools of light from looking painted on.
-		const float flicker = 1.0f + 0.09f * sinf(m_Time * 6.3f + (float)i * 2.1f)
-			+ 0.05f * sinf(m_Time * 11.7f + (float)i);
-		const float amount = falloff * light.intensity * flicker;
-
-		out.r += base.r * light.color.r * amount;
-		out.g += base.g * light.color.g * amount;
-		out.b += base.b * light.color.b * amount;
-	}
-
-	out.r = Clampf(out.r, 0.0f, 1.0f);
-	out.g = Clampf(out.g, 0.0f, 1.0f);
-	out.b = Clampf(out.b, 0.0f, 1.0f);
-
-	return Mix(out, COL_FOG, FogFactor(worldX, worldY));
+	return m_Lighting.Apply(base, worldX, worldY);
 }
 
 bool Game::OnScreen(float screenX, float screenY, float margin) const
@@ -780,6 +852,7 @@ void Game::DrawGround()
 		{
 			float sx, sy;
 			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &sx, &sy);
+
 			if (!OnScreen(sx, sy, 64.0f))
 			{
 				continue;
@@ -788,6 +861,7 @@ void Game::DrawGround()
 			const TileType tile = m_World.GetTile(x, y);
 
 			Color base;
+
 			switch (tile)
 			{
 			case TILE_TALLGRASS: base = COL_TALLGRASS; break;
@@ -831,6 +905,7 @@ void Game::DrawScenery()
 		for (int x = 0; x < width; ++x)
 		{
 			const TileType tile = m_World.GetTile(x, y);
+
 			if (tile != TILE_TREE && tile != TILE_BUSH && tile != TILE_ROCK)
 			{
 				continue;
@@ -838,6 +913,7 @@ void Game::DrawScenery()
 
 			float sx, sy;
 			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &sx, &sy);
+
 			if (!OnScreen(sx, sy, 180.0f))
 			{
 				continue;
@@ -864,12 +940,14 @@ void Game::DrawScenery()
 	}
 
 	const std::vector<Prop>& props = m_World.GetProps();
+
 	for (size_t i = 0; i < props.size(); ++i)
 	{
 		const Prop& prop = props[i];
 
 		float sx, sy;
 		m_Renderer->WorldToScreen(prop.x + prop.sizeX * 0.5f, prop.y + prop.sizeY * 0.5f, 0.0f, &sx, &sy);
+
 		if (!OnScreen(sx, sy, 260.0f))
 		{
 			continue;
@@ -909,6 +987,7 @@ void Game::DrawScenery()
 
 		float sx, sy;
 		m_Renderer->WorldToScreen(npc.x, npc.y, 0.0f, &sx, &sy);
+
 		if (!OnScreen(sx, sy, 120.0f))
 		{
 			continue;
@@ -939,103 +1018,69 @@ void Game::DrawScenery()
 		COL_SHU, false, true, true, -stride);
 }
 
+// Vegetation and boulders come from the cached library. The shapes used to be
+// rebuilt from triangles every frame here; now this only picks a model and
+// shades it once.
 void Game::DrawTree(float worldX, float worldY, int variant)
 {
-	const float depth = worldX + worldY;
-	const float scale = m_Renderer->HeightScale();
-
-	float bx, by;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &bx, &by);
-
-	PushShadow(worldX, worldY, 15.0f, 6.5f, depth - 0.02f);
-
-	const float treeHeight = (variant == 4) ? 2.2f : 3.0f + (float)(variant % 3) * 0.55f;
-
-	// Trunk.
-	const Color trunk = Lit(COL_TRUNK, worldX, worldY);
-	m_Renderer->PushRect(bx - 3.5f, by - treeHeight * scale * 0.34f, 7.0f,
-		treeHeight * scale * 0.34f, trunk, depth - 0.01f);
-
-	if (variant == 4)
+	static const char* const CEDAR_NAMES[3] =
 	{
-		// Broadleaf: a cluster of rounded masses.
-		for (int i = 0; i < 3; ++i)
-		{
-			const float ox = (i - 1) * 11.0f;
-			const float oy = -treeHeight * scale * (0.58f + (i == 1 ? 0.16f : 0.0f));
-			Color leaf = COL_FOLIAGE;
-			leaf.r += 0.03f * i;
-			leaf.g += 0.04f * i;
-			m_Renderer->PushEllipse(bx + ox, by + oy, 17.0f - i * 1.5f, 13.0f,
-				Lit(leaf, worldX, worldY), depth, 14);
-		}
+		"tree_cedar_small",
+		"tree_cedar_mid",
+		"tree_cedar_tall"
+	};
+
+	const char* name = (variant == 4) ? "tree_broadleaf" : CEDAR_NAMES[variant % 3];
+	const Model* model = m_Models->Find(name);
+
+	if (model == NULL)
+	{
 		return;
 	}
 
-	// Cedar: three stacked skirts, lighter toward the top.
-	for (int k = 0; k < 3; ++k)
-	{
-		const float baseFraction = 0.28f + 0.20f * k;
-		const float apexFraction = 0.62f + 0.20f * k;
-		const float halfWidth = 27.0f - k * 6.0f;
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
 
-		const float yBase = by - treeHeight * scale * baseFraction;
-		const float yApex = by - treeHeight * scale * apexFraction;
+	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
 
-		Color leaf = COL_FOLIAGE;
-		leaf.r += 0.022f * k;
-		leaf.g += 0.030f * k;
-		leaf.b += 0.018f * k;
-
-		const float triangle[6] =
-		{
-			bx - halfWidth, yBase,
-			bx + halfWidth, yBase,
-			bx, yApex
-		};
-		m_Renderer->PushPolygon(triangle, 3, Lit(leaf, worldX, worldY), depth + (float)k * 0.001f);
-	}
+	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
 void Game::DrawBush(float worldX, float worldY)
 {
-	const float depth = worldX + worldY;
+	const Model* model = m_Models->Find("bush");
 
-	float bx, by;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &bx, &by);
+	if (model == NULL)
+	{
+		return;
+	}
 
-	PushShadow(worldX, worldY, 11.0f, 4.5f, depth - 0.02f);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
 
-	Color leaf = COL_FOLIAGE;
-	leaf.r += 0.05f;
-	leaf.g += 0.06f;
+	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
 
-	m_Renderer->PushEllipse(bx - 5.0f, by - 7.0f, 10.0f, 8.0f, Lit(leaf, worldX, worldY), depth, 10);
-	m_Renderer->PushEllipse(bx + 5.0f, by - 6.0f, 9.0f, 7.0f, Lit(leaf, worldX, worldY), depth + 0.001f, 10);
+	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
 void Game::DrawRock(float worldX, float worldY)
 {
-	const float depth = worldX + worldY;
+	const Model* model = m_Models->Find("rock");
 
-	float bx, by;
-	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &bx, &by);
-
-	PushShadow(worldX, worldY, 12.0f, 5.0f, depth - 0.02f);
-
-	const Color rock = Lit(RGBA(0.35f, 0.36f, 0.35f), worldX, worldY);
-	const float shape[10] =
+	if (model == NULL)
 	{
-		bx - 13.0f, by + 2.0f,
-		bx - 8.0f, by - 11.0f,
-		bx + 3.0f, by - 14.0f,
-		bx + 13.0f, by - 4.0f,
-		bx + 9.0f, by + 4.0f
-	};
-	m_Renderer->PushPolygon(shape, 5, rock, depth);
+		return;
+	}
 
-	const Color highlight = Lit(RGBA(0.45f, 0.46f, 0.44f), worldX, worldY);
-	m_Renderer->PushEllipse(bx - 2.0f, by - 9.0f, 5.0f, 3.0f, highlight, depth + 0.001f, 8);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+
+	const ShadeParams shade = m_Lighting.Shade(worldX, worldY, RGBA(1.0f, 1.0f, 1.0f));
+
+	DrawModel(m_Renderer, *model, screenX, screenY, 1.0f, worldX + worldY, shade);
 }
 
 void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow)
@@ -1340,98 +1385,70 @@ void Game::DrawStone(const Prop& prop)
 	r->PushEllipse(bx - 2.0f, by - 12.0f, 4.0f, 5.0f, moss, depth + 0.02f, 8);
 }
 
+// One baked person, tinted per villager. The kasa, the sword and the carried
+// lantern are separate models stacked on top, so a villager is a small
+// composition rather than its own baked shape.
 void Game::DrawPerson(float worldX, float worldY, float bodyHeight, const Color& robe,
 	const Color& trim, bool hat, bool sword, bool lantern, float bobPixels)
 {
-	Renderer* r = m_Renderer;
+	const Model* person = m_Models->Find("person");
 
-	const float depth = worldX + worldY;
-	const float scale = m_Renderer->HeightScale();
-	const float pixelHeight = bodyHeight * scale;
-
-	float bx, by;
-	r->WorldToScreen(worldX, worldY, 0.0f, &bx, &by);
-	by += bobPixels;
-
-	const bool solid = robe.a >= 0.99f;
-	if (solid)
+	if (person == NULL)
 	{
-		PushShadow(worldX, worldY, 10.0f, 4.5f, depth - 0.02f);
+		return;
 	}
 
-	const Color robeLit = solid ? Lit(robe, worldX, worldY) : robe;
-	const Color trimLit = solid ? Lit(trim, worldX, worldY) : trim;
-	const Color skinLit = solid ? Lit(RGBA(0.60f, 0.50f, 0.42f), worldX, worldY)
-		: RGBA(0.70f, 0.78f, 0.82f, robe.a);
-	const Color hairLit = solid ? Lit(RGBA(0.11f, 0.10f, 0.11f), worldX, worldY)
-		: RGBA(0.45f, 0.55f, 0.62f, robe.a);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &screenX, &screenY);
+	screenY += bobPixels;
 
-	const float shoulderY = by - pixelHeight * 0.62f;
-	const float hipY = by - pixelHeight * 0.34f;
-	const float headY = by - pixelHeight * 0.80f;
-	const float halfHip = pixelHeight * 0.20f;
-	const float halfShoulder = pixelHeight * 0.15f;
+	// Callers supply world-height units, while cached vertices are in pixels.
+	// Convert first so an adult stays about 36 pixels tall rather than one.
+	const float scale = bodyHeight * Renderer::HeightScale() / PERSON_MODEL_HEIGHT;
+	const float depth = worldX + worldY;
 
-	// Robe: a trapezoid, wider at the hem.
-	const float body[8] =
+	ShadeParams shade = m_Lighting.Shade(worldX, worldY, robe);
+
+	if (robe.a < 0.99f)
 	{
-		bx - halfHip, by,
-		bx + halfHip, by,
-		bx + halfShoulder, shoulderY,
-		bx - halfShoulder, shoulderY
-	};
-	r->PushPolygon(body, 4, robeLit, depth);
+		// Spirits are not lit by lanterns; they carry their own pallor.
+		shade.light = RGBA(1.0f, 1.0f, 1.0f);
+	}
 
-	// Sash.
-	r->PushRect(bx - halfHip * 0.92f, hipY, halfHip * 1.84f, pixelHeight * 0.07f, trimLit, depth + 0.001f);
-
-	// Head and hair.
-	r->PushEllipse(bx, headY, pixelHeight * 0.115f, pixelHeight * 0.125f, skinLit, depth + 0.002f, 12);
-	r->PushEllipse(bx, headY - pixelHeight * 0.045f, pixelHeight * 0.125f, pixelHeight * 0.085f,
-		hairLit, depth + 0.003f, 12);
+	DrawModel(m_Renderer, *person, screenX, screenY, scale, depth, shade);
 
 	if (hat)
 	{
-		// Kasa: the conical straw hat, read entirely from its silhouette.
-		const float brimY = headY - pixelHeight * 0.02f;
-		const float apexY = headY - pixelHeight * 0.30f;
-		const float halfBrim = pixelHeight * 0.30f;
-		const float cone[6] =
+		const Model* kasa = m_Models->Find("person_kasa");
+
+		if (kasa != NULL)
 		{
-			bx - halfBrim, brimY,
-			bx + halfBrim, brimY,
-			bx, apexY
-		};
-		r->PushPolygon(cone, 3, solid ? Lit(RGBA(0.50f, 0.44f, 0.32f), worldX, worldY)
-			: RGBA(0.5f, 0.5f, 0.5f, robe.a), depth + 0.004f);
+			DrawModel(m_Renderer, *kasa, screenX, screenY, scale, depth, shade);
+		}
 	}
 
 	if (sword)
 	{
-		// Worn edge-up at the hip, angled back.
-		const Color sheath = Lit(RGBA(0.10f, 0.11f, 0.13f), worldX, worldY);
-		r->PushLine(bx + halfHip * 0.3f, hipY + 2.0f, bx + halfHip * 2.1f, hipY + 9.0f,
-			4.5f, sheath, depth + 0.004f);
-		r->PushLine(bx + halfHip * 0.1f, hipY + 1.0f, bx - halfHip * 0.5f, hipY - 2.0f,
-			3.0f, trimLit, depth + 0.005f);
+		const Model* blade = m_Models->Find("person_sword");
+
+		if (blade != NULL)
+		{
+			ShadeParams swordShade = shade;
+			swordShade.tint = trim;
+
+			DrawModel(m_Renderer, *blade, screenX, screenY, scale, depth, swordShade);
+		}
 	}
 
 	if (lantern)
 	{
-		const float lanternX = bx - halfHip * 1.9f;
-		const float lanternY = hipY - 3.0f;
-		const float fog = FogFactor(worldX, worldY);
+		const Model* lamp = m_Models->Find("person_lantern");
 
-		for (int i = 3; i >= 1; --i)
+		if (lamp != NULL)
 		{
-			const Color halo = RGBA(1.0f, 0.66f, 0.30f, 0.12f / i * (1.0f - fog));
-			r->PushEllipse(lanternX, lanternY, 13.0f * i, 11.0f * i, halo, depth - 0.01f, 14);
+			DrawModel(m_Renderer, *lamp, screenX, screenY, scale, depth, shade);
 		}
-
-		r->PushLine(bx - halfHip * 0.8f, shoulderY + 3.0f, lanternX, lanternY - 7.0f,
-			1.5f, Lit(RGBA(0.25f, 0.22f, 0.18f), worldX, worldY), depth + 0.005f);
-		r->PushEllipse(lanternX, lanternY, 5.0f, 6.5f,
-			Mix(RGBA(1.0f, 0.80f, 0.46f), COL_FOG, fog * 0.6f), depth + 0.006f, 12);
 	}
 }
 
@@ -1444,6 +1461,7 @@ void Game::DrawMotes()
 
 		float sx, sy;
 		m_Renderer->WorldToScreen(wisp.x, wisp.y, wisp.z, &sx, &sy);
+
 		if (!OnScreen(sx, sy, 220.0f))
 		{
 			continue;
@@ -1459,6 +1477,7 @@ void Game::DrawMotes()
 	for (size_t i = 0; i < m_Motes.size(); ++i)
 	{
 		const Mote& mote = m_Motes[i];
+
 		if (mote.life <= 0.0f)
 		{
 			continue;
@@ -1466,6 +1485,7 @@ void Game::DrawMotes()
 
 		float sx, sy;
 		m_Renderer->WorldToScreen(mote.x, mote.y, mote.z, &sx, &sy);
+
 		if (!OnScreen(sx, sy, 40.0f))
 		{
 			continue;
@@ -1488,10 +1508,11 @@ void Game::DrawAtmosphere()
 	const float inner = outer * 0.50f;
 
 	const int segments = 30;
+
 	for (int i = 0; i < segments; ++i)
 	{
-		const float a0 = 6.2831853f * (float)i / (float)segments;
-		const float a1 = 6.2831853f * (float)(i + 1) / (float)segments;
+		const float a0 = TWO_PI * (float)i / (float)segments;
+		const float a1 = TWO_PI * (float)(i + 1) / (float)segments;
 
 		const float xy[8] =
 		{
@@ -1529,6 +1550,76 @@ void Game::DrawAccentPanel(float x, float y, float width, float height, const Co
 	m_Renderer->PushRect(x, y, 2.0f, height, accent, depth + 0.2f);
 }
 
+void Game::DrawQuestGuide()
+{
+	if (m_State != STATE_PLAY)
+	{
+		return;
+	}
+
+	const Npc* target = NULL;
+	float nearestDistance = 1e9f;
+	const bool needsElder = !m_MetElder || m_ClueMask == CLUE_ALL;
+
+	for (size_t i = 0; i < m_Npcs.size(); ++i)
+	{
+		const Npc& npc = m_Npcs[i];
+		const int bit = ClueBitForNpc(npc.id);
+		const bool relevant = needsElder ? npc.id == "elder"
+			: bit != 0 && (m_ClueMask & bit) == 0;
+
+		if (!relevant)
+		{
+			continue;
+		}
+
+		const float dx = npc.x - m_PlayerX;
+		const float dy = npc.y - m_PlayerY;
+		const float distance = dx * dx + dy * dy;
+
+		if (distance < nearestDistance)
+		{
+			nearestDistance = distance;
+			target = &npc;
+		}
+	}
+
+	if (target == NULL)
+	{
+		return;
+	}
+
+	Renderer* r = m_Renderer;
+	const float halfWidth = r->GetWidth() * 0.5f;
+	const float halfHeight = r->GetHeight() * 0.5f;
+	const Color gold = RGBA(0.95f, 0.80f, 0.45f, 0.95f);
+	float screenX = 0.0f;
+	float screenY = 0.0f;
+	r->WorldToScreen(target->x, target->y, 2.4f, &screenX, &screenY);
+
+	// Keep the destination visible even when its villager is off screen.
+	const float limitX = fmaxf(1.0f, halfWidth - GUIDE_EDGE_MARGIN);
+	const float limitY = fmaxf(1.0f, halfHeight - GUIDE_VERTICAL_MARGIN);
+	const float extent = fmaxf(fabsf(screenX) / limitX, fabsf(screenY) / limitY);
+
+	if (extent > 1.0f)
+	{
+		screenX /= extent;
+		screenY /= extent;
+	}
+
+	r->PushDiamond(screenX, screenY, 8.0f, 11.0f, gold, DEPTH_PANEL_TOP);
+	r->PushDiamond(screenX, screenY, 3.0f, 5.0f, COL_INK, DEPTH_PANEL_TOP + 0.1f);
+
+	const float panelX = halfWidth - GUIDE_PANEL_WIDTH - 22.0f;
+	const float panelY = -halfHeight + 20.0f;
+	DrawAccentPanel(panelX, panelY, GUIDE_PANEL_WIDTH, GUIDE_PANEL_HEIGHT, gold, DEPTH_PANEL);
+	r->PushText(m_Dialogue->Line("ui_guide_title"), panelX + 14.0f, panelY + 10.0f,
+		13, FONT_UI, false, RGBA(0.72f, 0.72f, 0.68f), ALIGN_LEFT);
+	r->PushText(m_Dialogue->Line("ui_guide_" + target->id), panelX + 14.0f, panelY + 31.0f,
+		16, FONT_UI, false, gold, ALIGN_LEFT);
+}
+
 void Game::DrawHud()
 {
 	Renderer* r = m_Renderer;
@@ -1537,21 +1628,24 @@ void Game::DrawHud()
 	const float top = -r->GetHeight() * 0.5f;
 	const float bottom = r->GetHeight() * 0.5f;
 
+	DrawQuestGuide();
+
 	// --- quest panel, top left ---
-	const std::wstring questTitle = m_Dialogue.Line("ui_quest_title");
+	const std::wstring questTitle = m_Dialogue->Line("ui_quest_title");
 
 	std::wstring objective;
+
 	if (!m_MetElder)
 	{
-		objective = m_Dialogue.Line("ui_obj_elder");
+		objective = m_Dialogue->Line("ui_obj_elder");
 	}
-	else if (ClueCount() < 3)
+	else if (m_ClueMask != CLUE_ALL)
 	{
-		objective = m_Dialogue.Line("ui_obj_collect");
+		objective = m_Dialogue->Line("ui_obj_collect");
 	}
 	else
 	{
-		objective = m_Dialogue.Line("ui_obj_return");
+		objective = m_Dialogue->Line("ui_obj_return");
 	}
 
 	const float panelX = left + 22.0f;
@@ -1570,22 +1664,23 @@ void Game::DrawHud()
 	{
 		// Three clue pips: filled once the villager has been asked.
 		const float pipY = panelY + 68.0f;
-		for (int i = 0; i < 3; ++i)
+
+		for (int i = 0; i < CLUE_TOTAL; ++i)
 		{
-			const bool have = (m_ClueMask & (1 << i)) != 0;
+			const bool have = (m_ClueMask & CLUE_BITS[i]) != 0;
 			const float pipX = panelX + 18.0f + i * 26.0f;
 			r->PushDiamond(pipX, pipY + 6.0f, 7.0f, 7.0f,
 				have ? COL_SHU : RGBA(0.32f, 0.33f, 0.32f, 0.85f), DEPTH_PANEL_TOP);
 		}
 
 		wchar_t counter[32];
-		swprintf_s(counter, 32, L"%d / 3", ClueCount());
+		swprintf_s(counter, 32, L"%d / %d", ClueCount(), CLUE_TOTAL);
 		r->PushText(counter, panelX + panelW - 16.0f, pipY - 3.0f, 15, FONT_UI, false,
 			RGBA(0.70f, 0.70f, 0.67f, 0.85f), ALIGN_RIGHT);
 	}
 
 	// --- controls, bottom left ---
-	r->PushText(m_Dialogue.Line("ui_controls"), left + 22.0f, bottom - 34.0f, 14, FONT_UI, false,
+	r->PushText(m_Dialogue->Line("ui_controls"), left + 22.0f, bottom - 34.0f, 14, FONT_UI, false,
 		RGBA(0.62f, 0.64f, 0.62f, 0.65f), ALIGN_LEFT);
 
 	// --- interaction prompt ---
@@ -1598,8 +1693,8 @@ void Game::DrawHud()
 		r->PushDiamond(sx, sy + pulse, 6.0f, 8.0f, RGBA(0.95f, 0.80f, 0.45f, 0.9f), DEPTH_PANEL);
 
 		const std::wstring verb = (m_TargetKind == INTERACT_NPC)
-			? m_Dialogue.Line("ui_prompt_talk")
-			: m_Dialogue.Line("ui_prompt_examine");
+			? m_Dialogue->Line("ui_prompt_talk")
+			: m_Dialogue->Line("ui_prompt_examine");
 
 		const std::wstring prompt = L"[E]  " + verb;
 		const float width = r->MeasureTextWidth(prompt, 16, FONT_UI, false);
@@ -1612,7 +1707,7 @@ void Game::DrawHud()
 	// --- clue toast ---
 	if (m_ToastTimer > 0.0f && !m_ToastText.empty())
 	{
-		const float alpha = Clampf(m_ToastTimer / 0.6f, 0.0f, 1.0f);
+		const float alpha = Clamp(m_ToastTimer / 0.6f, 0.0f, 1.0f);
 		const float width = r->MeasureTextWidth(m_ToastText, 18, FONT_SERIF, true);
 
 		DrawPanel(-width * 0.5f - 20.0f, top + 132.0f, width + 40.0f, 38.0f, 0.80f * alpha, DEPTH_PANEL);
@@ -1662,7 +1757,7 @@ void Game::DrawDialogue()
 
 	// Advance hint, blinking gently.
 	const float blink = 0.55f + 0.45f * sinf(m_Time * 3.4f);
-	r->PushText(m_Dialogue.Line("ui_advance"), boxX + boxWidth - 26.0f, boxY + boxHeight - 30.0f,
+	r->PushText(m_Dialogue->Line("ui_advance"), boxX + boxWidth - 26.0f, boxY + boxHeight - 30.0f,
 		14, FONT_UI, false, RGBA(0.75f, 0.72f, 0.66f, blink), ALIGN_RIGHT);
 }
 
@@ -1684,35 +1779,36 @@ void Game::DrawClueList()
 	DrawPanel(boxX, boxY, boxWidth, boxHeight, 0.94f, DEPTH_PANEL);
 	r->PushRect(boxX, boxY, 3.0f, boxHeight, COL_SHU, DEPTH_PANEL_TOP);
 
-	r->PushText(m_Dialogue.Line("ui_clues_header"), boxX + 28.0f, boxY + 22.0f, 22, FONT_SERIF, true,
+	r->PushText(m_Dialogue->Line("ui_clues_header"), boxX + 28.0f, boxY + 22.0f, 22, FONT_SERIF, true,
 		RGBA(0.86f, 0.72f, 0.54f, 0.98f), ALIGN_LEFT);
-
-	static const char* keys[3] = { "ui_clue_smith", "ui_clue_fisher", "ui_clue_child" };
 
 	if (ClueCount() == 0)
 	{
-		r->PushText(m_Dialogue.Line("ui_clues_empty"), boxX + 28.0f, boxY + 76.0f, 17, FONT_UI, false,
+		r->PushText(m_Dialogue->Line("ui_clues_empty"), boxX + 28.0f, boxY + 76.0f, 17, FONT_UI, false,
 			RGBA(0.62f, 0.62f, 0.60f, 0.9f), ALIGN_LEFT);
 	}
 	else
 	{
 		int row = 0;
-		for (int i = 0; i < 3; ++i)
+
+		for (int i = 0; i < CLUE_TOTAL; ++i)
 		{
-			if ((m_ClueMask & (1 << i)) == 0)
+			if ((m_ClueMask & CLUE_BITS[i]) == 0)
 			{
 				continue;
 			}
 
 			const float lineY = boxY + 76.0f + row * 40.0f;
+
 			r->PushDiamond(boxX + 36.0f, lineY + 11.0f, 6.0f, 6.0f, COL_SHU, DEPTH_PANEL_TOP);
-			r->PushText(m_Dialogue.Line(keys[i]), boxX + 54.0f, lineY, 18, FONT_UI, false,
+			r->PushText(m_Dialogue->Line(CLUE_UI_KEYS[i]), boxX + 54.0f, lineY, 18, FONT_UI, false,
 				RGBA(0.90f, 0.89f, 0.86f, 0.96f), ALIGN_LEFT);
+
 			++row;
 		}
 	}
 
-	r->PushText(m_Dialogue.Line("ui_advance"), boxX + boxWidth - 26.0f, boxY + boxHeight - 32.0f,
+	r->PushText(m_Dialogue->Line("ui_advance"), boxX + boxWidth - 26.0f, boxY + boxHeight - 32.0f,
 		14, FONT_UI, false, RGBA(0.70f, 0.68f, 0.64f, 0.8f), ALIGN_RIGHT);
 }
 
@@ -1720,20 +1816,21 @@ void Game::DrawIntro()
 {
 	Renderer* r = m_Renderer;
 
-	const DialogueBlock* block = m_Dialogue.Find("intro");
+	const DialogueBlock* block = m_Dialogue->Find("intro");
+
 	if (block == NULL)
 	{
 		return;
 	}
 
 	// Text rises out of the black a beat after the fade begins.
-	const float appear = Clampf((m_StateTime - 0.5f) / 1.2f, 0.0f, 1.0f);
-	const float leave = 1.0f - Clampf((m_StateTime - 3.2f) / 0.8f, 0.0f, 1.0f);
+	const float appear = Clamp((m_StateTime - 0.5f) / 1.2f, 0.0f, 1.0f);
+	const float leave = 1.0f - Clamp((m_StateTime - 3.2f) / 0.8f, 0.0f, 1.0f);
 	const float alpha = appear * leave;
 
-	r->PushText(m_Dialogue.Line("ui_title"), 0.0f, -78.0f, 46, FONT_SERIF, true,
+	r->PushText(m_Dialogue->Line("ui_title"), 0.0f, -78.0f, 46, FONT_SERIF, true,
 		RGBA(0.88f, 0.84f, 0.76f, alpha), ALIGN_CENTER);
-	r->PushText(m_Dialogue.Line("ui_subtitle"), 0.0f, -18.0f, 15, FONT_UI, false,
+	r->PushText(m_Dialogue->Line("ui_subtitle"), 0.0f, -18.0f, 15, FONT_UI, false,
 		RGBA(0.66f, 0.60f, 0.52f, alpha * 0.9f), ALIGN_CENTER);
 
 	for (size_t i = 0; i < block->lines.size(); ++i)
@@ -1747,20 +1844,22 @@ void Game::DrawEnding()
 {
 	Renderer* r = m_Renderer;
 
-	const float alpha = Clampf((m_StateTime - 1.4f) / 1.2f, 0.0f, 1.0f);
+	const float alpha = Clamp((m_StateTime - 1.4f) / 1.2f, 0.0f, 1.0f);
+
 	if (alpha <= 0.0f)
 	{
 		return;
 	}
 
-	r->PushText(m_Dialogue.Line("ui_end_title"), 0.0f, -92.0f, 34, FONT_SERIF, true,
+	r->PushText(m_Dialogue->Line("ui_end_title"), 0.0f, -92.0f, 34, FONT_SERIF, true,
 		RGBA(0.88f, 0.84f, 0.76f, alpha), ALIGN_CENTER);
 
 	// A single vermilion rule under the chapter title.
 	r->PushRect(-58.0f, -40.0f, 116.0f, 2.0f,
 		RGBA(COL_SHU.r, COL_SHU.g, COL_SHU.b, alpha * 0.9f), DEPTH_PANEL);
 
-	const DialogueBlock* body = m_Dialogue.Find("ui_end_body");
+	const DialogueBlock* body = m_Dialogue->Find("ui_end_body");
+
 	if (body != NULL)
 	{
 		for (size_t i = 0; i < body->lines.size(); ++i)
@@ -1770,7 +1869,7 @@ void Game::DrawEnding()
 		}
 	}
 
-	r->PushText(m_Dialogue.Line("ui_end_hint"), 0.0f, 128.0f, 14, FONT_UI, false,
+	r->PushText(m_Dialogue->Line("ui_end_hint"), 0.0f, 128.0f, 14, FONT_UI, false,
 		RGBA(0.60f, 0.60f, 0.57f, alpha * 0.8f), ALIGN_CENTER);
 }
 
@@ -1779,7 +1878,7 @@ void Game::DrawEnding()
 void Game::Render()
 {
 	m_Renderer->SetCamera(m_CameraX, m_CameraY);
-	m_Renderer->BeginFrame(COL_SKY);
+	m_Renderer->BeginFrame(COL_SKY, m_Time);
 
 	if (m_State != STATE_ENDING || m_Fade < 0.999f)
 	{

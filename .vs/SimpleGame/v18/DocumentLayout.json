@@ -3,12 +3,20 @@
   "WorkspaceRootPath": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Game.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Game.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Dialogue.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Dialogue.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\SimpleGame.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\SimpleGame.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{25179D6C-FA85-4619-8EDB-AC241382F6CA}|SimpleGame\\SimpleGame.vcxproj|solutionrelative:SimpleGame\\Renderer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -23,25 +31,49 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Renderer.cpp",
-              "DocumentMoniker": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp",
-              "RelativeDocumentMoniker": "SimpleGame\\Renderer.cpp",
-              "ToolTip": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp",
-              "RelativeToolTip": "SimpleGame\\Renderer.cpp",
-              "ViewState": "AgIAAEIAAAAAAAAAAAAAALkAAAAAAAAAAAAAAA==",
+              "Title": "Game.cpp",
+              "DocumentMoniker": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Game.cpp",
+              "RelativeDocumentMoniker": "SimpleGame\\Game.cpp",
+              "ToolTip": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Game.cpp",
+              "RelativeToolTip": "SimpleGame\\Game.cpp",
+              "ViewState": "AgIAAIACAAAAAAAAAAAAAJwBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-07T05:05:50.643Z",
+              "WhenOpened": "2026-09-14T04:39:08.925Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Dialogue.cpp",
+              "DocumentMoniker": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Dialogue.cpp",
+              "RelativeDocumentMoniker": "SimpleGame\\Dialogue.cpp",
+              "ToolTip": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Dialogue.cpp",
+              "RelativeToolTip": "SimpleGame\\Dialogue.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-09-14T04:35:20.192Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Renderer.cpp",
+              "DocumentMoniker": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp",
+              "RelativeDocumentMoniker": "SimpleGame\\Renderer.cpp",
+              "ToolTip": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\Renderer.cpp",
+              "RelativeToolTip": "SimpleGame\\Renderer.cpp",
+              "ViewState": "AgIAALkAAAAAAAAAAAAAALYAAAA8AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-09-07T05:05:50.643Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "SimpleGame.cpp",
               "DocumentMoniker": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\SimpleGame.cpp",
               "RelativeDocumentMoniker": "SimpleGame\\SimpleGame.cpp",
               "ToolTip": "C:\\Users\\jinseok\\OneDrive\\Desktop\\class\\26-2\\game_software\\gsw_BaseProject_SE\\SimpleGame\\SimpleGame.cpp",
               "RelativeToolTip": "SimpleGame\\SimpleGame.cpp",
-              "ViewState": "AgIAACoAAAAAAAAAAAAAADkAAAAzAAAAAAAAAA==",
+              "ViewState": "AgIAAIQAAAAAAAAAAAAAACgAAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-09-07T05:05:27.706Z"
             }

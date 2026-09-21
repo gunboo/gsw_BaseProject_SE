@@ -6,6 +6,9 @@
 #include "Renderer.h"
 #include "World.h"
 #include "Dialogue.h"
+#include "Input.h"
+#include "Lighting.h"
+#include "Model.h"
 
 enum GameState
 {
@@ -23,6 +26,15 @@ enum InteractKind
 	INTERACT_PROP
 };
 
+// One bit per villager who saw the crest. CLUE_ALL is the gate on the ending.
+enum ClueBit
+{
+	CLUE_SMITH = 1,
+	CLUE_FISHER = 2,
+	CLUE_CHILD = 4,
+	CLUE_ALL = CLUE_SMITH | CLUE_FISHER | CLUE_CHILD
+};
+
 struct Npc
 {
 	std::string id;
@@ -30,15 +42,6 @@ struct Npc
 	float y;
 	float phase;		// idle sway offset so the crowd is not in lockstep
 	int look;
-};
-
-struct LightSource
-{
-	float x;
-	float y;
-	float radius;
-	float intensity;
-	Color color;
 };
 
 struct Mote
@@ -59,13 +62,14 @@ class Game
 public:
 	Game();
 
-	bool Initialize(Renderer* renderer);
+	bool Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue);
 
 	void Update(float deltaSeconds);
 	void Render();
 
 	void OnKey(unsigned char key, bool down, bool shift);
 	bool WantsExit() const { return m_WantsExit; }
+	bool WantsNextLevel() const { return m_WantsNextLevel; }
 
 private:
 	// --- simulation ---
@@ -93,6 +97,7 @@ private:
 	void DrawMotes();
 	void DrawAtmosphere();
 	void DrawHud();
+	void DrawQuestGuide();
 	void DrawDialogue();
 	void DrawClueList();
 	void DrawIntro();
@@ -115,11 +120,13 @@ private:
 		const Color& trim, bool hat, bool sword, bool lantern, float bobPixels);
 
 	Renderer* m_Renderer;
+	ModelLibrary* m_Models;
+	DialogueDB* m_Dialogue;
 	World m_World;
-	DialogueDB m_Dialogue;
 
 	GameState m_State;
 	bool m_WantsExit;
+	bool m_WantsNextLevel;
 	float m_Time;
 	float m_StateTime;
 	float m_Fade;			// 1 = fully black
@@ -128,7 +135,7 @@ private:
 	float m_PlayerX;
 	float m_PlayerY;
 	float m_PlayerStride;	// drives the walk bob
-	bool m_MoveKey[4];		// W A S D
+	bool m_MoveKey[MOVE_COUNT];
 	bool m_Running;
 	bool m_Moving;
 
@@ -156,7 +163,8 @@ private:
 	std::wstring m_ToastText;
 
 	std::vector<Npc> m_Npcs;
-	std::vector<LightSource> m_Lights;
+	Lighting m_Lighting;
+	int m_PlayerLightIndex;
 	std::vector<Mote> m_Motes;
 	std::vector<Mote> m_Mist;
 };

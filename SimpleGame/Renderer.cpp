@@ -8,6 +8,16 @@
 #include <fstream>
 #include <iostream>
 
+namespace
+{
+	const float TWO_PI = 6.2831853f;
+
+	// PushEllipse builds its vertices on the stack, so the upper bound is also
+	// the size of that buffer.
+	const int MIN_ELLIPSE_SEGMENTS = 3;
+	const int MAX_ELLIPSE_SEGMENTS = 48;
+}
+
 Color RGBA(float r, float g, float b, float a)
 {
 	Color c;
@@ -15,19 +25,28 @@ Color RGBA(float r, float g, float b, float a)
 	c.g = g;
 	c.b = b;
 	c.a = a;
+
 	return c;
 }
 
 Color Mix(const Color& from, const Color& to, float t)
 {
-	if (t < 0.0f) t = 0.0f;
-	if (t > 1.0f) t = 1.0f;
+	if (t < 0.0f)
+	{
+		t = 0.0f;
+	}
+
+	if (t > 1.0f)
+	{
+		t = 1.0f;
+	}
 
 	Color c;
 	c.r = from.r + (to.r - from.r) * t;
 	c.g = from.g + (to.g - from.g) * t;
 	c.b = from.b + (to.b - from.b) * t;
 	c.a = from.a + (to.a - from.a) * t;
+
 	return c;
 }
 
@@ -38,7 +57,30 @@ Color Scale(const Color& c, float factor)
 	out.g = c.g * factor;
 	out.b = c.b * factor;
 	out.a = c.a;
+
 	return out;
+}
+
+Color Modulate(const Color& c, const Color& multiplier)
+{
+	Color out;
+	out.r = c.r * multiplier.r;
+	out.g = c.g * multiplier.g;
+	out.b = c.b * multiplier.b;
+	out.a = c.a * multiplier.a;
+
+	return out;
+}
+
+ShadeParams DefaultShade()
+{
+	ShadeParams shade;
+	shade.light = RGBA(1.0f, 1.0f, 1.0f);
+	shade.fogColor = RGBA(0.0f, 0.0f, 0.0f);
+	shade.fog = 0.0f;
+	shade.tint = RGBA(1.0f, 1.0f, 1.0f);
+
+	return shade;
 }
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
@@ -47,11 +89,17 @@ Renderer::Renderer(int windowSizeX, int windowSizeY)
 	, m_WindowSizeY(windowSizeY)
 	, m_CameraX(0.0f)
 	, m_CameraY(0.0f)
+	, m_ElapsedSeconds(0.0f)
+	, m_AnimKind(0.0f)
+	, m_AnimPhase(0.0f)
+	, m_AnimStrength(0.0f)
 	, m_BatchShader(0)
 	, m_TextShader(0)
 	, m_BatchAttribPosition(-1)
 	, m_BatchAttribColor(-1)
+	, m_BatchAttribAnim(-1)
 	, m_BatchUniformHalfViewport(-1)
+	, m_BatchUniformTime(-1)
 	, m_TextAttribPosition(-1)
 	, m_TextAttribTexCoord(-1)
 	, m_TextUniformHalfViewport(-1)
@@ -69,12 +117,13 @@ Renderer::~Renderer()
 {
 	m_Text.Shutdown();
 
-	if (m_BatchVBO != 0) glDeleteBuffers(1, &m_BatchVBO);
-	if (m_TextVBO != 0) glDeleteBuffers(1, &m_TextVBO);
-	if (m_BatchVAO != 0) glDeleteVertexArrays(1, &m_BatchVAO);
-	if (m_TextVAO != 0) glDeleteVertexArrays(1, &m_TextVAO);
-	if (m_BatchShader != 0) glDeleteProgram(m_BatchShader);
-	if (m_TextShader != 0) glDeleteProgram(m_TextShader);
+	// GL ignores a name of 0, so the handles need no guard here.
+	glDeleteBuffers(1, &m_BatchVBO);
+	glDeleteBuffers(1, &m_TextVBO);
+	glDeleteVertexArrays(1, &m_BatchVAO);
+	glDeleteVertexArrays(1, &m_TextVAO);
+	glDeleteProgram(m_BatchShader);
+	glDeleteProgram(m_TextShader);
 }
 
 void Renderer::Initialize()
@@ -91,7 +140,9 @@ void Renderer::Initialize()
 	// base project did, means a string query into the driver every sprite.
 	m_BatchAttribPosition = glGetAttribLocation(m_BatchShader, "a_Position");
 	m_BatchAttribColor = glGetAttribLocation(m_BatchShader, "a_Color");
+	m_BatchAttribAnim = glGetAttribLocation(m_BatchShader, "a_Anim");
 	m_BatchUniformHalfViewport = glGetUniformLocation(m_BatchShader, "u_HalfViewport");
+	m_BatchUniformTime = glGetUniformLocation(m_BatchShader, "u_Time");
 
 	m_TextAttribPosition = glGetAttribLocation(m_TextShader, "a_Position");
 	m_TextAttribTexCoord = glGetAttribLocation(m_TextShader, "a_TexCoord");
@@ -116,15 +167,23 @@ void Renderer::CreateBuffers()
 
 	glBindVertexArray(m_BatchVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, m_BatchVBO);
+
 	if (m_BatchAttribPosition >= 0)
 	{
 		glEnableVertexAttribArray(m_BatchAttribPosition);
 		glVertexAttribPointer(m_BatchAttribPosition, 2, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (const void*)0);
 	}
+
 	if (m_BatchAttribColor >= 0)
 	{
 		glEnableVertexAttribArray(m_BatchAttribColor);
 		glVertexAttribPointer(m_BatchAttribColor, 4, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (const void*)(sizeof(float) * 2));
+	}
+
+	if (m_BatchAttribAnim >= 0)
+	{
+		glEnableVertexAttribArray(m_BatchAttribAnim);
+		glVertexAttribPointer(m_BatchAttribAnim, 3, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (const void*)(sizeof(float) * 6));
 	}
 
 	glGenVertexArrays(1, &m_TextVAO);
@@ -132,11 +191,13 @@ void Renderer::CreateBuffers()
 
 	glBindVertexArray(m_TextVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, m_TextVBO);
+
 	if (m_TextAttribPosition >= 0)
 	{
 		glEnableVertexAttribArray(m_TextAttribPosition);
 		glVertexAttribPointer(m_TextAttribPosition, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (const void*)0);
 	}
+
 	if (m_TextAttribTexCoord >= 0)
 	{
 		glEnableVertexAttribArray(m_TextAttribTexCoord);
@@ -154,8 +215,15 @@ bool Renderer::IsInitialized() const
 
 void Renderer::Resize(int windowSizeX, int windowSizeY)
 {
-	if (windowSizeX < 1) windowSizeX = 1;
-	if (windowSizeY < 1) windowSizeY = 1;
+	if (windowSizeX < 1)
+	{
+		windowSizeX = 1;
+	}
+
+	if (windowSizeY < 1)
+	{
+		windowSizeY = 1;
+	}
 
 	m_WindowSizeX = windowSizeX;
 	m_WindowSizeY = windowSizeY;
@@ -177,8 +245,11 @@ void Renderer::WorldToScreen(float worldX, float worldY, float worldZ, float* sc
 	*screenY = (dx + dy) * TileHalfHeight() - worldZ * HeightScale();
 }
 
-void Renderer::BeginFrame(const Color& clearColor)
+void Renderer::BeginFrame(const Color& clearColor, float elapsedSeconds)
 {
+	m_ElapsedSeconds = elapsedSeconds;
+	ClearAnim();
+
 	glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -192,12 +263,43 @@ void Renderer::BeginFrame(const Color& clearColor)
 	m_Items.clear();
 	m_SortOrder.clear();
 	m_TextItems.clear();
+	m_Text.BeginFrame();
 }
 
 void Renderer::EndFrame()
 {
 	FlushPolygons();
 	FlushText();
+}
+
+void Renderer::SetAnim(AnimKind kind, float phase, float strength)
+{
+	m_AnimKind = (float)kind;
+	m_AnimPhase = phase;
+	m_AnimStrength = strength;
+}
+
+void Renderer::ClearAnim()
+{
+	m_AnimKind = (float)ANIM_NONE;
+	m_AnimPhase = 0.0f;
+	m_AnimStrength = 0.0f;
+}
+
+void Renderer::AppendVertex(float x, float y, const Color& color)
+{
+	BatchVertex vertex;
+	vertex.x = x;
+	vertex.y = y;
+	vertex.r = color.r;
+	vertex.g = color.g;
+	vertex.b = color.b;
+	vertex.a = color.a;
+	vertex.animKind = m_AnimKind;
+	vertex.animPhase = m_AnimPhase;
+	vertex.animStrength = m_AnimStrength;
+
+	m_PolygonVertices.push_back(vertex);
 }
 
 void Renderer::PushPolygonShaded(const float* xy, const Color* colors, int vertexCount, float depth)
@@ -214,14 +316,7 @@ void Renderer::PushPolygonShaded(const float* xy, const Color* colors, int verte
 
 	for (int i = 0; i < vertexCount; ++i)
 	{
-		BatchVertex v;
-		v.x = xy[i * 2 + 0];
-		v.y = xy[i * 2 + 1];
-		v.r = colors[i].r;
-		v.g = colors[i].g;
-		v.b = colors[i].b;
-		v.a = colors[i].a;
-		m_PolygonVertices.push_back(v);
+		AppendVertex(xy[i * 2 + 0], xy[i * 2 + 1], colors[i]);
 	}
 
 	m_SortOrder.push_back((int)m_Items.size());
@@ -242,14 +337,7 @@ void Renderer::PushPolygon(const float* xy, int vertexCount, const Color& color,
 
 	for (int i = 0; i < vertexCount; ++i)
 	{
-		BatchVertex v;
-		v.x = xy[i * 2 + 0];
-		v.y = xy[i * 2 + 1];
-		v.r = color.r;
-		v.g = color.g;
-		v.b = color.b;
-		v.a = color.a;
-		m_PolygonVertices.push_back(v);
+		AppendVertex(xy[i * 2 + 0], xy[i * 2 + 1], color);
 	}
 
 	m_SortOrder.push_back((int)m_Items.size());
@@ -282,16 +370,25 @@ void Renderer::PushDiamond(float centerX, float centerY, float halfWidth, float 
 
 void Renderer::PushEllipse(float centerX, float centerY, float radiusX, float radiusY, const Color& color, float depth, int segments)
 {
-	if (segments < 3) segments = 3;
-	if (segments > 48) segments = 48;
+	if (segments < MIN_ELLIPSE_SEGMENTS)
+	{
+		segments = MIN_ELLIPSE_SEGMENTS;
+	}
 
-	float xy[96];
+	if (segments > MAX_ELLIPSE_SEGMENTS)
+	{
+		segments = MAX_ELLIPSE_SEGMENTS;
+	}
+
+	float xy[MAX_ELLIPSE_SEGMENTS * 2];
+
 	for (int i = 0; i < segments; ++i)
 	{
-		const float angle = 6.2831853f * (float)i / (float)segments;
+		const float angle = TWO_PI * (float)i / (float)segments;
 		xy[i * 2 + 0] = centerX + cosf(angle) * radiusX;
 		xy[i * 2 + 1] = centerY + sinf(angle) * radiusY;
 	}
+
 	PushPolygon(xy, segments, color, depth);
 }
 
@@ -300,6 +397,7 @@ void Renderer::PushLine(float x0, float y0, float x1, float y1, float thickness,
 	const float dx = x1 - x0;
 	const float dy = y1 - y0;
 	const float length = sqrtf(dx * dx + dy * dy);
+
 	if (length < 0.0001f)
 	{
 		return;
@@ -327,6 +425,7 @@ void Renderer::PushText(const std::wstring& text, float x, float y, int pixelSiz
 	}
 
 	const TextTexture* texture = m_Text.Get(text, pixelSize, face, bold);
+
 	if (texture == NULL)
 	{
 		return;
@@ -398,6 +497,7 @@ void Renderer::FlushPolygons()
 
 	glUseProgram(m_BatchShader);
 	glUniform2f(m_BatchUniformHalfViewport, m_WindowSizeX * 0.5f, m_WindowSizeY * 0.5f);
+	glUniform1f(m_BatchUniformTime, m_ElapsedSeconds);
 
 	glBindVertexArray(m_BatchVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, m_BatchVBO);
@@ -457,6 +557,7 @@ void Renderer::FlushText()
 bool Renderer::ReadFile(const char* filename, std::string* target)
 {
 	std::ifstream file(filename);
+
 	if (file.fail())
 	{
 		std::cout << filename << " file loading failed..\n";
@@ -464,17 +565,20 @@ bool Renderer::ReadFile(const char* filename, std::string* target)
 	}
 
 	std::string line;
+
 	while (getline(file, line))
 	{
 		target->append(line);
 		target->append("\n");
 	}
+
 	return true;
 }
 
 GLuint Renderer::AddShader(GLuint shaderProgram, const char* shaderText, GLenum shaderType)
 {
 	GLuint shaderObject = glCreateShader(shaderType);
+
 	if (shaderObject == 0)
 	{
 		fprintf(stderr, "Error creating shader type %d\n", shaderType);
@@ -489,12 +593,14 @@ GLuint Renderer::AddShader(GLuint shaderProgram, const char* shaderText, GLenum 
 
 	GLint success = 0;
 	glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &success);
+
 	if (!success)
 	{
 		GLchar infoLog[1024] = { 0 };
 		glGetShaderInfoLog(shaderObject, sizeof(infoLog), NULL, infoLog);
 		fprintf(stderr, "Error compiling shader type %d: %s\n", shaderType, infoLog);
 		glDeleteShader(shaderObject);
+
 		return 0;
 	}
 
@@ -505,6 +611,7 @@ GLuint Renderer::AddShader(GLuint shaderProgram, const char* shaderText, GLenum 
 GLuint Renderer::CompileShaders(const char* filenameVS, const char* filenameFS)
 {
 	GLuint shaderProgram = glCreateProgram();
+
 	if (shaderProgram == 0)
 	{
 		fprintf(stderr, "Error creating shader program\n");
@@ -536,21 +643,25 @@ GLuint Renderer::CompileShaders(const char* filenameVS, const char* filenameFS)
 
 	glLinkProgram(shaderProgram);
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+
 	if (success == 0)
 	{
 		glGetProgramInfoLog(shaderProgram, sizeof(errorLog), NULL, errorLog);
 		std::cout << filenameVS << ", " << filenameFS << " Error linking shader program\n" << errorLog << "\n";
 		glDeleteProgram(shaderProgram);
+
 		return 0;
 	}
 
 	glValidateProgram(shaderProgram);
 	glGetProgramiv(shaderProgram, GL_VALIDATE_STATUS, &success);
+
 	if (!success)
 	{
 		glGetProgramInfoLog(shaderProgram, sizeof(errorLog), NULL, errorLog);
 		std::cout << filenameVS << ", " << filenameFS << " Error validating shader program\n" << errorLog << "\n";
 		glDeleteProgram(shaderProgram);
+
 		return 0;
 	}
 
@@ -560,5 +671,6 @@ GLuint Renderer::CompileShaders(const char* filenameVS, const char* filenameFS)
 	glDeleteShader(fragmentShader);
 
 	std::cout << filenameVS << ", " << filenameFS << " compiled.\n";
+
 	return shaderProgram;
 }

@@ -32,9 +32,12 @@ public:
 	// Rasterizes on first use and caches afterwards. Returns NULL on failure.
 	const TextTexture* Get(const std::wstring& text, int pixelSize, FontFace face, bool bold);
 
+	// Called only after the renderer has discarded the previous text queue.
+	void BeginFrame();
 	void Shutdown();
 
 private:
+	void ClearTextures();
 	void* AcquireFont(int pixelSize, FontFace face, bool bold);	// returns HFONT
 	const TextTexture* Rasterize(const std::wstring& cacheKey, const std::wstring& text,
 		int pixelSize, FontFace face, bool bold);
