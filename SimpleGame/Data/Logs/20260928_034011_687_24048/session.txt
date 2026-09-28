@@ -1,0 +1,10 @@
+schema=1
+clock=steady_clock
+folder_timestamp=UTC
+build=Sep 28 2026 12:39:58
+pointer_bits=64
+label=""
+revision=""
+detail=1
+gpu_timer=1
+configuration=Debug
