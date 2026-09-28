@@ -5,6 +5,7 @@
 
 #include "Dependencies\glew.h"
 #include "TextRenderer.h"
+#include "MeshCache.h"
 
 struct Color
 {
@@ -49,14 +50,31 @@ struct ShadeParams
 
 ShadeParams DefaultShade();
 
+struct RenderStats
+{
+	unsigned long long frameId;
+	double sortCpuMs;
+	double worldSubmitCpuMs;
+	double textSubmitCpuMs;
+	unsigned long long gpuSourceFrame;
+	double gpuElapsedMs;
+	bool gpuQuerySkipped;
+	unsigned int worldDrawCalls;
+	unsigned int textDrawCalls;
+	size_t polygonInstances;
+	size_t triangleInstances;
+	size_t textInstances;
+	size_t instanceUploadBytes;
+};
+
 // Screen space used by every Push* call: pixels, origin at the window centre,
 // +x right and +y DOWN (matching the quarter-view projection below).
 //
 //   screenX = (wx - wy) * TileHalfWidth()
 //   screenY = (wx + wy) * TileHalfHeight() - wz * HeightScale()
 //
-// Everything is collected into one vertex buffer, sorted back-to-front by the
-// caller-supplied depth, and issued as a single draw call per frame.
+// Geometry stays resident. Depth-sorted instances share one world draw unless
+// the GPU buffer limit requires a split; text uses ordered atlas batches.
 class Renderer
 {
 public:
@@ -71,6 +89,14 @@ public:
 
 	void BeginFrame(const Color& clearColor, float elapsedSeconds);
 	void EndFrame();
+	const RenderStats& GetStats() const;
+	TextCacheStats GetTextCacheStats() const;
+
+	// Register immutable geometry during initialization, then upload/save once.
+	int RegisterMesh(const std::string& name, const float* xy, int vertexCount);
+	void PrepareMeshes();
+	void PushMesh(int mesh, float x, float y, float scaleX, float scaleY,
+		const Color& color, float depth);
 
 	void SetCamera(float worldX, float worldY);
 	void WorldToScreen(float worldX, float worldY, float worldZ, float* screenX, float* screenY) const;
@@ -79,7 +105,8 @@ public:
 	void SetAnim(AnimKind kind, float phase, float strength);
 	void ClearAnim();
 
-	// Convex polygons only - they are triangulated as a fan.
+	// Three/four control points deform cached templates; larger meshes must be
+	// registered once and submitted through PushMesh.
 	void PushPolygon(const float* xy, int vertexCount, const Color& color, float depth);
 	void PushPolygonShaded(const float* xy, const Color* colors, int vertexCount, float depth);
 
@@ -99,24 +126,43 @@ public:
 	static float HeightScale() { return 26.0f; }
 
 private:
-	struct BatchVertex
+	static const int GPU_QUERY_SLOTS = 4;
+	struct GpuQuery
 	{
-		float x;
-		float y;
-		float r;
-		float g;
-		float b;
-		float a;
-		float animKind;
-		float animPhase;
-		float animStrength;
+		GLuint id = 0;
+		unsigned long long frame = 0;
+		bool pending = false;
+	};
+
+	void BeginGpuTiming();
+	// Eight RGBA32F texels, consumed by Batch.vs. No generated mesh vertices.
+	struct PolygonInstance
+	{
+		float corners[8];
+		Color colors[4];
+		float animation[4];
+		float transform[4];
 	};
 
 	struct BatchItem
 	{
 		float depth;
-		int first;
-		int count;
+		int mesh;
+		PolygonInstance instance;
+	};
+
+	struct TriangleCommand
+	{
+		int firstVertex;
+		int instance;
+	};
+
+	struct TextInstance
+	{
+		float rectangle[4];
+		float uv[4];
+		Color color;
+		float layer;
 	};
 
 	struct TextItem
@@ -134,7 +180,7 @@ private:
 	void CreateBuffers();
 	void FlushPolygons();
 	void FlushText();
-	void AppendVertex(float x, float y, const Color& color);
+	PolygonInstance MakeInstance(const Color& color) const;
 
 	bool m_Initialized;
 
@@ -152,28 +198,42 @@ private:
 	GLuint m_BatchShader;
 	GLuint m_TextShader;
 
-	GLint m_BatchAttribPosition;
-	GLint m_BatchAttribColor;
-	GLint m_BatchAttribAnim;
 	GLint m_BatchUniformHalfViewport;
 	GLint m_BatchUniformTime;
+	GLint m_BatchUniformMeshes;
+	GLint m_BatchUniformInstances;
 
-	GLint m_TextAttribPosition;
-	GLint m_TextAttribTexCoord;
 	GLint m_TextUniformHalfViewport;
 	GLint m_TextUniformTexture;
-	GLint m_TextUniformColor;
+	GLint m_TextUniformMeshes;
+	GLint m_TextUniformQuad;
 
 	GLuint m_BatchVAO;
 	GLuint m_BatchVBO;
 	GLuint m_TextVAO;
 	GLuint m_TextVBO;
+	GLuint m_MeshBuffer;
+	GLuint m_MeshTexture;
+	GLuint m_InstanceBuffer;
+	GLuint m_InstanceTexture;
+	GLint m_MaxInstanceCount;
+	bool m_MeshesReady;
+	int m_TriangleMesh;
+	int m_QuadMesh;
+	int m_EllipseMeshes[49];
+	float m_LastLogTime;
+	RenderStats m_Stats;
+	GpuQuery m_GpuQueries[GPU_QUERY_SLOTS];
+	int m_ActiveGpuQuery = -1;
+	unsigned long long m_RenderFrame = 0;
+	MeshCache m_MeshCache;
 
-	std::vector<BatchVertex> m_PolygonVertices;
 	std::vector<BatchItem> m_Items;
-	std::vector<BatchVertex> m_TriangleVertices;
+	std::vector<PolygonInstance> m_Instances;
+	std::vector<TriangleCommand> m_Commands;
 	std::vector<int> m_SortOrder;
 	std::vector<TextItem> m_TextItems;
+	std::vector<TextInstance> m_TextInstances;
 
 	TextRenderer m_Text;
 };

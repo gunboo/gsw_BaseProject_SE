@@ -24,6 +24,12 @@
     <ClInclude Include="Actor.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="AnalysisLog.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshCache.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="SceneGraph.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -39,6 +45,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="AnalysisLog.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshCache.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="SceneGraph.cpp">

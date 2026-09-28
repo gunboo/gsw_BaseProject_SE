@@ -156,12 +156,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
+    <ClInclude Include="AnalysisLog.h" />
     <ClInclude Include="Dialogue.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Lighting.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="MeshCache.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="SceneGraph.h" />
     <ClInclude Include="stdafx.h" />
@@ -172,11 +174,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="AnalysisLog.cpp" />
     <ClCompile Include="Dialogue.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Lighting.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="MeshCache.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SceneGraph.cpp" />
     <ClCompile Include="SimpleGame.cpp" />

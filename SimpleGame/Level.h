@@ -88,6 +88,10 @@ public:
 	// through the scene lifecycle.
 	SceneGraph& GetSceneGraph();
 	const SceneGraph& GetSceneGraph() const;
+	LevelState GetState() const
+	{
+		return m_State;
+	}
 
 	bool WantsExit() const
 	{

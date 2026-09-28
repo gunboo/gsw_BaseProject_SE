@@ -1,15 +1,13 @@
 #version 330
 
-in vec2 v_TexCoord;
+in vec3 v_TexCoord;
+in vec4 v_Color;
 
-uniform sampler2D u_Texture;
-uniform vec4 u_Color;
-
-layout(location=0) out vec4 FragColor;
+uniform sampler2DArray u_Texture;
+layout(location = 0) out vec4 FragColor;
 
 void main()
 {
-	// The glyph atlas stores coverage in the alpha channel; color comes from the uniform.
-	float coverage = texture(u_Texture, v_TexCoord).a;
-	FragColor = vec4(u_Color.rgb, u_Color.a * coverage);
+	float coverage = texture(u_Texture, v_TexCoord).r;
+	FragColor = vec4(v_Color.rgb, v_Color.a * coverage);
 }

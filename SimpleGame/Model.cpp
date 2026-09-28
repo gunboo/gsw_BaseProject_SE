@@ -356,8 +356,6 @@ namespace
 void DrawModel(Renderer* renderer, const Model& model, float screenX, float screenY,
 	float scale, float depth, const ShadeParams& shade)
 {
-	float points[MAX_POLY_VERTICES * 2];
-
 	for (size_t i = 0; i < model.polys.size(); ++i)
 	{
 		const ModelPoly& poly = model.polys[i];
@@ -365,13 +363,6 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 		if (poly.vertexCount < 3 || poly.vertexCount > MAX_POLY_VERTICES)
 		{
 			continue;
-		}
-
-		for (int v = 0; v < poly.vertexCount; ++v)
-		{
-			const int index = (poly.firstVertex + v) * 2;
-			points[v * 2 + 0] = screenX + model.vertices[index + 0] * scale;
-			points[v * 2 + 1] = screenY + model.vertices[index + 1] * scale;
 		}
 
 		Color color = poly.color;
@@ -392,7 +383,7 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 		color.a = alpha;
 
 		renderer->SetAnim((AnimKind)poly.anim, poly.animPhase, poly.animStrength * scale);
-		renderer->PushPolygon(points, poly.vertexCount, color, depth + poly.depthBias);
+		renderer->PushMesh(poly.mesh, screenX, screenY, scale, scale, color, depth + poly.depthBias);
 	}
 
 	renderer->ClearAnim();
@@ -570,6 +561,30 @@ const Model* ModelLibrary::Find(const std::string& name) const
 	}
 
 	return &it->second;
+}
+
+bool ModelLibrary::RegisterMeshes(Renderer* renderer)
+{
+	for (auto& entry : m_Models)
+	{
+		Model& model = entry.second;
+
+		for (size_t i = 0; i < model.polys.size(); ++i)
+		{
+			ModelPoly& poly = model.polys[i];
+			poly.mesh = renderer->RegisterMesh("model/" + entry.first + "/" + std::to_string(i),
+				&model.vertices[poly.firstVertex * 2], poly.vertexCount);
+
+			if (poly.mesh < 0)
+			{
+				return false;
+			}
+		}
+	}
+
+	renderer->PrepareMeshes();
+
+	return renderer->IsInitialized();
 }
 
 void ModelLibrary::BuildAll()

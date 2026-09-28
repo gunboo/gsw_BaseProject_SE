@@ -1,7 +1,14 @@
 ﻿  Actor.cpp
+  AnalysisLog.cpp
+  Dialogue.cpp
   Game.cpp
   Level.cpp
+  Lighting.cpp
+  Model.cpp
+  MeshCache.cpp
+  Renderer.cpp
   SceneGraph.cpp
   SimpleGame.cpp
+  TextRenderer.cpp
   코드를 생성하고 있습니다...
   SimpleGame.vcxproj -> C:\Users\jinseok\OneDrive\Desktop\class\26-2\game_software\gsw_BaseProject_SE\x64\Debug\SimpleGame.exe
