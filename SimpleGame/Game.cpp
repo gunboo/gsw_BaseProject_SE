@@ -223,6 +223,19 @@ bool Game::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dial
 	m_StateTime = 0.0f;
 	m_Fade = 1.0f;
 	CreateScene();
+	std::vector<Actor*> residents;
+
+	for (const Npc& npc : m_Npcs)
+	{
+		residents.push_back(npc.actor);
+	}
+
+	if (!m_Village.Initialize(m_World, m_SceneGraph, m_PlayerActor, residents,
+		*m_Models, m_Lighting, *m_Dialogue))
+	{
+		return false;
+	}
+
 	UpdateSceneState();
 	UpdateLighting();
 
@@ -481,6 +494,7 @@ void Game::UpdateSceneState()
 {
 	const bool worldVisible = m_State != STATE_ENDING || m_Fade < 0.999f;
 	const bool worldActive = m_State != STATE_INTRO && m_State != STATE_ENDING;
+	m_Village.SetState(m_State == STATE_PLAY, worldVisible);
 	m_EnvironmentActor->SetVisible(worldVisible);
 	m_CharactersActor->SetVisible(worldVisible);
 	m_CharactersActor->SetActive(worldActive);
@@ -523,6 +537,11 @@ void Game::Update(float deltaSeconds)
 
 	UpdateSceneState();
 	m_SceneGraph.Update(deltaSeconds);
+
+	if (m_State == STATE_PLAY && m_Attacking)
+	{
+		m_Village.Attack();
+	}
 }
 
 void Game::UpdateCamera(float deltaSeconds)
@@ -908,6 +927,7 @@ void Game::OpenDialogue(const std::string& key)
 	m_PageStart = 0;
 	m_PageEnd = 0;
 	m_State = STATE_DIALOGUE;
+	m_Attacking = false;
 	m_StateTime = 0.0f;
 
 	AdvanceDialogue();
@@ -1023,6 +1043,7 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 	switch (key)
 	{
+	case ' ': m_Attacking = down && m_State == STATE_PLAY; break;
 	case 'w': m_MoveKey[0] = down; break;
 	case 'a': m_MoveKey[1] = down; break;
 	case 's': m_MoveKey[2] = down; break;
@@ -1086,13 +1107,14 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 	if (m_State == STATE_PLAY)
 	{
-		if (key == 'e' || key == ' ' || key == 13)
+		if (key == 'e' || key == 13)
 		{
 			TryInteract();
 		}
 		else if (key == '\t')
 		{
 			m_State = STATE_CLUES;
+			m_Attacking = false;
 		}
 	}
 }
@@ -1223,10 +1245,11 @@ void Game::DrawNpc(const Npc& npc)
 		return;
 	}
 
-	const bool hat = npc.id == "farmer" || npc.id == "fisher";
-	const bool small = npc.id == "child";
+	const bool hat = npc.id == "farmer" || npc.id == "fisher" || npc.id == "hunter"
+		|| npc.id.find("merchant_") == 0;
+	const bool small = npc.id == "child" || npc.id == "refugee_child";
 	DrawPerson(position.x, position.y, small ? 0.92f : 1.32f, ROBES[npc.look],
-		Mix(ROBES[npc.look], COL_SHIRO, 0.35f), hat, false, false, bob, position.z);
+		Mix(ROBES[npc.look], COL_SHIRO, 0.35f), hat, m_Village.IsArmed(npc.id), false, bob, position.z);
 }
 
 void Game::DrawPlayer(const Actor& actor)
@@ -1825,6 +1848,8 @@ void Game::DrawQuestGuide()
 
 void Game::DrawHud()
 {
+	m_Village.DrawHud(*m_Renderer);
+
 	Renderer* r = m_Renderer;
 
 	const float left = -r->GetWidth() * 0.5f;
@@ -1899,7 +1924,18 @@ void Game::DrawHud()
 			? m_Dialogue->Line("ui_prompt_talk")
 			: m_Dialogue->Line("ui_prompt_examine");
 
-		const std::wstring prompt = L"[E]  " + verb;
+		std::wstring prompt = L"[E]  " + verb;
+
+		if (m_TargetKind == INTERACT_NPC && m_TargetIndex >= 0)
+		{
+			const DialogueBlock* block = m_Dialogue->Find(DialogueKeyForNpc(m_Npcs[m_TargetIndex]));
+
+			if (block != NULL && !block->lines.empty())
+			{
+				prompt += L" - " + block->lines.front().speaker;
+			}
+		}
+
 		const float width = r->MeasureTextWidth(prompt, 16, FONT_UI, false);
 
 		DrawPanel(-width * 0.5f - 14.0f, bottom - 92.0f, width + 28.0f, 32.0f, 0.72f, DEPTH_PANEL);

@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClInclude Include="Actor.h" />
     <ClInclude Include="AnalysisLog.h" />
+    <ClInclude Include="VillageSimulation.h" />
     <ClInclude Include="Dialogue.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Input.h" />
@@ -175,6 +176,7 @@
   <ItemGroup>
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="AnalysisLog.cpp" />
+    <ClCompile Include="VillageSimulation.cpp" />
     <ClCompile Include="Dialogue.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Level.cpp" />

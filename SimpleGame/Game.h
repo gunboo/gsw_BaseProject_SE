@@ -10,6 +10,7 @@
 #include "Lighting.h"
 #include "Model.h"
 #include "SceneGraph.h"
+#include "VillageSimulation.h"
 
 enum GameState
 {
@@ -144,6 +145,8 @@ private:
 	DialogueDB* m_Dialogue;
 	World m_World;
 	SceneGraph m_SceneGraph;
+	VillageSimulation m_Village;
+	bool m_Attacking = false;
 	Actor* m_EnvironmentActor;
 	Actor* m_CharactersActor;
 	Actor* m_EffectsActor;

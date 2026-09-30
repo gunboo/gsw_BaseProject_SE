@@ -24,6 +24,9 @@
     <ClInclude Include="Actor.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="VillageSimulation.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="AnalysisLog.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -45,6 +48,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="VillageSimulation.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="AnalysisLog.cpp">

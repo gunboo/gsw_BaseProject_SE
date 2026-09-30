@@ -1,81 +1,146 @@
-# village.map - tutorial level terrain
-# legend: . grass  , tallgrass  : dirt  = stone  ~ water  _ sand  T tree  t bush  o rock
-SIZE 44 36
+# Expanded village: original settlement offset 22,18.
+SIZE 88 72
 TILES
-T,TTTTTTTTTTtTTT,TTTtTTToTT.tT,TTTTT,,TTTTTt
-TTTTTTTTTTTTTToTTtTTTT,T,TtT,TTTTTT,TTTTtoTT
-,,TT,TTTTTTTTtTTTT,TTTTTTTToTT,TTTTTTtTTTT,T
-TTTTTTT,T,TtTTTTTTt,oTTttT.TtTttToTTToTTTTTT
-tTTTTT,TTTTTT,TTtTT,tT,TtTTTTTtTTTtTtTTTTTTT
-TTTtttTTTTTT,TTTTTTTTTTTTTTT,.T,TTTtTTTt,oTT
-TT,,TTTTTTtoTTTT,TTT..TT,T.TTtTTTT,T,,T,TTTt
-TT,TtTT,TToT.t.,.....,..,tT.TTTTTTTTTT,TTTTT
-TTtt,,T,TTTTtT.,.T..===...T..TTtTTT,TTTTT.TT
-,TTTTTTTTtT.Tt...,.=====......,T.T,TTTTToTTT
-TTTTTtTTtTT........=====....,.,TTTtTTT,TTTTT
-TTTTt,TTTt.....,...=====.,........,TT,TTTTTT
-TTTTtTt.,Tt.,.,.....===..,....,...TTTTTTTtoT
-TTTTTTTToT.....,...,::..........T.tTTTT,.TTT
-TT,TTTT.....::::::::::::::::::::..TTTTTTTTTT
-T,ToTttTT.,.::::::::::::::::::::...t,TTTTTtT
-,TTTTTT,.t......,.=======.....::....TTT,TTTT
-TTTTT...t.....,,..=======.,...::,o.TT.,TTTTT
-tTTTTT...t......,.=======.,...::....tTTT,.To
-TTTTt,TT.t.,...,..:=====::....::.._____t,TTT
-TTTTtTTt.t.......:::===,::::,::__~~~~~~~__,T
-TTT,TTTt,...,..,:::......::::::~~~~~~~~~~~_,
-TTTTTTTTT..,..::::....,....::_~~~~~~~~~~~~~_
-TTTTtTT,T,T..:::,..........._~~~~~~~~~~~~~~~
-TTTTTTTTTT.T:::,,,.........._~~~~~~~~~~~~~~~
-TTTTtt,tTTT:::........,....._~~~~~~~~~~~~~~~
-TTTtTTTTT:::Tt...t.........__~~~~~~~~~~~~~~~
-,TTtTTTT:::,TTT.,..T.t..,..,_~~~~~~~~~~~~~~~
-TTTTTtT:::TTTTTT.TTtTTt.,T,t_~~~~~~~~~~~~~~~
-,TT,t::::,TTTTTTTTTTTT.ttTTT_~~~~~~~~~~~~~~~
-TT,t:::,TTTttTTtTTTTT,TtTtTTT_~~~~~~~~~~~~~_
-T,Tt::TT,TtTTToT,T,TT,oToTTTTT_~~~~~~~~~~~_T
-tTtTTTTtTTTTT,TTT,TTtTTTTt,t,TT__~~~~~~~__TT
-TTTTT,TTTTTTTTtTTtTTTTTTTT,TTTTttT_____TT,TT
-TTTTttTTTTTTTTTTtTTTTTTTTTtTTTTT,TtT,TTTtt,T
-TT,TtTTT,oTTTToTtT,TTTTT,,tTT,,TT,TToTT,tTT,
-# --------------------------------------------------------------------
-# props: <type> <x> <y> <sizeX> <sizeY> <variant>
-# tiles under a footprint are flattened to ground on load, so props may
-# be placed over scattered trees without editing the terrain by hand.
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+TT...,..,T.,...,T...t..,.,.t..TT,..tTt..,,T.,....T.,T,...,o.,.....,T..,,.....,t....,T..T
+T.t...,.,..,.,.....,o..,,..T...,......tT.,o.TT,..,....T..T..........,.,.o...,.o,.T.Tt,.T
+TTt....,t,t...TT.....TTT..T........T.t,...T...T....,,T...,.....T...,.T,.t,t.......T.Tt.T
+T.T..t..,.....T....TT.t.t..T...t...........,,T..........t...o...tT.Tt.....o,.,..,oT.T..T
+T..T,.t...T...........,T,T,o,T...t.,..,.,....t,..T.t,.,..T....t..,.T...T.,...tt........T
+T..,...t~~~~~~~,oT.T,o.,T....T..T.T..t.....o.,.,.....T,oo.T.,....t....T.......Tt..tT...T
+T.,....~~~~~~~~~.....,t..,...t....t.TT...,...,:,.T...t..,......T.,....,o.T.....T....T..T
+T.,...~~~~~~~~~~~,t..,...T.,,:::::::.......:,,.,.,.Tt...T.T..T.......T,,..T,...T.T....TT
+T..,,~~~~~~~~~~~~~,.t.T..T...:::::::...T.......::::::::::::::::::::.t.o,......,.,.,.Tt.T
+T,.T,~~~~~~~~~~~~~..t.......t::::::::...T.:.:.,::::::::::::::::::::.....Tt.T..T.Tt,T...T
+T...o~~~~~~~~~~~~~T.T...,.,..:::T::::.....:,:::::::::::::::::::::::................T.,.T
+Tt.t.~~~~~~~~~~~~~,TT..,..T..o..,::::t..,...::::::::::.T.,.,.....TT...........:,...T...T
+T,...~~~~~~~~~~~~~....T....t.T,.T,:::::::.,,::::::::::............T,.................T.T
+T,,.T~~~~~~~~~~~~~.....T.,.,,T.,.T::::::::T.::::::::::...,....................,.....,..T
+T.T,.~~~~~~~~~~~~~.tT...,.T..,T...::::::::::::::..........o,.t.t...T..................,T
+TT,..~~~~~~~~~~~~~oo,,....o......,..,.::::::::::....T.t..T.totT..,.................,..tT
+T.,..~~~~~~~~~~~~~..t.T....T.....t,..tt:::::::::o.....T.,,t.,.T.t.:::::::::::........,.T
+To.t..~~~~~~~~~~~..T..T,TTTTTTTTTTtTTT,TTTt:::::T.tT,TTTTT,,TTTTTt:::::::::::.......,.tT
+Tt.,...~~~~~~~~~,....tTTTTTTTTTTTTTToTTTTTT:::::tT,TTTTTTTTTTTToTT:::::::::::.......t..T
+T.T.,T,T~~~~~~~..TtT..,,TTTTTTTTTTTTTTTT,..:::::ToTTTTTTTTTTTTTTTT:::................o.T
+T.....t..........To.t.TTTTTTTTTTTTTTTTTTt..:::::.TTTTTToTTToTTTTT:::::::::.........T.tTT
+T.,t.,.,.o.............TTTTTTTTTTTTTTTTTT..::::.TTTTTTTTTTTTTTTTT:::::::::.........,...T
+T.,.,T.................TTTTTTTTTTTTTTTTTT..::::.TTTTTTTTTTTTTTToT:::::::::..........tT.T
+T.t.,...T..............TTTTTTTTTToTTTT,T:..::::..TTTTTTTTTTTTTTTT::::...............,..T
+T..T,.T.t..............TTTTTTTTToT.t.,.....,.::....TTTTTTTTTTTTTT::::..............,...T
+T...,T:,........:::....TTTTTTTTTTTtT.,.T..===:::::.TTTTTTTTTTTT.:::::::::::.....t.,,...T
+Tt..,,:.........:::....TTTTTTTTTT.Tt...,.====:::::..,TTT,TTTTToT:::::::::::......o.T,o.T
+T.....:..,......:::....TTTTtTTTT:........:::::::::..,TTTtTTT,TT::::::::::::........t,,.T
+T...t...:....::::::....TTTt,TTTt.....,...::::::,...::::::::::::::::::..............o..tT
+T...o,.......::::::....TTTtTt.,T:.,.,...:::::..,...::::::::::::::::::.........:.......TT
+T...TT.......::::::............:.....,..:::::::....::::::::::::::::::......::......t.,,T
+T.T,,........:t.:::...............::::::::::::::::::::..:::::::::::::.......,.:..,T..o.T
+TT..,T........,.:::...........:.,.::::::::::::::::::::..::::::::::::..............T....T
+T..t......:::..::::............:..::..,.:::::::....:::::::::.........o..,T.t..TT....tT.T
+T.,.T.....::::::::::::::::::::::::::::::::::===.,..:::::::::::::::::::::::::,.TT.TT..,TT
+T.t..,....:::::::::::::::::::::::::::::::::::::.,..:::::::::::::::::::::::::.........TTT
+T..T......::::::::::::::::::::::.,..::::::::::::::::::::::::::::::::::::::::.T..T...TtTT
+T..TT,....::::.:::::::::.......:....::.:::==:::::::::::::::::::::::......:::::::::...ttT
+T,..,.....::::.:::::::::..........,.::::::..::.:::::::::::::::::::::.TT..:::::::::TT.T.T
+T.T,t..:,..:::.:::::::::.........,::::::::::::.:::::~~~~~~~~~~~:::::.....:::::::::T,...T
+T.T,......,:::.:::...:::......T,T.::::,...::::::::::~~~~~~~~~~~~::::..........T:::..Tt.T
+T..,..,..,.:::.:::...:::.TTTTTTTTT:::,,,..::::...._~~~~~~~~~~~~~~:::.T........T...T.,.TT
+T..,.T...:::::.:::...:::.TTTTTTTT::::.....::::...._~~~~~~~~~~~~~~:::........T.,.,,T.,t.T
+T....,...:::::.:::....::.tTTTTT::::::..:::::::...__~~~~~~~~~~~~~~:::...........TT....o.T
+T..tT....:::::.:::..:.::TtTTTT:::,:::..:::::::,..,_~~~~~~~~~~~~~~:::................,T.T
+T,,......:::::.:::..::::.TTtT:::TT:::..:::.:::,T,t_~~~~~~~~~~~~~~:::...........o...t...T
+T,.......:::::.:::::::::.,t::::,TT:::..:::.:::tTTT_~~~~~~~~~~~~~~:::.......t,....,T.Tt.T
+T.o.T....:::::.:::::::::.t:::,TTTt:::..:::.:::TTTTTT~~~~~~~~~~~~~:::::.....tt.,....,...T
+Tt,,.,...:::::.::::::....t::TTTTTT:::..:::.:::oTTTTTT~~~~~~~~~~~.:::::......,T.T..,T.,,T
+T.o.,T...:::::.::::::....TTTTTTTTT:::..:::.:::Tt,t,TT__~~~~~~~...:::::.......T...,..T.TT
+T...,t...:::......:::....TTTTTTTTT:::......:::TT,TTTTttTTTTTTT.............t...To..,..,T
+T........:::......:::....TTTTTTTTT:::......:::TTtTTTTT,TTTTTTT..................T.Tt.T.T
+T,.......:::.............TTTTT,oT::::......:::.........,TToTT,..............T..,.t..,T.T
+T..TT....:::..............T.T...,::::......:::...................................,.....T
+T..t,....:::...............,..,,.::::.T..T.::::::::::::....................T.Tt..T,.T.,T
+T,.TT..T.:::,............T.....,.:::...,t..:::::::::::::::::.,.......,........TT...T..,T
+T..T.tT.T:::....tT..,t.......t.tT:::,....T,::::::::T.:::::::.....,T....T....T..,,T,.T,TT
+T..T....T:::....o,..T,.To.....T..:::...TT..::::::::..::::::::::::::.......t..,.......,.T
+T..,T.,T.:::TTt......to...,TT..:::::.o..T,.::::::::......::::::::::::::::::t.,...T..o..T
+Tt.T....,:::TT....T,.t..,,..,..:::::..T..t.,.............::::::::::::::::::.to,...TTT.TT
+T.....T..:::t..T......,.....tt.:::::t...T.T..................Tt.:::::::::::....T...T..TT
+T..TT.,TT..t..,.T.............,...T..tT...TT.............,..,.T...T,.t.T.tTo.o...,T,..,T
+T..,,.,....t.......,.......TTtT..T.Tt.,,T.t.............t.t...t....,T.t.T,...........TTT
+TT.T.T....T....t....T.T...T...,......,.,.....T.,..T.,T......T..T.T.....o,TT...t..,.o..,T
+T.,.tT..T.t......TT.....T,...T.T.,ttT.t,..,t,t.,.T..T.t...T....tT....,.......t,.T......T
+T..t.T....t,..t,T.T,....T..T..,.T,...,T......T.t,..o....T.,....tT..,..t.T...T...t.,.TttT
+T...T,........t.t.tto.t.T,...TT....T..T........tT.,...TT,T.T......T..,...TTT........,..T
+T,....,....t.......,T..oo..t...tt,.T,...,.t....tt,......,.,,.....,..o,,....tt......,...T
+T.t,.TT..........,...o..,..T,T..,.........To.,..t..,..,,,....,.,.,.T,T.TT...T...Tt,....T
+T.tt..TTT,.....T....,...tT.T.tTT....,.,.,Tt.,...T.,...T.......,...,,.t.T,....T.T,..t.t.T
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
 PROPS
-shrine 19.5 7.0 3.0 2.5 0
-torii 21.0 12.6 0 0 0
-house 11.0 11.0 4.0 3.0 0
-house 25.0 11.0 4.0 3.0 1
-house 10.0 19.0 3.5 3.0 2
-house 25.0 16.0 4.0 3.0 0
-house 16.0 23.0 4.0 3.0 1
-ruin 8.0 14.0 3.5 3.0 0
-well 21.0 21.0 0 0 0
-cart 24.5 22.0 0 0 0
-dock 29.5 22.5 0 0 0
-stone 8.5 24.0 0 0 0
-stone 33.0 15.0 0 0 0
-lantern 18.0 15.0 0 0 0
-lantern 24.0 15.0 0 0 0
-lantern 18.0 20.0 0 0 0
-lantern 24.0 20.0 0 0 0
-lantern 21.0 13.8 0 0 0
-lantern 21.0 10.4 0 0 0
-lantern 29.0 21.6 0 0 0
-lantern 12.2 17.6 0 0 0
-lantern 14.0 24.5 0 0 0
-lantern 30.5 17.2 0 0 0
-lantern 30.5 14.0 0 0 0
-# --------------------------------------------------------------------
-# npcs: <dialogue id> <x> <y>
+shrine 41.5 25.0 3.0 2.5 0
+torii 43.0 30.6 0.0 0.0 0
+house 33.0 29.0 4.0 3.0 0
+house 47.0 29.0 4.0 3.0 1
+house 32.0 37.0 3.5 3.0 2
+house 47.0 34.0 4.0 3.0 0
+house 38.0 41.0 4.0 3.0 1
+ruin 30.0 32.0 3.5 3.0 0
+well 43.0 39.0 0.0 0.0 0
+cart 46.5 40.0 0.0 0.0 0
+dock 51.5 40.5 0.0 0.0 0
+stone 30.5 42.0 0.0 0.0 0
+stone 55.0 33.0 0.0 0.0 0
+lantern 40.0 33.0 0.0 0.0 0
+lantern 46.0 33.0 0.0 0.0 0
+lantern 40.0 38.0 0.0 0.0 0
+lantern 46.0 38.0 0.0 0.0 0
+lantern 43.0 31.8 0.0 0.0 0
+lantern 43.0 28.4 0.0 0.0 0
+lantern 51.0 39.6 0.0 0.0 0
+lantern 34.2 35.6 0.0 0.0 0
+lantern 36.0 42.5 0.0 0.0 0
+lantern 52.5 35.2 0.0 0.0 0
+lantern 52.5 32.0 0.0 0.0 0
+house 7 27 4 3 1
+house 7 40 4 3 2
+house 18 44 4 3 0
+cart 15 33 0 0 0
+shrine 43 8 4 3 0
+ruin 76 12 4 3 0
+house 75 30 4 3 2
+stone 52 58 0 0 0
+lantern 14 29 0 0 0
+lantern 14 38 0 0 0
+lantern 20 49 0 0 0
+lantern 25 35 0 0 0
+lantern 63 36 0 0 0
+lantern 70 28 0 0 0
+lantern 51 12 0 0 0
+lantern 48 57 0 0 0
 NPCS
-elder 21.0 11.2
-smith 12.6 14.8
-fisher 28.8 22.2
-child 31.5 14.8
-farmer 25.4 19.9
-monk 19.2 13.4
-drunk 14.2 22.4
-ghost 9.5 17.9
-PLAYER 20.0 18.0
+elder 43.0 29.2
+smith 34.6 32.8
+fisher 50.8 40.2
+child 53.5 32.8
+farmer 47.4 37.9
+monk 41.2 31.4
+drunk 36.2 40.4
+ghost 31.5 35.9
+merchant_rice 14.5 30.5
+merchant_medicine 17.5 34.5
+merchant_relic 17.5 39.5
+priest_memorial 44.5 23.5
+priest_pilgrim 19.5 51.5
+guard_west 25.5 36.5
+guard_east 63.5 37.5
+bandit_leader 75.5 18.5
+bandit_scout 72.5 22.5
+bandit_deserter 73.5 27.5
+refugee_mother 12.5 49.5
+refugee_child 16.5 49.5
+porter 11.5 35.5
+hunter 68.5 49.5
+caretaker 52.5 13.5
+scribe 48.5 27.5
+relief_worker 40.5 49.5
+swindler 17.5 27.5
+charitable_farmer 19.5 39.5
+grave_keeper 49.5 58.5
+PLAYER 42.0 36.0
