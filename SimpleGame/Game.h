@@ -74,6 +74,7 @@ public:
 	void OnKey(unsigned char key, bool down, bool shift);
 	bool WantsExit() const { return m_WantsExit; }
 	bool ConsumeNextLevelRequest();
+	MonitoredWorld CaptureMonitoring(bool active) const;
 	GameState GetState() const
 	{
 		return m_State;

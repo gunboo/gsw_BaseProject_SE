@@ -5,6 +5,8 @@
 #include "Model.h"
 #include "Lighting.h"
 #include "Dialogue.h"
+#include "Bow.h"
+#include "Monitoring.h"
 
 // Borrowed actors are owned by Game's scene graph. This simulation has no
 // story progression flags and never changes the separate farming level.
@@ -16,8 +18,14 @@ public:
 	void Update(float deltaSeconds);
 	void SetState(bool active, bool visible);
 	void Attack();
+	void SelectWeapon(WeaponKind weapon);
+	bool HasBow() const
+	{
+		return m_Weapon == WEAPON_BOW;
+	}
 	void DrawHud(Renderer& renderer);
 	bool IsArmed(const std::string& id) const;
+	void CaptureMonitoring(MonitoredWorld& snapshot) const;
 
 private:
 	enum Behavior
@@ -46,6 +54,7 @@ private:
 		int destination = -1;
 		float afraid = 0.0f;
 		bool returning = false;
+		bool moving = false;
 	};
 
 	struct Monster
@@ -74,6 +83,8 @@ private:
 	void DrawSwing(Renderer& renderer);
 
 	World* m_World = NULL;
+	Bow m_Bow;
+	WeaponKind m_Weapon = WEAPON_SWORD;
 	Actor* m_Player = NULL;
 	Actor* m_Group = NULL;
 	ModelLibrary* m_Models = NULL;

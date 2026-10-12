@@ -1,9 +1,44 @@
 #include "stdafx.h"
 #include "Level.h"
+#include "AnalysisLog.h"
 
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <algorithm>
+
+MonitoredWorld Level::CaptureMonitoring(bool active) const
+{
+	const char* const states[] = { "play", "stats", "downed" };
+	const char* const kinds[] = { "wisp", "shade", "oni" };
+	MonitoredWorld snapshot;
+	snapshot.id = "level1";
+	snapshot.name = "Forest level 1";
+	snapshot.active = active;
+	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.width = m_World.GetWidth();
+	snapshot.height = m_World.GetHeight();
+	snapshot.kills = static_cast<unsigned int>(m_Kills);
+
+	for (size_t i = 0; i < m_Enemies.size(); ++i)
+	{
+		const Enemy& enemy = m_Enemies[i];
+		MonitoredEntity entity;
+		entity.id = "monster:" + std::to_string(i);
+		entity.kind = kinds[enemy.kind];
+		entity.behavior = "hostile";
+		entity.alive = enemy.alive;
+		entity.state = !enemy.alive ? "respawning" : active && m_State == LEVEL_PLAY ? "alive" : "paused";
+		entity.position = enemy.actor->GetWorldPosition();
+		entity.hasHealth = enemy.maxHealth > 0.0f;
+		entity.health = (std::max)(0.0f, enemy.health);
+		entity.maxHealth = enemy.maxHealth;
+		entity.respawnSeconds = (std::max)(0.0f, enemy.respawnTimer);
+		snapshot.monsters.push_back(entity);
+	}
+
+	return snapshot;
+}
 
 namespace
 {
@@ -316,6 +351,15 @@ void Level::BuildSceneGraph()
 	}
 
 	m_PickupActors = m_SceneGraph.CreateActor("pickups", m_SimulationActor);
+	m_Bow.Initialize(m_SceneGraph, m_SimulationActor, m_World, m_Enemies.size(),
+		[this](size_t index) -> Actor*
+		{
+			return m_Enemies[index].alive ? m_Enemies[index].actor : NULL;
+		},
+		[this](size_t index, float damage)
+		{
+			DamageEnemy(static_cast<int>(index), damage, false);
+		});
 	m_FloatingTextActors = m_SceneGraph.CreateActor("floating_text", m_SimulationActor);
 
 	Actor* camera = m_SceneGraph.CreateActor("camera_and_lights", m_SimulationActor);
@@ -637,6 +681,13 @@ void Level::Attack()
 
 	const ActorPosition player = PlayerPosition();
 	m_SwingCooldown = m_Stats.AttackInterval();
+
+	if (m_Weapon == WEAPON_BOW)
+	{
+		m_Bow.Shoot(player, m_Stats.AttackPower());
+		return;
+	}
+
 	m_SwingAnim = SWING_DURATION;
 
 	for (size_t i = 0; i < m_Enemies.size(); ++i)
@@ -767,6 +818,7 @@ void Level::DamagePlayer(float amount)
 		m_State = LEVEL_DOWNED;
 		m_StateTime = 0.0f;
 		m_DownedTimer = DOWNED_DURATION;
+		m_Bow.Clear();
 		m_AttackHeld = false;
 	}
 }
@@ -1197,6 +1249,19 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 	{
 		Attack();
 	}
+
+	if (m_State == LEVEL_PLAY && (key == '1' || key == '2'))
+	{
+		const WeaponKind weapon = key == '1' ? WEAPON_SWORD : WEAPON_BOW;
+
+		if (m_Weapon != weapon)
+		{
+			m_Weapon = weapon;
+			AnalysisLog::Get().Event("combat.weapon", weapon == WEAPON_BOW ? "level1;bow" : "level1;sword");
+		}
+
+		m_SwingAnim = 0.0f;
+	}
 }
 
 // ---------------------------------------------------------------- drawing
@@ -1376,9 +1441,14 @@ void Level::DrawPlayer()
 		DrawModel(m_Renderer, *person, screenX, screenY - stride, 1.0f, depth, shade);
 	}
 
-	if (sword != NULL)
+	if (sword != NULL && m_Weapon == WEAPON_SWORD)
 	{
 		DrawModel(m_Renderer, *sword, screenX, screenY - stride, 1.0f, depth, shade);
+	}
+
+	if (m_Weapon == WEAPON_BOW)
+	{
+		Bow::DrawEquipped(*m_Renderer, position);
 	}
 
 	if (lantern != NULL)
@@ -1520,6 +1590,10 @@ void Level::DrawBar(float x, float y, float width, float height, float fill,
 
 void Level::DrawHud()
 {
+	m_Renderer->PushText(Text(m_Weapon == WEAPON_BOW ? "ui_weapon_bow" : "ui_weapon_sword"),
+		m_Renderer->GetWidth() * 0.5f - 22.0f, m_Renderer->GetHeight() * 0.5f - 62.0f,
+		14, FONT_UI, true, RGBA(0.9f, 0.85f, 0.65f), ALIGN_RIGHT);
+
 	Renderer* r = m_Renderer;
 
 	const float left = -r->GetWidth() * 0.5f;
@@ -1527,57 +1601,76 @@ void Level::DrawHud()
 	const float right = r->GetWidth() * 0.5f;
 	const float bottom = r->GetHeight() * 0.5f;
 
-	// --- level and experience, top left ---
-	const float panelX = left + 22.0f;
-	const float panelY = top + 20.0f;
-	const float panelW = 268.0f;
-	const float panelH = 96.0f;
-
-	DrawPanel(panelX, panelY, panelW, panelH, 0.80f, DEPTH_PANEL);
-	r->PushRect(panelX, panelY, 2.0f, panelH, COL_SHU, DEPTH_PANEL_TOP);
-
-	r->PushText(Text("ui_lv_name"), panelX + 16.0f, panelY + 11.0f, 15, FONT_SERIF, true,
-		RGBA(0.80f, 0.66f, 0.52f, 0.95f), ALIGN_LEFT);
-
-	wchar_t buffer[96];
-	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_level").c_str(), m_Stats.level);
-	r->PushText(buffer, panelX + 16.0f, panelY + 33.0f, 20, FONT_SERIF, true,
-		RGBA(0.93f, 0.92f, 0.88f, 0.98f), ALIGN_LEFT);
-
-	const float experienceFill = m_Stats.IsMaxLevel() ? 1.0f
-		: (float)m_Stats.experience / (float)m_Stats.ExperienceToNext();
-	DrawBar(panelX + 16.0f, panelY + 64.0f, panelW - 32.0f, 7.0f, experienceFill,
-		RGBA(0.45f, 0.68f, 0.92f), RGBA(0.10f, 0.12f, 0.16f, 0.9f), DEPTH_PANEL_TOP);
-
-	std::wstring experienceText = Text("ui_lv_max_level");
-
-	if (!m_Stats.IsMaxLevel())
+	// Bottom-center status card, using resident primitive meshes.
+	auto roundedRect = [r](float x, float y, float w, float h, float radius,
+		const Color& color, float depth)
 	{
-		swprintf_s(buffer, 96, L"%d / %d", m_Stats.experience, m_Stats.ExperienceToNext());
-		experienceText = buffer;
+		radius = Clamp(radius, 0.0f, w * 0.5f);
+		r->PushRect(x + radius, y, w - radius * 2.0f, h, color, depth);
+		r->PushRect(x, y + radius, w, h - radius * 2.0f, color, depth);
+		r->PushEllipse(x + radius, y + radius, radius, radius, color, depth);
+		r->PushEllipse(x + w - radius, y + radius, radius, radius, color, depth);
+		r->PushEllipse(x + radius, y + h - radius, radius, radius, color, depth);
+		r->PushEllipse(x + w - radius, y + h - radius, radius, radius, color, depth);
+	};
+	const float panelW = 280.0f;
+	const float panelX = -panelW * 0.5f;
+	const float panelY = bottom - 110.0f;
+	wchar_t buffer[96];
+	roundedRect(panelX - 3.0f, panelY + 3.0f, panelW + 6.0f, 67.0f, 9.0f,
+		RGBA(0.015f, 0.02f, 0.03f, 0.85f), DEPTH_PANEL);
+	roundedRect(panelX, panelY, panelW, 64.0f, 7.0f,
+		RGBA(0.64f, 0.69f, 0.73f), DEPTH_PANEL + 1.0f);
+	roundedRect(panelX + 2.0f, panelY + 2.0f, panelW - 4.0f, 60.0f, 5.0f,
+		RGBA(0.18f, 0.21f, 0.26f), DEPTH_PANEL + 2.0f);
+	r->PushRect(panelX + 8.0f, panelY + 3.0f, panelW - 16.0f, 1.0f,
+		RGBA(0.85f, 0.89f, 0.93f, 0.65f), DEPTH_PANEL + 3.0f);
+	swprintf_s(buffer, 96, L"Lv. %d", m_Stats.level);
+	r->PushText(buffer, panelX + 15.0f, panelY + 8.0f, 17, FONT_UI, true,
+		RGBA(1.0f, 0.86f, 0.36f), ALIGN_LEFT);
+	r->PushText(Text("ui_lv_name"), panelX + panelW - 15.0f, panelY + 10.0f, 14, FONT_UI, true,
+		RGBA(0.91f, 0.93f, 0.96f), ALIGN_RIGHT);
+	roundedRect(panelX + 5.0f, panelY + 32.0f, panelW - 10.0f, 27.0f, 5.0f,
+		RGBA(0.88f, 0.91f, 0.94f), DEPTH_PANEL + 4.0f);
+	const float healthX = panelX + 13.0f;
+	const float healthY = panelY + 38.0f;
+	const float healthW = panelW - 26.0f;
+	const float healthFill = Clamp(m_Stats.health / m_Stats.MaxHealth(), 0.0f, 1.0f);
+	roundedRect(healthX, healthY, healthW, 15.0f, 7.0f,
+		RGBA(0.25f, 0.12f, 0.19f), DEPTH_PANEL + 5.0f);
+	if (healthFill > 0.0f)
+	{
+		roundedRect(healthX, healthY, healthW * healthFill, 15.0f, 7.0f,
+			RGBA(0.89f, 0.16f, 0.36f), DEPTH_PANEL + 6.0f);
+		roundedRect(healthX, healthY + 1.0f, healthW * healthFill, 5.0f, 2.0f,
+			RGBA(1.0f, 0.45f, 0.61f), DEPTH_PANEL + 7.0f);
 	}
+	swprintf_s(buffer, 96, L"HP  %d / %d", (int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
+	r->PushText(buffer, 1.0f, healthY + 1.0f, 12, FONT_UI, true,
+		RGBA(0.24f, 0.05f, 0.11f), ALIGN_CENTER);
+	r->PushText(buffer, 0.0f, healthY, 12, FONT_UI, true,
+		RGBA(1.0f, 1.0f, 1.0f), ALIGN_CENTER);
 
-	r->PushText(experienceText, panelX + panelW - 16.0f, panelY + 74.0f, 13, FONT_UI, false,
-		RGBA(0.68f, 0.70f, 0.74f, 0.85f), ALIGN_RIGHT);
-
+	// Experience spans the bottom edge and follows window resizing.
+	const float experienceFill = m_Stats.IsMaxLevel() ? 1.0f
+		: Clamp((float)m_Stats.experience / (float)m_Stats.ExperienceToNext(), 0.0f, 1.0f);
+	const float experienceW = right - left;
+	r->PushRect(left, bottom - 12.0f, experienceW, 12.0f,
+		RGBA(0.48f, 0.51f, 0.55f), DEPTH_PANEL);
+	DrawBar(left, bottom - 10.0f, experienceW, 8.0f, experienceFill,
+		RGBA(0.88f, 0.79f, 0.17f), RGBA(0.09f, 0.11f, 0.14f), DEPTH_PANEL + 1.0f);
+	r->PushRect(left, bottom - 10.0f, experienceW * experienceFill, 2.0f,
+		RGBA(1.0f, 0.96f, 0.54f), DEPTH_PANEL + 2.0f);
+	if (m_Stats.IsMaxLevel())
+		swprintf_s(buffer, 96, L"EXP  %s", Text("ui_lv_max_level").c_str());
+	else
+		swprintf_s(buffer, 96, L"EXP  %d / %d  (%.1f%%)",
+			m_Stats.experience, m_Stats.ExperienceToNext(), experienceFill * 100.0f);
+	r->PushText(buffer, right - 22.0f, bottom - 32.0f, 13, FONT_UI, true,
+		RGBA(0.98f, 0.91f, 0.56f), ALIGN_RIGHT);
 	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_kills").c_str(), m_Kills);
-	r->PushText(buffer, panelX + 16.0f, panelY + 74.0f, 13, FONT_UI, false,
-		RGBA(0.68f, 0.70f, 0.74f, 0.85f), ALIGN_LEFT);
-
-	// --- health, bottom left ---
-	const float healthX = left + 22.0f;
-	const float healthY = bottom - 66.0f;
-	const float healthW = 240.0f;
-
-	r->PushText(Text("ui_lv_hp"), healthX, healthY - 20.0f, 13, FONT_UI, false,
-		RGBA(0.70f, 0.72f, 0.70f, 0.85f), ALIGN_LEFT);
-
-	DrawBar(healthX, healthY, healthW, 12.0f, m_Stats.health / m_Stats.MaxHealth(),
-		RGBA(0.72f, 0.22f, 0.18f), RGBA(0.10f, 0.10f, 0.12f, 0.9f), DEPTH_PANEL);
-
-	swprintf_s(buffer, 96, L"%d / %d", (int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
-	r->PushText(buffer, healthX + healthW, healthY - 20.0f, 13, FONT_UI, false,
-		RGBA(0.70f, 0.72f, 0.70f, 0.85f), ALIGN_RIGHT);
+	r->PushText(buffer, left + 22.0f, top + 22.0f, 14, FONT_UI, false,
+		RGBA(0.80f, 0.82f, 0.85f), ALIGN_LEFT);
 
 	// --- unspent points nag, top right ---
 	if (m_Stats.unspentPoints > 0)

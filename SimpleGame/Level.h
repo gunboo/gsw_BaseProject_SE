@@ -11,6 +11,8 @@
 #include "SceneGraph.h"
 #include "Stats.h"
 #include "World.h"
+#include "Bow.h"
+#include "Monitoring.h"
 
 enum LevelState
 {
@@ -83,6 +85,7 @@ public:
 	void Update(float deltaSeconds);
 	void Render();
 	void OnKey(unsigned char key, bool down, bool shift);
+	MonitoredWorld CaptureMonitoring(bool active) const;
 
 	// Gameplay retains borrowed Actor pointers; remove managed actors only
 	// through the scene lifecycle.
@@ -148,6 +151,8 @@ private:
 	DialogueDB* m_Dialogue;
 
 	World m_World;
+	Bow m_Bow;
+	WeaponKind m_Weapon = WEAPON_SWORD;
 	Lighting m_Lighting;
 	PlayerStats m_Stats;
 	Rng m_Rng;

@@ -6,6 +6,34 @@
 #include <cstdlib>
 #include <iostream>
 
+MonitoredWorld Game::CaptureMonitoring(bool active) const
+{
+	const char* const states[] = { "intro", "play", "dialogue", "clues", "ending" };
+	MonitoredWorld snapshot;
+	snapshot.id = "tutorial";
+	snapshot.name = "Tutorial village";
+	snapshot.active = active;
+	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.width = m_World.GetWidth();
+	snapshot.height = m_World.GetHeight();
+	m_Village.CaptureMonitoring(snapshot);
+
+	if (active && m_State == STATE_DIALOGUE && m_TargetKind == INTERACT_NPC && m_TargetIndex >= 0)
+	{
+		const std::string id = "npc:" + m_Npcs[m_TargetIndex].id;
+
+		for (MonitoredEntity& entity : snapshot.npcs)
+		{
+			if (entity.id == id)
+			{
+				entity.state = "talking";
+			}
+		}
+	}
+
+	return snapshot;
+}
+
 namespace
 {
 	// ---------------------------------------------------------------- palette
@@ -52,7 +80,7 @@ namespace
 	const float PLAYER_RADIUS = 0.28f;
 	const float WALK_SPEED = 3.1f;
 	const float RUN_SPEED = 5.2f;
-	const unsigned char TUTORIAL_SKIP_KEY = '1';
+	const unsigned char TUTORIAL_SKIP_KEY = 'k';
 	const int SKIP_HINT_FONT_SIZE = 14;
 	const float SKIP_HINT_SIDE_MARGIN = 22.0f;
 	const float SKIP_HINT_BOTTOM_MARGIN = 34.0f;
@@ -1056,6 +1084,12 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		return;
 	}
 
+	if (key == '1' || key == '2')
+	{
+		m_Village.SelectWeapon(key == '1' ? WEAPON_SWORD : WEAPON_BOW);
+		return;
+	}
+
 	// Check before state-specific input so dialogue and clue panels can be skipped too.
 	if (key == TUTORIAL_SKIP_KEY)
 	{
@@ -1258,7 +1292,12 @@ void Game::DrawPlayer(const Actor& actor)
 	const float stride = m_Moving ? fabsf(sinf(m_PlayerStride)) * 2.6f : 0.0f;
 
 	DrawPerson(position.x, position.y, 1.38f, RGBA(0.20f, 0.24f, 0.31f),
-		COL_SHU, false, true, true, -stride, position.z);
+		COL_SHU, false, !m_Village.HasBow(), true, -stride, position.z);
+
+	if (m_Village.HasBow())
+	{
+		Bow::DrawEquipped(*m_Renderer, position);
+	}
 }
 
 // Vegetation and boulders come from the cached library. The shapes used to be

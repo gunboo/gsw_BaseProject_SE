@@ -73,7 +73,7 @@ WASD 이동 · E 대화 · Tab 단서
 WASD 이동   Shift 달리기   E 대화·조사   Tab 단서   Esc 종료
 
 @ui_tutorial_skip
-[1] 튜토리얼 건너뛰기 · 제1레벨
+[K] 튜토리얼 건너뛰기 · 제1레벨
 
 # ---------------------------------------------------------------- elder
 @elder_intro
@@ -392,7 +392,13 @@ $묘지기
 체력
 
 @ui_village_combat
-Space 공격 · E 대화
+Space 공격 · 1 칼 / 2 활
 
 @ui_village_region
 마을 안전 / 외곽 요괴·산적
+
+@ui_weapon_sword
+[1] 칼  /  [2] 활 · Space 공격
+
+@ui_weapon_bow
+[2] 활 · 자동조준 / [1] 칼

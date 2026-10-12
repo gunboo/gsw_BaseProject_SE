@@ -16,6 +16,7 @@ namespace
 	const float MAX_HEALTH = 100.0f;
 	const float ATTACK_RANGE = 2.4f;
 	const float ATTACK_INTERVAL = 0.45f;
+	const float BOW_INTERVAL = 0.65f;
 	const float PLAYER_DAMAGE = 24.0f;
 	const float RESPAWN_DISTANCE = 11.0f;
 	const float REPATH_INTERVAL = 1.2f;
@@ -140,6 +141,33 @@ bool VillageSimulation::Initialize(World& world, SceneGraph& graph, Actor* playe
 			return false;
 		}
 	}
+
+	m_Bow.Initialize(graph, m_Group, world, m_Monsters.size() + m_Residents.size(),
+		[this](size_t index) -> Actor*
+		{
+			if (index < m_Monsters.size())
+			{
+				return m_Monsters[index].health > 0.0f ? m_Monsters[index].walker.actor : NULL;
+			}
+
+			Resident& resident = m_Residents[index - m_Monsters.size()];
+
+			return resident.behavior == BANDIT && resident.afraid <= 0.0f ? resident.walker.actor : NULL;
+		},
+		[this](size_t index, float damage)
+		{
+			if (index < m_Monsters.size())
+			{
+				HitMonster(index, damage);
+			}
+			else
+			{
+				Resident& resident = m_Residents[index - m_Monsters.size()];
+				resident.afraid = BANDIT_RETREAT_TIME;
+				resident.walker.repath = 0.0f;
+				AnalysisLog::Get().Event("village.bandit_repelled", resident.id + ";bow");
+			}
+		});
 
 	Actor* swing = graph.CreateActor("VillageAttack", player);
 	swing->SetRenderBounds(-130.0f, -80.0f, 130.0f, 80.0f);
@@ -691,6 +719,7 @@ void VillageSimulation::HurtPlayer(float damage)
 		m_Player->SetPosition(m_World->GetPlayerStartX(), m_World->GetPlayerStartY());
 		m_Health = MAX_HEALTH;
 		m_Invulnerable = RECOVERY_GRACE_TIME;
+		m_Bow.Clear();
 		AnalysisLog::Get().Event("village.player_recovered", "sanctuary;no_story_reset");
 	}
 }
@@ -714,6 +743,13 @@ void VillageSimulation::Attack()
 {
 	if (m_AttackCooldown > 0.0f)
 	{
+		return;
+	}
+
+	if (m_Weapon == WEAPON_BOW)
+	{
+		m_Bow.Shoot(m_Player->GetWorldPosition(), PLAYER_DAMAGE);
+		m_AttackCooldown = BOW_INTERVAL;
 		return;
 	}
 
@@ -744,6 +780,16 @@ void VillageSimulation::Attack()
 	}
 }
 
+void VillageSimulation::SelectWeapon(WeaponKind weapon)
+{
+	if (m_Weapon != weapon)
+	{
+		m_Weapon = weapon;
+		m_Swing = 0.0f;
+		AnalysisLog::Get().Event("combat.weapon", weapon == WEAPON_BOW ? "village;bow" : "village;sword");
+	}
+}
+
 void VillageSimulation::Update(float deltaSeconds)
 {
 	m_AttackCooldown = (std::max)(0.0f, m_AttackCooldown - deltaSeconds);
@@ -752,7 +798,10 @@ void VillageSimulation::Update(float deltaSeconds)
 
 	for (Resident& resident : m_Residents)
 	{
+		const ActorPosition before = resident.walker.actor->GetWorldPosition();
 		UpdateResident(resident, deltaSeconds);
+		const ActorPosition after = resident.walker.actor->GetWorldPosition();
+		resident.moving = before.x != after.x || before.y != after.y;
 	}
 
 	unsigned int alive = 0;
@@ -781,6 +830,59 @@ void VillageSimulation::SetState(bool active, bool visible)
 	{
 		m_Group->SetActive(active);
 		m_Group->SetVisible(visible);
+	}
+}
+
+void VillageSimulation::CaptureMonitoring(MonitoredWorld& snapshot) const
+{
+	const std::string villageId = "sanctuary";
+	MonitoredVillage village;
+	village.id = villageId;
+	village.name = "Sanctuary and outskirts";
+	snapshot.villages.push_back(village);
+	snapshot.kills = m_Kills;
+	const bool simulating = snapshot.active && snapshot.state == "play";
+
+	for (const Resident& resident : m_Residents)
+	{
+		MonitoredEntity entity;
+		entity.id = "npc:" + resident.id;
+		entity.villageId = villageId;
+		entity.kind = "resident";
+		entity.behavior = BEHAVIORS[resident.behavior];
+		entity.state = !simulating ? "paused" : resident.moving ? "moving" : "idle";
+
+		if (simulating && resident.moving && (resident.afraid > 0.0f || resident.behavior == FLEE))
+		{
+			entity.state = "fleeing";
+		}
+		else if (simulating && resident.moving && resident.returning)
+		{
+			entity.state = "returning";
+		}
+
+		entity.position = resident.walker.actor->GetWorldPosition();
+		snapshot.npcs.push_back(entity);
+	}
+
+	const char* const monsterKinds[] = { "wisp", "shade", "oni" };
+
+	for (size_t i = 0; i < m_Monsters.size(); ++i)
+	{
+		const Monster& monster = m_Monsters[i];
+		MonitoredEntity entity;
+		entity.id = "monster:" + std::to_string(i);
+		entity.villageId = villageId;
+		entity.kind = monsterKinds[monster.kind];
+		entity.behavior = "hostile";
+		entity.alive = monster.health > 0.0f;
+		entity.state = !entity.alive ? "respawning" : simulating ? "alive" : "paused";
+		entity.position = monster.walker.actor->GetWorldPosition();
+		entity.hasHealth = true;
+		entity.health = (std::max)(0.0f, monster.health);
+		entity.maxHealth = PROFILES[monster.kind].health;
+		entity.respawnSeconds = (std::max)(0.0f, monster.respawn);
+		snapshot.monsters.push_back(entity);
 	}
 }
 
@@ -834,7 +936,7 @@ void VillageSimulation::DrawHud(Renderer& renderer)
 		+ std::to_wstring(static_cast<int>(m_Health)) + L" / 100";
 	renderer.PushRect(x - 242.0f, y - 6.0f, 252.0f, 82.0f, RGBA(0.04f, 0.05f, 0.07f, 0.9f), DRAW_DEPTH);
 	renderer.PushText(status, x, y, 16, FONT_UI, true, RGBA(0.9f, 0.8f, 0.7f), ALIGN_RIGHT);
-	renderer.PushText(m_Dialogue->Line("ui_village_combat"), x, y + 25.0f, 14, FONT_UI, false,
+	renderer.PushText(m_Dialogue->Line(m_Weapon == WEAPON_BOW ? "ui_weapon_bow" : "ui_weapon_sword"), x, y + 25.0f, 14, FONT_UI, false,
 		RGBA(0.8f, 0.8f, 0.7f), ALIGN_RIGHT);
 	renderer.PushText(m_Dialogue->Line("ui_village_region"), x, y + 49.0f, 13, FONT_UI, false,
 		RGBA(0.7f, 0.8f, 0.7f), ALIGN_RIGHT);
