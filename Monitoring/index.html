@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>월드 모니터 · GSW</title>
+  <link rel="stylesheet" href="/dashboard.css">
+  <script src="/dashboard.js" defer></script>
+</head>
+<body>
+  <header>
+    <div><div class="eyebrow">GAME SOFTWARE ENGINEERING / LOCAL TELEMETRY</div>
+      <h1>월드 모니터 <span class="tag">JSON v1</span></h1>
+      <p>프로젝트와 월드의 상태를 한곳에서 확인합니다.</p>
+    </div>
+    <div class="connection"><span id="connection" class="badge">연결 중</span><div id="updated">—</div></div>
+  </header>
+  <main>
+    <div id="notice" role="status">JSON 수신 서버에 연결하고 있습니다.</div>
+    <section class="metrics" aria-label="전체 현황">
+      <article><span>연결된 실행 인스턴스</span><strong id="sources">0</strong></article>
+      <article><span>선택된 월드 / 로드된 월드</span><strong id="worlds">0 / 0</strong></article>
+      <article><span>선택된 월드 NPC</span><strong id="npcs">0</strong></article>
+      <article><span>선택된 월드 생존 몹 / 슬롯</span><strong id="monsters">0 / 0</strong></article>
+    </section>
+    <section aria-label="월드와 마을 현황">
+      <div class="section-title"><h2>월드 · 마을 현황</h2><span>1초 간격 갱신 · 5초 미수신 시 오프라인</span></div>
+      <div id="world-cards" class="world-grid"></div>
+    </section>
+    <section aria-label="엔티티 상세">
+      <div class="section-title"><h2>엔티티 상세</h2><a href="/api/state" target="_blank" rel="noopener">수신 JSON 보기 ↗</a></div>
+      <div class="toolbar">
+        <label>월드<select id="world-filter"><option value="">전체 월드</option></select></label>
+        <label>마을<select id="village-filter"><option value="">전체 마을</option></select></label>
+        <label>대상<select id="kind-filter"><option value="npcs">NPC</option><option value="monsters">몹</option></select></label>
+        <label class="search">검색<input id="search" type="search" placeholder="ID, 행동 또는 상태 검색" autocomplete="off"></label>
+        <label class="checkbox"><input id="offline-filter" type="checkbox">오프라인 포함</label>
+      </div>
+      <div id="table-count"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>엔티티 ID</th><th>프로젝트 / 인스턴스</th><th>월드 / 마을</th><th>종류 / 행동</th><th>상태</th><th>위치 (X, Y, Z)</th><th>체력</th><th>재생성</th></tr></thead>
+        <tbody id="entities"></tbody>
+      </table></div>
+    </section>
+    <footer>집계는 온라인 인스턴스 기준입니다. 비선택 월드는 메모리에 보관된 상태이며 NPC 체력이 없는 경우 —로 표시합니다.</footer>
+  </main>
+</body>
+</html>

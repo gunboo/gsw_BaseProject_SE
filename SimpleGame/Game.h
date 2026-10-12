@@ -9,6 +9,7 @@
 #include "Input.h"
 #include "Lighting.h"
 #include "Model.h"
+#include "Monitoring.h"
 
 enum GameState
 {
@@ -66,6 +67,7 @@ public:
 
 	void Update(float deltaSeconds);
 	void Render();
+	MonitoredWorld CaptureMonitoring(bool active) const;
 
 	void OnKey(unsigned char key, bool down, bool shift);
 	bool WantsExit() const { return m_WantsExit; }

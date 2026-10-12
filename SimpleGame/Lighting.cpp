@@ -22,15 +22,15 @@ namespace
 }
 
 Lighting::Lighting()
-	: m_FogNear(8.5f)
-	, m_FogFar(19.0f)
-	, m_FogMax(0.90f)
+	: m_FogNear(12.0f)
+	, m_FogFar(26.0f)
+	, m_FogMax(0.72f)
 	, m_ViewerX(0.0f)
 	, m_ViewerY(0.0f)
 	, m_Time(0.0f)
 {
-	m_Ambient = RGBA(0.38f, 0.45f, 0.62f);
-	m_FogColor = RGBA(0.055f, 0.075f, 0.105f);
+	m_Ambient = RGBA(0.72f, 0.77f, 0.66f);
+	m_FogColor = RGBA(0.10f, 0.15f, 0.14f);
 }
 
 void Lighting::Clear()
@@ -93,9 +93,9 @@ float Lighting::FogFactor(float worldX, float worldY) const
 	const float dx = worldX - m_ViewerX;
 	const float dy = worldY - m_ViewerY;
 	const float distance = sqrtf(dx * dx + dy * dy);
-	const float t = (distance - m_FogNear) / (m_FogFar - m_FogNear);
+	const float t = Clamp((distance - m_FogNear) / (m_FogFar - m_FogNear), 0.0f, 1.0f);
 
-	return Clamp(t, 0.0f, 1.0f) * m_FogMax;
+	return t * t * (3.0f - 2.0f * t) * m_FogMax;
 }
 
 Color Lighting::SampleLight(float worldX, float worldY) const

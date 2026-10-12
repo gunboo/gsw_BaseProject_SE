@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "type": "snapshot",
+  "sourceId": "sample-project",
+  "instanceId": "sample-session-1",
+  "sequence": 1,
+  "worlds": [
+    {
+      "id": "world-a",
+      "name": "예제 월드 A",
+      "state": "play",
+      "active": true,
+      "width": 88,
+      "height": 72,
+      "kills": 1,
+      "villages": [{ "id": "town-a", "name": "예제 마을 A" }],
+      "npcs": [
+        {
+          "id": "npc:elder",
+          "villageId": "town-a",
+          "kind": "resident",
+          "behavior": "stay",
+          "state": "idle",
+          "position": { "x": 42, "y": 33, "z": 0 },
+          "alive": true,
+          "health": null,
+          "maxHealth": null,
+          "respawnSeconds": 0
+        }
+      ],
+      "monsters": [
+        {
+          "id": "monster:0",
+          "villageId": "town-a",
+          "kind": "wisp",
+          "behavior": "hostile",
+          "state": "alive",
+          "position": { "x": 14, "y": 18, "z": 0 },
+          "alive": true,
+          "health": 24,
+          "maxHealth": 24,
+          "respawnSeconds": 0
+        },
+        {
+          "id": "monster:1",
+          "villageId": "town-a",
+          "kind": "oni",
+          "behavior": "hostile",
+          "state": "respawning",
+          "position": { "x": 20, "y": 18, "z": 0 },
+          "alive": false,
+          "health": 0,
+          "maxHealth": 96,
+          "respawnSeconds": 6.5
+        }
+      ]
+    }
+  ]
+}

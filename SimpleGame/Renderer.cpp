@@ -392,6 +392,35 @@ void Renderer::PushEllipse(float centerX, float centerY, float radiusX, float ra
 	PushPolygon(xy, segments, color, depth);
 }
 
+void Renderer::PushSoftEllipse(float centerX, float centerY, float radiusX, float radiusY,
+	const Color& color, float depth, int segments)
+{
+	if (radiusX <= 0.0f || radiusY <= 0.0f)
+	{
+		return;
+	}
+
+	segments = segments < MIN_ELLIPSE_SEGMENTS ? MIN_ELLIPSE_SEGMENTS : segments;
+	segments = segments > MAX_ELLIPSE_SEGMENTS ? MAX_ELLIPSE_SEGMENTS : segments;
+
+	float xy[(MAX_ELLIPSE_SEGMENTS + 2) * 2];
+	Color colors[MAX_ELLIPSE_SEGMENTS + 2];
+	xy[0] = centerX;
+	xy[1] = centerY;
+	colors[0] = color;
+
+	// A closed triangle fan interpolates opacity to zero at the perimeter.
+	for (int i = 0; i <= segments; ++i)
+	{
+		const float angle = TWO_PI * (float)i / (float)segments;
+		xy[(i + 1) * 2] = centerX + cosf(angle) * radiusX;
+		xy[(i + 1) * 2 + 1] = centerY + sinf(angle) * radiusY;
+		colors[i + 1] = RGBA(color.r, color.g, color.b, 0.0f);
+	}
+
+	PushPolygonShaded(xy, colors, segments + 2, depth);
+}
+
 void Renderer::PushLine(float x0, float y0, float x1, float y1, float thickness, const Color& color, float depth)
 {
 	const float dx = x1 - x0;

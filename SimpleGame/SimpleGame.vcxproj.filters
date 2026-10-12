@@ -1,6 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Monitoring">
+      <UniqueIdentifier>{6109A718-25F5-4F17-BA23-5CF7916D96E8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="소스 파일">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -21,6 +24,9 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Monitoring.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -30,8 +36,14 @@
     <ClInclude Include="Renderer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="VisualStyle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Monitoring.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -43,6 +55,30 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Monitoring\README.md">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\start-monitor.cmd">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\server.js">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\server.test.js">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\example-snapshot.json">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\index.html">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\dashboard.js">
+      <Filter>Monitoring</Filter>
+    </None>
+    <None Include="..\Monitoring\dashboard.css">
+      <Filter>Monitoring</Filter>
+    </None>
     <None Include="Shaders\SolidRect.fs">
       <Filter>소스 파일\Shaders</Filter>
     </None>

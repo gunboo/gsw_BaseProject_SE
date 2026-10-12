@@ -10,6 +10,7 @@
 #include "Renderer.h"
 #include "Stats.h"
 #include "World.h"
+#include "Monitoring.h"
 
 enum LevelState
 {
@@ -85,6 +86,7 @@ public:
 
 	void Update(float deltaSeconds);
 	void Render();
+	MonitoredWorld CaptureMonitoring(bool active) const;
 	void OnKey(unsigned char key, bool down, bool shift);
 
 	bool WantsExit() const

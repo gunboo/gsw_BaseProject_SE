@@ -1,37 +1,70 @@
 #include "stdafx.h"
 #include "Game.h"
+#include "VisualStyle.h"
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
+MonitoredWorld Game::CaptureMonitoring(bool active) const
+{
+	const char* const states[] = { "intro", "play", "dialogue", "clues", "ending" };
+	MonitoredWorld snapshot;
+	snapshot.id = "tutorial";
+	snapshot.name = "Tutorial village";
+	snapshot.active = active;
+	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.width = m_World.GetWidth();
+	snapshot.height = m_World.GetHeight();
+	MonitoredVillage village;
+	village.id = "sanctuary";
+	village.name = "Sanctuary";
+	snapshot.villages.push_back(village);
+
+	for (size_t i = 0; i < m_Npcs.size(); ++i)
+	{
+		const Npc& npc = m_Npcs[i];
+		MonitoredEntity entity;
+		entity.id = "npc:" + npc.id;
+		entity.villageId = village.id;
+		entity.kind = "resident";
+		// This version's residents stay at their map-defined positions.
+		entity.behavior = "stay";
+		entity.state = active && m_State == STATE_PLAY ? "idle" : "paused";
+		entity.position.x = npc.x;
+		entity.position.y = npc.y;
+
+		if (active && m_State == STATE_DIALOGUE && m_TargetKind == INTERACT_NPC
+			&& m_TargetIndex == static_cast<int>(i))
+		{
+			entity.state = "talking";
+		}
+
+		snapshot.npcs.push_back(entity);
+	}
+
+	return snapshot;
+}
+
 namespace
 {
 	// ---------------------------------------------------------------- palette
-	// The four colours from the design document, plus the terrain they sit on.
-	// Everything here is the UNLIT value; Game::Lit applies night and lantern
-	// light on top, which is what actually carries the mood.
-	const Color COL_GRASS = { 0.34f, 0.41f, 0.30f, 1.0f };
-	const Color COL_TALLGRASS = { 0.29f, 0.37f, 0.27f, 1.0f };
-	const Color COL_DIRT = { 0.47f, 0.40f, 0.30f, 1.0f };
-	const Color COL_STONE = { 0.47f, 0.48f, 0.46f, 1.0f };
-	const Color COL_WATER = { 0.20f, 0.30f, 0.39f, 1.0f };
-	const Color COL_SAND = { 0.56f, 0.51f, 0.41f, 1.0f };
+	// Materials are unlit; ambient light and lanterns are applied per object.
 
 	const Color COL_TSUCHI = { 0.48f, 0.38f, 0.28f, 1.0f };		// 土  earth
 	const Color COL_SHIRO = { 0.79f, 0.77f, 0.70f, 1.0f };		// 白  faded white
-	const Color COL_SHU = { 0.66f, 0.24f, 0.16f, 1.0f };		// 朱  vermilion
+	const Color COL_SHU = { 0.69f, 0.34f, 0.24f, 1.0f };		// 朱  vermilion
 
-	const Color COL_THATCH = { 0.31f, 0.28f, 0.24f, 1.0f };
-	const Color COL_PLASTER = { 0.62f, 0.60f, 0.54f, 1.0f };
-	const Color COL_TIMBER = { 0.25f, 0.21f, 0.18f, 1.0f };
+	const Color COL_THATCH = { 0.39f, 0.44f, 0.34f, 1.0f };
+	const Color COL_PLASTER = { 0.70f, 0.70f, 0.56f, 1.0f };
+	const Color COL_TIMBER = { 0.35f, 0.29f, 0.22f, 1.0f };
 
-	const Color COL_FOG = { 0.055f, 0.075f, 0.105f, 1.0f };
-	const Color COL_SKY = { 0.035f, 0.048f, 0.068f, 1.0f };
+	const Color COL_FOG = VisualStyle::COL_FOG;
+	const Color COL_SKY = VisualStyle::COL_SKY;
 	const Color COL_FLAME = { 1.0f, 0.70f, 0.36f, 1.0f };
 
-	const Color COL_INK = { 0.045f, 0.055f, 0.070f, 1.0f };
+	const Color COL_INK = { 0.035f, 0.055f, 0.045f, 1.0f };
 
 	const float TWO_PI = 6.2831853f;
 
@@ -60,6 +93,9 @@ namespace
 	const float DEPTH_OVERLAY = 900000.0f;
 	const float DEPTH_PANEL = 920000.0f;
 	const float DEPTH_PANEL_TOP = 930000.0f;
+	const float FACE_BASE_SHADE = 0.78f;
+	const float FACE_HIGHLIGHT_RANGE = 0.32f;
+	const int ROOF_RIB_COUNT = 7;
 
 	float Clamp(float value, float low, float high)
 	{
@@ -89,7 +125,13 @@ namespace
 	// Projects a world-space polygon and hands it to the batch.
 	void PushPoly3(Renderer* renderer, const float* xyz, int count, const Color& color, float depth)
 	{
+		if (count < 3)
+		{
+			return;
+		}
+
 		float points[32];
+		Color colors[16];
 
 		if (count > 16)
 		{
@@ -102,7 +144,24 @@ namespace
 				&points[i * 2 + 0], &points[i * 2 + 1]);
 		}
 
-		renderer->PushPolygon(points, count, color, depth);
+		float minimumHeight = xyz[2];
+		float maximumHeight = xyz[2];
+
+		for (int i = 0; i < count; ++i)
+		{
+			minimumHeight = fminf(minimumHeight, xyz[i * 3 + 2]);
+			maximumHeight = fmaxf(maximumHeight, xyz[i * 3 + 2]);
+		}
+
+		for (int i = 0; i < count; ++i)
+		{
+			const float elevation = (xyz[i * 3 + 2] - minimumHeight)
+				/ fmaxf(maximumHeight - minimumHeight, 0.01f);
+			colors[i] = Scale(color, maximumHeight > minimumHeight
+				? FACE_BASE_SHADE + elevation * FACE_HIGHLIGHT_RANGE : 1.0f);
+		}
+
+		renderer->PushPolygonShaded(points, colors, count, depth);
 	}
 
 	// Flat quad lying on a horizontal plane at height z.
@@ -836,7 +895,8 @@ void Game::PushShadow(float worldX, float worldY, float radiusX, float radiusY, 
 	m_Renderer->WorldToScreen(worldX, worldY, 0.0f, &sx, &sy);
 
 	Color shadow = RGBA(0.0f, 0.0f, 0.0f, 0.30f * (1.0f - FogFactor(worldX, worldY)));
-	m_Renderer->PushEllipse(sx, sy, radiusX, radiusY, shadow, depth, 12);
+	m_Renderer->PushSoftEllipse(sx + radiusX * 0.15f, sy + 2.0f, radiusX * 1.35f,
+		radiusY * 1.35f, shadow, VisualStyle::SHADOW_DEPTH + depth * 0.01f);
 }
 
 // ---------------------------------------------------------------- world draw
@@ -850,47 +910,16 @@ void Game::DrawGround()
 	{
 		for (int x = 0; x < width; ++x)
 		{
-			float sx, sy;
-			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &sx, &sy);
+			float screenX = 0.0f;
+			float screenY = 0.0f;
+			m_Renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &screenX, &screenY);
 
-			if (!OnScreen(sx, sy, 64.0f))
+			if (!OnScreen(screenX, screenY, 64.0f))
 			{
 				continue;
 			}
 
-			const TileType tile = m_World.GetTile(x, y);
-
-			Color base;
-
-			switch (tile)
-			{
-			case TILE_TALLGRASS: base = COL_TALLGRASS; break;
-			case TILE_DIRT:      base = COL_DIRT; break;
-			case TILE_STONE:     base = COL_STONE; break;
-			case TILE_SAND:      base = COL_SAND; break;
-			case TILE_WATER:     base = COL_WATER; break;
-			default:             base = COL_GRASS; break;		// trees stand on grass
-			}
-
-			if (tile == TILE_WATER)
-			{
-				const float ripple = sinf(m_Time * 1.3f + x * 0.62f + y * 0.44f) * 0.035f
-					+ sinf(m_Time * 0.7f + x * 0.21f - y * 0.33f) * 0.02f;
-				base.g += ripple;
-				base.b += ripple * 1.4f;
-			}
-			else
-			{
-				// Slight per-tile value noise so the ground is not a flat wash.
-				const float shade = 1.0f + ((float)(HashInt(x, y) % 100) * 0.01f - 0.5f) * 0.09f;
-				base.r *= shade;
-				base.g *= shade;
-				base.b *= shade;
-			}
-
-			const Color lit = Lit(base, (float)x + 0.5f, (float)y + 0.5f);
-			m_Renderer->PushDiamond(sx, sy, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
-				lit, -100000.0f + (float)(x + y) * 0.01f);
+			VisualStyle::DrawGroundTile(m_Renderer, m_World, m_Lighting, x, y);
 		}
 	}
 }
@@ -1012,9 +1041,9 @@ void Game::DrawScenery()
 			Mix(robes[npc.look], COL_SHIRO, 0.35f), hat, false, false, bob);
 	}
 
-	// The player: dark indigo, a faded red sword cord, and a carried lantern.
+	// A muted red cloak keeps the player readable against the moss palette.
 	const float stride = m_Moving ? fabsf(sinf(m_PlayerStride)) * 2.6f : 0.0f;
-	DrawPerson(m_PlayerX, m_PlayerY, 1.38f, RGBA(0.20f, 0.24f, 0.31f),
+	DrawPerson(m_PlayerX, m_PlayerY, 1.38f, VisualStyle::COL_PLAYER,
 		COL_SHU, false, true, true, -stride);
 }
 
@@ -1101,6 +1130,7 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 	const float wallTop = 1.45f;
 	const float eaveHeight = 1.30f;
 	const float ridgeHeight = 3.35f;
+	PushShadow(centerX, centerY, prop.sizeX * 28.0f, prop.sizeY * 12.0f, depth);
 
 	// Stone plinth the building stands on.
 	PushFlatQuad(r, x0 - 0.16f, y0 - 0.16f, x1 + 0.16f, y1 + 0.16f, 0.02f,
@@ -1157,6 +1187,17 @@ void Game::DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, 
 		x0 - eave, yc,        ridgeHeight
 	};
 	PushPoly3(r, slope, 4, roofSouth, depth - 0.05f);
+
+	// Sparse ribs describe the roof material without turning it into a grid.
+	for (int i = 1; i < ROOF_RIB_COUNT; ++i)
+	{
+		const float ribX = x0 - eave + (x1 - x0 + eave * 2.0f) * (float)i / ROOF_RIB_COUNT;
+		float upperX, upperY, lowerX, lowerY;
+		r->WorldToScreen(ribX, yc, ridgeHeight, &upperX, &upperY);
+		r->WorldToScreen(ribX, y1 + eave, eaveHeight, &lowerX, &lowerY);
+		r->PushLine(upperX, upperY, lowerX, lowerY, 1.0f,
+			Lit(Scale(roof, 1.16f), centerX, centerY), depth - 0.045f);
+	}
 
 	// Ridge cap and eave line, the two edges that give thatch its silhouette.
 	float ax, ay, bx, by;
@@ -1261,12 +1302,9 @@ void Game::DrawLantern(const Prop& prop)
 	float gx, gy;
 	r->WorldToScreen(x, y, 1.28f, &gx, &gy);
 
-	for (int i = 3; i >= 1; --i)
-	{
-		const float radius = 16.0f * i * flicker;
-		const Color halo = RGBA(1.0f, 0.66f, 0.30f, 0.13f / i * (1.0f - fog));
-		r->PushEllipse(gx, gy, radius, radius * 0.78f, halo, depth - 0.01f, 16);
-	}
+	const float radius = 44.0f * flicker;
+	const Color halo = RGBA(1.0f, 0.72f, 0.36f, 0.24f * (1.0f - fog));
+	r->PushSoftEllipse(gx, gy, radius, radius * 0.78f, halo, depth - 0.01f);
 
 	// Paper box, self-lit.
 	const Color paper = Mix(RGBA(1.0f, 0.78f, 0.44f), COL_FOG, fog * 0.65f);
@@ -1289,10 +1327,14 @@ void Game::DrawWell(const Prop& prop)
 
 	PushShadow(x, y, 20.0f, 9.0f, depth - 0.03f);
 
-	const Color stone = Lit(RGBA(0.38f, 0.38f, 0.36f), x, y);
+	const Color stone = Lit(RGBA(0.56f, 0.58f, 0.45f), x, y);
 	const Color hole = Lit(RGBA(0.05f, 0.05f, 0.06f), x, y);
 
-	r->PushEllipse(bx, by - 6.0f, 20.0f, 10.0f, stone, depth - 0.02f, 16);
+	r->PushEllipse(bx, by - 2.0f, 20.0f, 10.0f, Scale(stone, 0.68f), depth - 0.03f, 16);
+	const float side[8] = { bx - 20.0f, by - 8.0f, bx + 20.0f, by - 8.0f, bx + 20.0f, by - 2.0f, bx - 20.0f, by - 2.0f };
+	const Color sideColors[4] = { stone, Scale(stone, 0.80f), Scale(stone, 0.58f), Scale(stone, 0.70f) };
+	r->PushPolygonShaded(side, sideColors, 4, depth - 0.025f);
+	r->PushEllipse(bx, by - 8.0f, 20.0f, 10.0f, stone, depth - 0.02f, 16);
 	r->PushEllipse(bx, by - 8.0f, 13.0f, 6.5f, hole, depth - 0.01f, 16);
 
 	const Color post = Lit(RGBA(0.24f, 0.20f, 0.17f), x, y);
@@ -1376,7 +1418,8 @@ void Game::DrawStone(const Prop& prop)
 		bx + 6.0f, by - 26.0f,
 		bx - 6.0f, by - 26.0f
 	};
-	r->PushPolygon(body, 4, stone, depth);
+	const Color bodyColors[4] = { Scale(stone, 0.68f), Scale(stone, 0.57f), stone, Scale(stone, 1.18f) };
+	r->PushPolygonShaded(body, bodyColors, 4, depth);
 
 	r->PushEllipse(bx, by - 27.0f, 6.5f, 4.5f, stone, depth + 0.01f, 10);
 
@@ -1414,6 +1457,16 @@ void Game::DrawPerson(float worldX, float worldY, float bodyHeight, const Color&
 	{
 		// Spirits are not lit by lanterns; they carry their own pallor.
 		shade.light = RGBA(1.0f, 1.0f, 1.0f);
+	}
+
+	if (sword)
+	{
+		const Model* cloak = m_Models->Find("player_cloak");
+
+		if (cloak != NULL)
+		{
+			DrawModel(m_Renderer, *cloak, screenX, screenY, scale, depth, shade);
+		}
 	}
 
 	DrawModel(m_Renderer, *person, screenX, screenY, scale, depth, shade);
@@ -1468,9 +1521,9 @@ void Game::DrawMotes()
 		}
 
 		const float breathe = 1.0f + 0.12f * sinf(m_Time * 0.4f + (float)i);
-		const Color haze = RGBA(0.55f, 0.62f, 0.70f, 0.055f);
-		m_Renderer->PushEllipse(sx, sy, 62.0f * wisp.size * 0.4f * breathe,
-			20.0f * wisp.size * 0.4f, haze, wisp.x + wisp.y + 0.05f, 16);
+		const Color haze = RGBA(0.57f, 0.68f, 0.57f, 0.07f);
+		m_Renderer->PushSoftEllipse(sx, sy, 62.0f * wisp.size * 0.4f * breathe,
+			20.0f * wisp.size * 0.4f, haze, wisp.x + wisp.y + 0.05f);
 	}
 
 	// Embers.
@@ -1523,7 +1576,7 @@ void Game::DrawAtmosphere()
 		};
 
 		const Color clear = RGBA(0.02f, 0.03f, 0.045f, 0.0f);
-		const Color edge = RGBA(0.02f, 0.03f, 0.045f, 0.80f);
+		const Color edge = RGBA(0.035f, 0.06f, 0.045f, 0.34f);
 		const Color colors[4] = { clear, clear, edge, edge };
 
 		m_Renderer->PushPolygonShaded(xy, colors, 4, DEPTH_OVERLAY);
@@ -1540,14 +1593,14 @@ void Game::DrawAtmosphere()
 
 void Game::DrawPanel(float x, float y, float width, float height, float alpha, float depth)
 {
-	m_Renderer->PushRect(x, y, width, height, RGBA(COL_INK.r, COL_INK.g, COL_INK.b, alpha), depth);
-	m_Renderer->PushRect(x, y, width, 1.0f, RGBA(0.55f, 0.55f, 0.52f, alpha * 0.28f), depth + 0.1f);
+	VisualStyle::DrawPanel(m_Renderer, x, y, width, height, alpha, depth);
 }
 
 void Game::DrawAccentPanel(float x, float y, float width, float height, const Color& accent, float depth)
 {
-	DrawPanel(x, y, width, height, 0.80f, depth);
-	m_Renderer->PushRect(x, y, 2.0f, height, accent, depth + 0.2f);
+	DrawPanel(x, y, width, height, 0.64f, depth);
+	m_Renderer->PushRect(x, y + VisualStyle::UI_CORNER, 1.0f,
+		height - VisualStyle::UI_CORNER * 2.0f, accent, depth + 0.2f);
 }
 
 void Game::DrawQuestGuide()
@@ -1592,7 +1645,7 @@ void Game::DrawQuestGuide()
 	Renderer* r = m_Renderer;
 	const float halfWidth = r->GetWidth() * 0.5f;
 	const float halfHeight = r->GetHeight() * 0.5f;
-	const Color gold = RGBA(0.95f, 0.80f, 0.45f, 0.95f);
+	const Color gold = VisualStyle::COL_IVORY;
 	float screenX = 0.0f;
 	float screenY = 0.0f;
 	r->WorldToScreen(target->x, target->y, 2.4f, &screenX, &screenY);
@@ -1653,10 +1706,10 @@ void Game::DrawHud()
 	const float panelW = 292.0f;
 	const float panelH = m_MetElder ? 98.0f : 74.0f;
 
-	DrawAccentPanel(panelX, panelY, panelW, panelH, COL_SHU, DEPTH_PANEL);
+	DrawAccentPanel(panelX, panelY, panelW, panelH, VisualStyle::COL_MOSS, DEPTH_PANEL);
 
-	r->PushText(questTitle, panelX + 16.0f, panelY + 12.0f, 15, FONT_SERIF, true,
-		RGBA(0.80f, 0.66f, 0.52f, 0.95f), ALIGN_LEFT);
+	r->PushText(questTitle, panelX + 16.0f, panelY + 12.0f, 14, FONT_UI, false,
+		VisualStyle::COL_MOSS, ALIGN_LEFT);
 	r->PushText(objective, panelX + 16.0f, panelY + 36.0f, 17, FONT_UI, false,
 		RGBA(0.90f, 0.90f, 0.87f, 0.95f), ALIGN_LEFT);
 
@@ -1670,7 +1723,7 @@ void Game::DrawHud()
 			const bool have = (m_ClueMask & CLUE_BITS[i]) != 0;
 			const float pipX = panelX + 18.0f + i * 26.0f;
 			r->PushDiamond(pipX, pipY + 6.0f, 7.0f, 7.0f,
-				have ? COL_SHU : RGBA(0.32f, 0.33f, 0.32f, 0.85f), DEPTH_PANEL_TOP);
+				have ? VisualStyle::COL_SPIRIT : RGBA(0.32f, 0.37f, 0.29f, 0.85f), DEPTH_PANEL_TOP);
 		}
 
 		wchar_t counter[32];
@@ -1708,13 +1761,15 @@ void Game::DrawHud()
 	if (m_ToastTimer > 0.0f && !m_ToastText.empty())
 	{
 		const float alpha = Clamp(m_ToastTimer / 0.6f, 0.0f, 1.0f);
-		const float width = r->MeasureTextWidth(m_ToastText, 18, FONT_SERIF, true);
+		const float width = r->MeasureTextWidth(m_ToastText, 17, FONT_UI, true);
 
 		DrawPanel(-width * 0.5f - 20.0f, top + 132.0f, width + 40.0f, 38.0f, 0.80f * alpha, DEPTH_PANEL);
-		m_Renderer->PushRect(-width * 0.5f - 20.0f, top + 132.0f, 2.0f, 38.0f,
-			RGBA(COL_SHU.r, COL_SHU.g, COL_SHU.b, alpha), DEPTH_PANEL_TOP);
-		r->PushText(m_ToastText, 0.0f, top + 140.0f, 18, FONT_SERIF, true,
-			RGBA(0.93f, 0.86f, 0.72f, alpha), ALIGN_CENTER);
+		m_Renderer->PushRect(-width * 0.5f - 20.0f, top + 137.0f, 1.0f, 28.0f,
+			RGBA(VisualStyle::COL_SPIRIT.r, VisualStyle::COL_SPIRIT.g,
+				VisualStyle::COL_SPIRIT.b, alpha), DEPTH_PANEL_TOP);
+		r->PushText(m_ToastText, 0.0f, top + 140.0f, 17, FONT_UI, true,
+			RGBA(VisualStyle::COL_IVORY.r, VisualStyle::COL_IVORY.g,
+				VisualStyle::COL_IVORY.b, alpha), ALIGN_CENTER);
 	}
 }
 
@@ -1736,23 +1791,24 @@ void Game::DrawDialogue()
 	const float boxY = height * 0.5f - boxHeight - 46.0f;
 
 	DrawPanel(boxX, boxY, boxWidth, boxHeight, 0.88f, DEPTH_PANEL);
-	r->PushRect(boxX, boxY, 3.0f, boxHeight, COL_SHU, DEPTH_PANEL_TOP);
+	r->PushRect(boxX, boxY + VisualStyle::UI_CORNER, VisualStyle::UI_BORDER,
+		boxHeight - VisualStyle::UI_CORNER * 2.0f, VisualStyle::COL_MOSS, DEPTH_PANEL_TOP);
 
 	const std::wstring& speaker = m_ActiveBlock->lines[m_PageStart].speaker;
 	float textTop = boxY + 22.0f;
 
 	if (!speaker.empty())
 	{
-		r->PushText(speaker, boxX + 26.0f, boxY + 16.0f, 17, FONT_SERIF, true,
-			RGBA(0.84f, 0.70f, 0.52f, 0.98f), ALIGN_LEFT);
+		r->PushText(speaker, boxX + 26.0f, boxY + 16.0f, 16, FONT_UI, true,
+			VisualStyle::COL_MOSS, ALIGN_LEFT);
 		textTop = boxY + 50.0f;
 	}
 
 	for (size_t i = m_PageStart; i < m_PageEnd && i < m_ActiveBlock->lines.size(); ++i)
 	{
 		const float lineY = textTop + (float)(i - m_PageStart) * 30.0f;
-		r->PushText(m_ActiveBlock->lines[i].text, boxX + 26.0f, lineY, 20, FONT_SERIF, false,
-			RGBA(0.92f, 0.91f, 0.87f, 0.98f), ALIGN_LEFT);
+		r->PushText(m_ActiveBlock->lines[i].text, boxX + 26.0f, lineY, 20, FONT_UI, false,
+			VisualStyle::COL_IVORY, ALIGN_LEFT);
 	}
 
 	// Advance hint, blinking gently.
@@ -1777,10 +1833,11 @@ void Game::DrawClueList()
 	const float boxY = -boxHeight * 0.5f;
 
 	DrawPanel(boxX, boxY, boxWidth, boxHeight, 0.94f, DEPTH_PANEL);
-	r->PushRect(boxX, boxY, 3.0f, boxHeight, COL_SHU, DEPTH_PANEL_TOP);
+	r->PushRect(boxX, boxY + VisualStyle::UI_CORNER, VisualStyle::UI_BORDER,
+		boxHeight - VisualStyle::UI_CORNER * 2.0f, VisualStyle::COL_MOSS, DEPTH_PANEL_TOP);
 
-	r->PushText(m_Dialogue->Line("ui_clues_header"), boxX + 28.0f, boxY + 22.0f, 22, FONT_SERIF, true,
-		RGBA(0.86f, 0.72f, 0.54f, 0.98f), ALIGN_LEFT);
+	r->PushText(m_Dialogue->Line("ui_clues_header"), boxX + 28.0f, boxY + 22.0f, 22, FONT_UI, true,
+		VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 	if (ClueCount() == 0)
 	{
@@ -1800,7 +1857,8 @@ void Game::DrawClueList()
 
 			const float lineY = boxY + 76.0f + row * 40.0f;
 
-			r->PushDiamond(boxX + 36.0f, lineY + 11.0f, 6.0f, 6.0f, COL_SHU, DEPTH_PANEL_TOP);
+			r->PushDiamond(boxX + 36.0f, lineY + 11.0f, 6.0f, 6.0f,
+				VisualStyle::COL_SPIRIT, DEPTH_PANEL_TOP);
 			r->PushText(m_Dialogue->Line(CLUE_UI_KEYS[i]), boxX + 54.0f, lineY, 18, FONT_UI, false,
 				RGBA(0.90f, 0.89f, 0.86f, 0.96f), ALIGN_LEFT);
 

@@ -1,9 +1,45 @@
 #include "stdafx.h"
 #include "Level.h"
+#include "VisualStyle.h"
 
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <algorithm>
+
+MonitoredWorld Level::CaptureMonitoring(bool active) const
+{
+	const char* const states[] = { "play", "stats", "downed" };
+	const char* const kinds[] = { "wisp", "shade", "oni" };
+	MonitoredWorld snapshot;
+	snapshot.id = "level1";
+	snapshot.name = "Forest level 1";
+	snapshot.active = active;
+	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.width = m_World.GetWidth();
+	snapshot.height = m_World.GetHeight();
+	snapshot.kills = static_cast<unsigned int>(m_Kills);
+
+	for (size_t i = 0; i < m_Enemies.size(); ++i)
+	{
+		const Enemy& enemy = m_Enemies[i];
+		MonitoredEntity entity;
+		entity.id = "monster:" + std::to_string(i);
+		entity.kind = kinds[enemy.kind];
+		entity.behavior = "hostile";
+		entity.alive = enemy.alive;
+		entity.state = !enemy.alive ? "respawning" : active && m_State == LEVEL_PLAY ? "alive" : "paused";
+		entity.position.x = enemy.x;
+		entity.position.y = enemy.y;
+		entity.hasHealth = enemy.maxHealth > 0.0f;
+		entity.health = (std::max)(0.0f, enemy.health);
+		entity.maxHealth = enemy.maxHealth;
+		entity.respawnSeconds = (std::max)(0.0f, enemy.respawnTimer);
+		snapshot.monsters.push_back(entity);
+	}
+
+	return snapshot;
+}
 
 namespace
 {
@@ -41,25 +77,17 @@ namespace
 	const float RESPAWN_HEALTH_FRACTION = 0.6f;
 
 	// --- palette ---------------------------------------------------------
-	const Color COL_GRASS = { 0.34f, 0.41f, 0.30f, 1.0f };
-	const Color COL_TALLGRASS = { 0.29f, 0.37f, 0.27f, 1.0f };
-	const Color COL_DIRT = { 0.47f, 0.40f, 0.30f, 1.0f };
-	const Color COL_STONE = { 0.47f, 0.48f, 0.46f, 1.0f };
-	const Color COL_WATER = { 0.20f, 0.30f, 0.39f, 1.0f };
-	const Color COL_SAND = { 0.56f, 0.51f, 0.41f, 1.0f };
-
-	const Color COL_SHU = { 0.66f, 0.24f, 0.16f, 1.0f };
-	const Color COL_SKY = { 0.035f, 0.048f, 0.068f, 1.0f };
-	const Color COL_FOG = { 0.055f, 0.075f, 0.105f, 1.0f };
-	const Color COL_INK = { 0.045f, 0.055f, 0.070f, 1.0f };
+	const Color COL_SHU = { 0.69f, 0.34f, 0.24f, 1.0f };
+	const Color COL_SKY = VisualStyle::COL_SKY;
+	const Color COL_FOG = VisualStyle::COL_FOG;
 	const Color COL_FLAME = { 1.0f, 0.70f, 0.36f, 1.0f };
 	const Color COL_WISP_LIGHT = { 0.50f, 1.0f, 0.85f, 1.0f };
 
-	const Color COL_PLAYER_ROBE = { 0.20f, 0.24f, 0.31f, 1.0f };
+	const Color COL_PLAYER_ROBE = VisualStyle::COL_PLAYER;
 	const Color COL_DAMAGE_DEALT = { 0.93f, 0.91f, 0.86f, 1.0f };
 	const Color COL_DAMAGE_CRIT = { 0.98f, 0.80f, 0.36f, 1.0f };
 	const Color COL_DAMAGE_TAKEN = { 0.92f, 0.38f, 0.30f, 1.0f };
-	const Color COL_EXPERIENCE = { 0.66f, 0.85f, 1.0f, 1.0f };
+	const Color COL_EXPERIENCE = VisualStyle::COL_SPIRIT;
 	const Color COL_HEAL = { 0.55f, 0.86f, 0.55f, 1.0f };
 
 	const float DEPTH_OVERLAY = 900000.0f;
@@ -184,8 +212,8 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 
 	// Dusk rather than deep night: the village sells mood, this level has to
 	// stay readable while three things are swinging at once.
-	m_Lighting.SetAmbient(RGBA(0.46f, 0.52f, 0.66f));
-	m_Lighting.SetFog(COL_FOG, 10.0f, 22.0f, 0.85f);
+	m_Lighting.SetAmbient(RGBA(0.74f, 0.79f, 0.68f));
+	m_Lighting.SetFog(COL_FOG, 12.0f, 26.0f, 0.72f);
 
 	m_Enemies.resize(ENEMY_POPULATION);
 
@@ -980,45 +1008,7 @@ void Level::DrawGround()
 				continue;
 			}
 
-			const TileType tile = m_World.GetTile(x, y);
-
-			Color base;
-
-			switch (tile)
-			{
-			case TILE_TALLGRASS: base = COL_TALLGRASS; break;
-			case TILE_DIRT:      base = COL_DIRT; break;
-			case TILE_STONE:     base = COL_STONE; break;
-			case TILE_SAND:      base = COL_SAND; break;
-			case TILE_WATER:     base = COL_WATER; break;
-			default:             base = COL_GRASS; break;
-			}
-
-			if (tile != TILE_WATER)
-			{
-				const float shade = 1.0f + ((float)(HashInt(x, y) % 100) * 0.01f - 0.5f) * 0.09f;
-				base.r *= shade;
-				base.g *= shade;
-				base.b *= shade;
-			}
-
-			const Color lit = m_Lighting.Apply(base, (float)x + 0.5f, (float)y + 0.5f);
-
-			if (tile == TILE_WATER)
-			{
-				// The swell and the shimmer both live in Batch.vs. Neighbouring
-				// tiles get different phases, which is what makes it a wave and
-				// not a whole lake bobbing in unison.
-				m_Renderer->SetAnim(ANIM_WATER, (float)x * 0.62f + (float)y * 0.44f, 1.6f);
-			}
-
-			m_Renderer->PushDiamond(screenX, screenY, Renderer::TileHalfWidth(), Renderer::TileHalfHeight(),
-				lit, -100000.0f + (float)(x + y) * 0.01f);
-
-			if (tile == TILE_WATER)
-			{
-				m_Renderer->ClearAnim();
-			}
+			VisualStyle::DrawGroundTile(m_Renderer, m_World, m_Lighting, x, y);
 		}
 	}
 }
@@ -1211,6 +1201,7 @@ void Level::DrawPlayer()
 	const Model* person = m_Models->Find("person");
 	const Model* sword = m_Models->Find("person_sword");
 	const Model* lantern = m_Models->Find("person_lantern");
+	const Model* cloak = m_Models->Find("player_cloak");
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
@@ -1227,6 +1218,11 @@ void Level::DrawPlayer()
 	}
 
 	const ShadeParams shade = m_Lighting.Shade(m_PlayerX, m_PlayerY, tint);
+
+	if (cloak != NULL)
+	{
+		DrawModel(m_Renderer, *cloak, screenX, screenY - stride, 1.0f, depth, shade);
+	}
 
 	if (person != NULL)
 	{
@@ -1283,8 +1279,10 @@ void Level::DrawSwing()
 			originX + cosf(a0) * outerRadius * taper, originY + sinf(a0) * outerRadius * taper * 0.55f
 		};
 
-		m_Renderer->PushPolygon(xy, 4, RGBA(0.92f, 0.94f, 0.98f, alpha * taper),
-			m_PlayerX + m_PlayerY + 0.6f);
+		const Color edge = RGBA(0.92f, 0.98f, 0.83f, alpha * taper);
+		const Color fade = RGBA(0.38f, 0.80f, 0.70f, 0.0f);
+		const Color colors[4] = { fade, fade, edge, edge };
+		m_Renderer->PushPolygonShaded(xy, colors, 4, m_PlayerX + m_PlayerY + 0.6f);
 	}
 }
 
@@ -1337,7 +1335,7 @@ void Level::DrawAtmosphere()
 		};
 
 		const Color clear = RGBA(0.02f, 0.03f, 0.045f, 0.0f);
-		const Color edge = RGBA(0.02f, 0.03f, 0.045f, 0.74f);
+		const Color edge = RGBA(0.035f, 0.06f, 0.045f, 0.34f);
 		const Color colors[4] = { clear, clear, edge, edge };
 
 		m_Renderer->PushPolygonShaded(xy, colors, 4, DEPTH_OVERLAY);
@@ -1370,15 +1368,13 @@ void Level::DrawAtmosphere()
 
 void Level::DrawPanel(float x, float y, float width, float height, float alpha, float depth)
 {
-	m_Renderer->PushRect(x, y, width, height, RGBA(COL_INK.r, COL_INK.g, COL_INK.b, alpha), depth);
-	m_Renderer->PushRect(x, y, width, 1.0f, RGBA(0.55f, 0.55f, 0.52f, alpha * 0.28f), depth + 0.1f);
+	VisualStyle::DrawPanel(m_Renderer, x, y, width, height, alpha, depth);
 }
 
 void Level::DrawBar(float x, float y, float width, float height, float fill,
 	const Color& fillColor, const Color& backColor, float depth)
 {
-	m_Renderer->PushRect(x, y, width, height, backColor, depth);
-	m_Renderer->PushRect(x, y, width * Clamp(fill, 0.0f, 1.0f), height, fillColor, depth + 0.1f);
+	VisualStyle::DrawMeter(m_Renderer, x, y, width, height, fill, fillColor, backColor, depth);
 }
 
 void Level::DrawHud()
@@ -1389,28 +1385,38 @@ void Level::DrawHud()
 	const float top = -r->GetHeight() * 0.5f;
 	const float right = r->GetWidth() * 0.5f;
 	const float bottom = r->GetHeight() * 0.5f;
+	const float inset = 26.0f;
+	const float hudWidth = 238.0f;
+	const float hudX = left + inset;
+	const float hudY = top + inset;
+	const float healthFill = m_Stats.health / m_Stats.MaxHealth();
 
-	// --- level and experience, top left ---
-	const float panelX = left + 22.0f;
-	const float panelY = top + 20.0f;
-	const float panelW = 268.0f;
-	const float panelH = 96.0f;
+	DrawPanel(hudX - 12.0f, hudY - 10.0f, hudWidth + 24.0f, 112.0f, 0.55f, DEPTH_PANEL);
 
-	DrawPanel(panelX, panelY, panelW, panelH, 0.80f, DEPTH_PANEL);
-	r->PushRect(panelX, panelY, 2.0f, panelH, COL_SHU, DEPTH_PANEL_TOP);
-
-	r->PushText(Text("ui_lv_name"), panelX + 16.0f, panelY + 11.0f, 15, FONT_SERIF, true,
-		RGBA(0.80f, 0.66f, 0.52f, 0.95f), ALIGN_LEFT);
+	r->PushText(Text("ui_lv_name"), hudX, hudY, 14, FONT_UI, false,
+		VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 	wchar_t buffer[96];
-	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_level").c_str(), m_Stats.level);
-	r->PushText(buffer, panelX + 16.0f, panelY + 33.0f, 20, FONT_SERIF, true,
-		RGBA(0.93f, 0.92f, 0.88f, 0.98f), ALIGN_LEFT);
+	swprintf_s(buffer, 96, L"%s %d", Text("ui_lv_level").c_str(), m_Stats.level);
+	r->PushText(buffer, hudX + hudWidth, hudY, 14, FONT_UI, true,
+		VisualStyle::COL_IVORY, ALIGN_RIGHT);
+
+	VisualStyle::DrawHealth(r, hudX, hudY + 29.0f, hudWidth, 11.0f,
+		healthFill, DEPTH_PANEL_TOP);
+
+	swprintf_s(buffer, 96, L"%s  %d / %d", Text("ui_lv_hp").c_str(),
+		(int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
+	r->PushText(buffer, hudX, hudY + 46.0f, 13, FONT_UI, false,
+		VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 	const float experienceFill = m_Stats.IsMaxLevel() ? 1.0f
 		: (float)m_Stats.experience / (float)m_Stats.ExperienceToNext();
-	DrawBar(panelX + 16.0f, panelY + 64.0f, panelW - 32.0f, 7.0f, experienceFill,
-		RGBA(0.45f, 0.68f, 0.92f), RGBA(0.10f, 0.12f, 0.16f, 0.9f), DEPTH_PANEL_TOP);
+	DrawBar(hudX, hudY + 68.0f, hudWidth, 3.0f, experienceFill,
+		VisualStyle::COL_SPIRIT, RGBA(0.14f, 0.20f, 0.17f, 0.85f), DEPTH_PANEL_TOP);
+
+	swprintf_s(buffer, 96, L"%s %d", Text("ui_lv_kills").c_str(), m_Kills);
+	r->PushText(buffer, hudX, hudY + 76.0f, 13, FONT_UI, false,
+		RGBA(0.73f, 0.78f, 0.65f), ALIGN_LEFT);
 
 	std::wstring experienceText = Text("ui_lv_max_level");
 
@@ -1420,46 +1426,22 @@ void Level::DrawHud()
 		experienceText = buffer;
 	}
 
-	r->PushText(experienceText, panelX + panelW - 16.0f, panelY + 74.0f, 13, FONT_UI, false,
-		RGBA(0.68f, 0.70f, 0.74f, 0.85f), ALIGN_RIGHT);
+	r->PushText(experienceText, hudX + hudWidth, hudY + 76.0f, 13, FONT_UI, false,
+		RGBA(0.68f, 0.83f, 0.74f), ALIGN_RIGHT);
 
-	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_kills").c_str(), m_Kills);
-	r->PushText(buffer, panelX + 16.0f, panelY + 74.0f, 13, FONT_UI, false,
-		RGBA(0.68f, 0.70f, 0.74f, 0.85f), ALIGN_LEFT);
-
-	// --- health, bottom left ---
-	const float healthX = left + 22.0f;
-	const float healthY = bottom - 66.0f;
-	const float healthW = 240.0f;
-
-	r->PushText(Text("ui_lv_hp"), healthX, healthY - 20.0f, 13, FONT_UI, false,
-		RGBA(0.70f, 0.72f, 0.70f, 0.85f), ALIGN_LEFT);
-
-	DrawBar(healthX, healthY, healthW, 12.0f, m_Stats.health / m_Stats.MaxHealth(),
-		RGBA(0.72f, 0.22f, 0.18f), RGBA(0.10f, 0.10f, 0.12f, 0.9f), DEPTH_PANEL);
-
-	swprintf_s(buffer, 96, L"%d / %d", (int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
-	r->PushText(buffer, healthX + healthW, healthY - 20.0f, 13, FONT_UI, false,
-		RGBA(0.70f, 0.72f, 0.70f, 0.85f), ALIGN_RIGHT);
-
-	// --- unspent points nag, top right ---
 	if (m_Stats.unspentPoints > 0)
 	{
-		const float blink = 0.55f + 0.45f * sinf(m_Time * 4.0f);
-
 		swprintf_s(buffer, 96, L"%s  %d   [C]", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
+		const float textWidth = r->MeasureTextWidth(buffer, 15, FONT_UI, true);
 
-		const float width = r->MeasureTextWidth(buffer, 16, FONT_UI, true);
-
-		DrawPanel(right - width - 46.0f, top + 20.0f, width + 24.0f, 34.0f, 0.82f, DEPTH_PANEL);
-		r->PushRect(right - width - 46.0f, top + 20.0f, 2.0f, 34.0f, COL_DAMAGE_CRIT, DEPTH_PANEL_TOP);
-		r->PushText(buffer, right - width - 34.0f, top + 27.0f, 16, FONT_UI, true,
-			RGBA(0.96f, 0.86f, 0.55f, blink), ALIGN_LEFT);
+		DrawPanel(right - textWidth - inset - 24.0f, hudY - 5.0f,
+			textWidth + 24.0f, 32.0f, 0.76f, DEPTH_PANEL);
+		r->PushText(buffer, right - inset - 12.0f, hudY + 2.0f, 15, FONT_UI, true,
+			VisualStyle::COL_MOSS, ALIGN_RIGHT);
 	}
 
-	// --- controls ---
-	r->PushText(Text("ui_lv_controls"), left + 22.0f, bottom - 32.0f, 14, FONT_UI, false,
-		RGBA(0.62f, 0.64f, 0.62f, 0.62f), ALIGN_LEFT);
+	r->PushText(Text("ui_lv_controls"), left + inset, bottom - 30.0f, 13, FONT_UI, false,
+		RGBA(0.78f, 0.81f, 0.70f, 0.76f), ALIGN_LEFT);
 }
 
 void Level::DrawStatsScreen()
@@ -1478,15 +1460,16 @@ void Level::DrawStatsScreen()
 	const float boxY = -boxHeight * 0.5f;
 
 	DrawPanel(boxX, boxY, boxWidth, boxHeight, 0.94f, DEPTH_PANEL);
-	r->PushRect(boxX, boxY, 3.0f, boxHeight, COL_SHU, DEPTH_PANEL_TOP);
+	r->PushRect(boxX, boxY + VisualStyle::UI_CORNER, 1.0f,
+		boxHeight - VisualStyle::UI_CORNER * 2.0f, VisualStyle::COL_MOSS, DEPTH_PANEL_TOP);
 
-	r->PushText(Text("ui_lv_stats_title"), boxX + 28.0f, boxY + 22.0f, 22, FONT_SERIF, true,
-		RGBA(0.86f, 0.72f, 0.54f, 0.98f), ALIGN_LEFT);
+	r->PushText(Text("ui_lv_stats_title"), boxX + 28.0f, boxY + 22.0f, 22, FONT_UI, true,
+		VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 	wchar_t buffer[96];
 	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
 	r->PushText(buffer, boxX + boxWidth - 28.0f, boxY + 26.0f, 16, FONT_UI, true,
-		m_Stats.unspentPoints > 0 ? RGBA(0.96f, 0.86f, 0.55f, 0.98f) : RGBA(0.55f, 0.56f, 0.54f, 0.85f),
+		m_Stats.unspentPoints > 0 ? VisualStyle::COL_MOSS : RGBA(0.55f, 0.60f, 0.52f, 0.85f),
 		ALIGN_RIGHT);
 
 	// Derived values, so the player can see what a point actually buys.
@@ -1506,17 +1489,19 @@ void Level::DrawStatsScreen()
 			RGBA(0.35f, 0.36f, 0.34f, 0.35f), DEPTH_PANEL_TOP);
 
 		swprintf_s(buffer, 96, L"%d", i + 1);
-		r->PushText(buffer, boxX + 34.0f, rowY + 6.0f, 15, FONT_UI, true,
-			RGBA(0.70f, 0.62f, 0.48f, 0.9f), ALIGN_LEFT);
+		r->PushRect(boxX + 28.0f, rowY + 3.0f, 24.0f, 25.0f,
+			RGBA(0.24f, 0.31f, 0.23f, 0.85f), DEPTH_PANEL_TOP);
+		r->PushText(buffer, boxX + 40.0f, rowY + 6.0f, 15, FONT_UI, true,
+			VisualStyle::COL_MOSS, ALIGN_CENTER);
 
-		r->PushText(Text(STAT_NAME_KEYS[i]), boxX + 60.0f, rowY, 19, FONT_SERIF, true,
-			RGBA(0.93f, 0.92f, 0.88f, 0.98f), ALIGN_LEFT);
+		r->PushText(Text(STAT_NAME_KEYS[i]), boxX + 60.0f, rowY, 19, FONT_UI, true,
+			VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 		r->PushText(Text(STAT_DESC_KEYS[i]), boxX + 60.0f, rowY + 25.0f, 13, FONT_UI, false,
 			RGBA(0.62f, 0.64f, 0.62f, 0.80f), ALIGN_LEFT);
 
 		swprintf_s(buffer, 96, L"%d", m_Stats.GetPoints((StatKind)i));
-		r->PushText(buffer, boxX + boxWidth - 118.0f, rowY + 2.0f, 19, FONT_SERIF, true,
+		r->PushText(buffer, boxX + boxWidth - 118.0f, rowY + 2.0f, 19, FONT_UI, true,
 			RGBA(0.90f, 0.89f, 0.85f, 0.95f), ALIGN_RIGHT);
 
 		if (i == STAT_GUARD)
@@ -1533,7 +1518,7 @@ void Level::DrawStatsScreen()
 		}
 
 		r->PushText(buffer, boxX + boxWidth - 28.0f, rowY + 4.0f, 16, FONT_UI, false,
-			RGBA(0.66f, 0.78f, 0.92f, 0.92f), ALIGN_RIGHT);
+			VisualStyle::COL_SPIRIT, ALIGN_RIGHT);
 	}
 
 	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_total_experience").c_str(), m_Stats.totalExperience);

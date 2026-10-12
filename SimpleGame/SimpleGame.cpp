@@ -20,6 +20,7 @@ but WITHOUT ANY WARRANTY.
 #include "Level.h"
 #include "Model.h"
 #include "Renderer.h"
+#include "Monitoring.h"
 
 namespace
 {
@@ -35,6 +36,7 @@ namespace
 
 	Game* g_Tutorial = NULL;
 	Level* g_Level = NULL;
+	MonitoringPublisher g_Monitor;
 
 	int g_PreviousTimeMs = 0;
 
@@ -120,6 +122,19 @@ void Idle(void)
 
 			return;
 		}
+	}
+
+	if (g_Monitor.IsDue())
+	{
+		std::vector<MonitoredWorld> worlds;
+		worlds.push_back(g_Tutorial->CaptureMonitoring(!InLevel()));
+
+		if (InLevel())
+		{
+			worlds.push_back(g_Level->CaptureMonitoring(true));
+		}
+
+		g_Monitor.Publish(worlds);
 	}
 
 	glutPostRedisplay();
@@ -230,6 +245,8 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	g_Monitor.Start();
+
 	// Without this, holding a key produces a stream of down/up pairs and the
 	// movement state flickers.
 	glutIgnoreKeyRepeat(1);
@@ -243,6 +260,7 @@ int main(int argc, char** argv)
 	g_PreviousTimeMs = glutGet(GLUT_ELAPSED_TIME);
 
 	glutMainLoop();
+	g_Monitor.Stop();
 
 	delete g_Level;
 	delete g_Tutorial;

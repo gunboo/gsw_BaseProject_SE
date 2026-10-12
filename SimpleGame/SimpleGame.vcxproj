@@ -161,12 +161,14 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Lighting.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="Monitoring.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Stats.h" />
     <ClInclude Include="TextRenderer.h" />
     <ClInclude Include="World.h" />
+    <ClInclude Include="VisualStyle.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Dialogue.cpp" />
@@ -174,6 +176,7 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Lighting.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="Monitoring.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SimpleGame.cpp" />
     <ClCompile Include="Stats.cpp" />
@@ -188,6 +191,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\dialogue.txt" />
+    <None Include="..\Monitoring\README.md" />
+    <None Include="..\Monitoring\start-monitor.cmd" />
+    <None Include="..\Monitoring\server.js" />
+    <None Include="..\Monitoring\server.test.js" />
+    <None Include="..\Monitoring\example-snapshot.json" />
+    <None Include="..\Monitoring\index.html" />
+    <None Include="..\Monitoring\dashboard.js" />
+    <None Include="..\Monitoring\dashboard.css" />
     <None Include="Data\village.map" />
     <None Include="Shaders\Batch.fs" />
     <None Include="Shaders\Batch.vs" />

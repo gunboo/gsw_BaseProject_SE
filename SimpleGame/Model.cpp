@@ -10,6 +10,7 @@ namespace
 	const float TWO_PI = 6.2831853f;
 
 	const int MAX_POLY_VERTICES = 32;
+	const int SOFT_ELLIPSE_SEGMENTS = 20;
 	const int MAX_CACHED_MODELS = 4096;
 	const int MAX_MODEL_NAME_LENGTH = 256;
 	const int MAX_MODEL_VERTEX_FLOATS = 1000000;
@@ -17,48 +18,58 @@ namespace
 
 	// Bump this whenever a builder below changes shape, so a stale cache from an
 	// earlier run is discarded instead of being drawn.
-	const int MODEL_CACHE_VERSION = 3;
+	const int MODEL_CACHE_VERSION = 4;
 	const char MODEL_CACHE_MAGIC[4] = { 'M', 'D', 'L', '1' };
 
 	// --- shared palette for the baked shapes -----------------------------
-	const Color COL_FOLIAGE = { 0.19f, 0.26f, 0.21f, 1.0f };
-	const Color COL_TRUNK = { 0.23f, 0.19f, 0.16f, 1.0f };
-	const Color COL_SKIN = { 0.60f, 0.50f, 0.42f, 1.0f };
+	const Color COL_FOLIAGE = { 0.30f, 0.43f, 0.28f, 1.0f };
+	const Color COL_TRUNK = { 0.36f, 0.29f, 0.21f, 1.0f };
+	const Color COL_SKIN = { 0.77f, 0.66f, 0.50f, 1.0f };
 	const Color COL_HAIR = { 0.11f, 0.10f, 0.11f, 1.0f };
-	const Color COL_SASH = { 0.62f, 0.58f, 0.50f, 1.0f };
-	const Color COL_STRAW = { 0.50f, 0.44f, 0.32f, 1.0f };
-	const Color COL_STEEL = { 0.10f, 0.11f, 0.13f, 1.0f };
+	const Color COL_SASH = { 0.73f, 0.69f, 0.54f, 1.0f };
+	const Color COL_STRAW = { 0.66f, 0.58f, 0.38f, 1.0f };
+	const Color COL_STEEL = { 0.36f, 0.42f, 0.43f, 1.0f };
 	const Color COL_SHADOW = { 0.0f, 0.0f, 0.0f, 0.30f };
 	const Color COL_EMBER = { 1.0f, 0.72f, 0.36f, 1.0f };
 
 	// Adult height in pixels. One world unit of height is 26 px, and a person is
 	// a shade under one and a half of those.
 	const float PERSON_HEIGHT = 36.0f;
+	const float SURFACE_HIGHLIGHT = 1.18f;
+	const float SURFACE_SHADE_RANGE = 0.52f;
+	const float GROUND_SHADOW_DEPTH = -90000.0f;
 
 	// --- builders --------------------------------------------------------
 
 	void BuildCedar(ModelBuilder* builder, float height, int tier)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 15.0f, 6.5f, 12, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
-		builder->AddRect(-3.5f, -height * 0.34f, 7.0f, height * 0.34f, COL_TRUNK, -0.01f);
+		builder->AddSoftEllipse(8.0f, 4.0f, 34.0f, 13.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		const float trunk[8] = { -5.0f, 1.0f, 6.0f, 1.0f, 2.0f, -height * 0.49f, -3.0f, -height * 0.49f };
+		builder->AddPolygon(trunk, 4, COL_TRUNK, -0.01f, MODEL_FLAG_SHADED);
+		builder->AddLine(-1.0f, -height * 0.30f, -12.0f, -height * 0.40f, 3.0f,
+			Scale(COL_TRUNK, 0.78f), -0.005f);
 
 		for (int k = 0; k < 3; ++k)
 		{
 			const float baseFraction = 0.28f + 0.20f * k;
 			const float apexFraction = 0.62f + 0.20f * k;
-			const float halfWidth = 27.0f - k * 6.0f - tier * 1.5f;
+			const float halfWidth = 30.0f - k * 6.0f - tier * 1.2f;
 
 			const float yBase = -height * baseFraction;
 			const float yApex = -height * apexFraction;
 
-			Color leaf = COL_FOLIAGE;
-			leaf.r += 0.022f * k;
-			leaf.g += 0.030f * k;
-			leaf.b += 0.018f * k;
+			const Color leaf = Scale(COL_FOLIAGE, 0.87f + 0.11f * k);
 
 			// Higher skirts sway further, which is what sells wind in a still frame.
-			builder->SetAnim(ANIM_SWAY, (float)tier * 1.7f + (float)k * 0.6f, 0.9f + 0.8f * k);
-			builder->AddTriangle(-halfWidth, yBase, halfWidth, yBase, 0.0f, yApex, leaf, (float)k * 0.001f);
+			builder->SetAnim(ANIM_SWAY, (float)tier * 1.7f, 0.45f + 0.35f * k);
+			const float crown[12] =
+			{
+				-halfWidth, yBase - 5.0f, -halfWidth * 0.63f, yBase + 1.0f,
+				halfWidth * 0.58f, yBase + 2.0f, halfWidth, yBase - 6.0f,
+				halfWidth * 0.29f, yApex + 4.0f, -halfWidth * 0.10f, yApex
+			};
+			builder->AddPolygon(crown, 6, leaf, (float)k * 0.001f, MODEL_FLAG_SHADED);
 		}
 
 		builder->ClearAnim();
@@ -66,20 +77,32 @@ namespace
 
 	void BuildBroadleaf(ModelBuilder* builder, float height)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 15.0f, 6.5f, 12, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
-		builder->AddRect(-3.5f, -height * 0.34f, 7.0f, height * 0.34f, COL_TRUNK, -0.01f);
+		builder->AddSoftEllipse(9.0f, 5.0f, 39.0f, 16.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		const float lowerTrunk[8] =
+		{
+			-7.0f, 1.0f, 7.0f, 1.0f, 3.5f, -height * 0.35f,
+			-4.0f, -height * 0.36f
+		};
+		const float upperTrunk[8] =
+		{
+			-4.0f, -height * 0.36f, 3.5f, -height * 0.35f,
+			7.0f, -height * 0.64f, 0.0f, -height * 0.67f
+		};
+		builder->AddPolygon(lowerTrunk, 4, COL_TRUNK, -0.01f, MODEL_FLAG_SHADED);
+		builder->AddPolygon(upperTrunk, 4, COL_TRUNK, -0.009f, MODEL_FLAG_SHADED);
+		builder->AddLine(1.0f, -height * 0.35f, -18.0f, -height * 0.67f, 4.0f,
+			Scale(COL_TRUNK, 0.82f), -0.005f);
 
 		for (int i = 0; i < 3; ++i)
 		{
-			const float offsetX = (i - 1) * 11.0f;
-			const float offsetY = -height * (0.58f + (i == 1 ? 0.16f : 0.0f));
+			const float offsetX = (i - 1) * 16.0f;
+			const float offsetY = -height * (0.62f + (i == 1 ? 0.19f : 0.0f));
 
-			Color leaf = COL_FOLIAGE;
-			leaf.r += 0.03f * i;
-			leaf.g += 0.04f * i;
-
-			builder->SetAnim(ANIM_SWAY, (float)i * 2.1f, 1.6f);
-			builder->AddEllipse(offsetX, offsetY, 17.0f - i * 1.5f, 13.0f, 14, leaf, 0.0f);
+			const Color leaf = Scale(COL_FOLIAGE, 0.88f + 0.09f * i);
+			builder->SetAnim(ANIM_SWAY, 0.7f, 0.65f);
+			builder->AddEllipse(offsetX, offsetY, 23.0f - i * 1.5f, 20.0f, 9,
+				leaf, (float)i * 0.001f, MODEL_FLAG_SHADED);
 		}
 
 		builder->ClearAnim();
@@ -87,21 +110,24 @@ namespace
 
 	void BuildBush(ModelBuilder* builder)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 11.0f, 4.5f, 10, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
+		builder->AddSoftEllipse(3.0f, 2.0f, 21.0f, 8.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
 
 		Color leaf = COL_FOLIAGE;
 		leaf.r += 0.05f;
 		leaf.g += 0.06f;
 
-		builder->SetAnim(ANIM_SWAY, 0.4f, 1.1f);
-		builder->AddEllipse(-5.0f, -7.0f, 10.0f, 8.0f, 10, leaf, 0.0f);
-		builder->AddEllipse(5.0f, -6.0f, 9.0f, 7.0f, 10, leaf, 0.001f);
+		builder->SetAnim(ANIM_SWAY, 0.4f, 0.65f);
+		builder->AddEllipse(-6.0f, -8.0f, 12.0f, 10.0f, 9, leaf, 0.0f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(6.0f, -7.0f, 11.0f, 9.0f, 8, Scale(leaf, 0.88f), 0.001f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(-1.0f, -13.0f, 8.0f, 8.0f, 8, Scale(leaf, 1.10f), 0.002f, MODEL_FLAG_SHADED);
 		builder->ClearAnim();
 	}
 
 	void BuildRock(ModelBuilder* builder)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 12.0f, 5.0f, 10, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
+		builder->AddSoftEllipse(5.0f, 2.0f, 21.0f, 8.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
 
 		const float shape[10] =
 		{
@@ -112,8 +138,13 @@ namespace
 			9.0f, 4.0f
 		};
 
-		builder->AddPolygon(shape, 5, RGBA(0.35f, 0.36f, 0.35f), 0.0f);
-		builder->AddEllipse(-2.0f, -9.0f, 5.0f, 3.0f, 8, RGBA(0.45f, 0.46f, 0.44f), 0.001f);
+		builder->AddPolygon(shape, 5, RGBA(0.47f, 0.50f, 0.41f), 0.0f, MODEL_FLAG_SHADED);
+		const float top[8] = { -8.0f, -11.0f, 3.0f, -14.0f, 10.0f, -7.0f, -4.0f, -4.0f };
+		builder->AddPolygon(top, 4, RGBA(0.64f, 0.65f, 0.52f), 0.001f, MODEL_FLAG_SHADED);
+		builder->AddTriangle(-4.0f, -4.0f, 10.0f, -7.0f, 9.0f, 4.0f,
+			RGBA(0.32f, 0.38f, 0.32f), 0.002f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(-6.0f, -7.0f, 5.0f, 2.0f, 7,
+			RGBA(0.38f, 0.46f, 0.25f), 0.003f, MODEL_FLAG_SHADED);
 	}
 
 	// The robe is tintable so that one baked person serves every villager.
@@ -125,20 +156,46 @@ namespace
 		const float halfHip = height * 0.20f;
 		const float halfShoulder = height * 0.15f;
 
-		builder->AddEllipse(0.0f, 0.0f, 10.0f, 4.5f, 12, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
+		builder->AddSoftEllipse(3.0f, 1.0f, 14.0f, 6.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		builder->AddRect(-halfHip * 0.80f, -height * 0.10f, height * 0.10f, height * 0.12f,
+			COL_HAIR, -0.005f, MODEL_FLAG_SHADED);
+		builder->AddRect(halfHip * 0.28f, -height * 0.10f, height * 0.11f, height * 0.12f,
+			COL_HAIR, -0.005f, MODEL_FLAG_SHADED);
 
 		const float body[8] =
 		{
-			-halfHip, 0.0f,
-			halfHip, 0.0f,
+			-halfHip, -height * 0.08f,
+			halfHip, -height * 0.08f,
 			halfShoulder, shoulderY,
 			-halfShoulder, shoulderY
 		};
 
-		builder->AddPolygon(body, 4, RGBA(1.0f, 1.0f, 1.0f), 0.0f, MODEL_FLAG_TINT);
+		builder->AddPolygon(body, 4, RGBA(1.0f, 1.0f, 1.0f), 0.0f, MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
+		builder->AddEllipse(-halfShoulder, shoulderY + 5.0f, height * 0.10f, height * 0.15f,
+			8, RGBA(0.86f, 0.86f, 0.86f), 0.0005f, MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
+		const float lapel[6] = { -halfShoulder, shoulderY, 2.0f, hipY, -3.0f, hipY };
+		builder->AddPolygon(lapel, 3, RGBA(0.65f, 0.65f, 0.65f), 0.0007f, MODEL_FLAG_TINT);
 		builder->AddRect(-halfHip * 0.92f, hipY, halfHip * 1.84f, height * 0.07f, COL_SASH, 0.001f);
-		builder->AddEllipse(0.0f, headY, height * 0.115f, height * 0.125f, 12, COL_SKIN, 0.002f);
-		builder->AddEllipse(0.0f, headY - height * 0.045f, height * 0.125f, height * 0.085f, 12, COL_HAIR, 0.003f);
+		builder->AddEllipse(0.0f, headY, height * 0.15f, height * 0.16f, 10, COL_SKIN, 0.002f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(-0.7f, headY - height * 0.06f, height * 0.16f, height * 0.11f,
+			9, COL_HAIR, 0.003f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(-1.0f, headY - height * 0.18f, height * 0.065f, height * 0.075f,
+			8, COL_HAIR, 0.0035f, MODEL_FLAG_SHADED);
+	}
+
+	void BuildPlayerCloak(ModelBuilder* builder, float height)
+	{
+		const float cloak[10] =
+		{
+			-height * 0.32f, -height * 0.11f, -height * 0.07f, -height * 0.08f,
+			height * 0.16f, -height * 0.46f, height * 0.11f, -height * 0.66f,
+			-height * 0.14f, -height * 0.64f
+		};
+		builder->SetAnim(ANIM_SWAY, 0.3f, 0.7f);
+		builder->AddPolygon(cloak, 5, RGBA(1.0f, 1.0f, 1.0f), -0.002f,
+			MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
+		builder->ClearAnim();
 	}
 
 	void BuildKasa(ModelBuilder* builder, float height)
@@ -148,7 +205,9 @@ namespace
 		const float apexY = headY - height * 0.30f;
 		const float halfBrim = height * 0.30f;
 
-		builder->AddTriangle(-halfBrim, brimY, halfBrim, brimY, 0.0f, apexY, COL_STRAW, 0.004f);
+		builder->AddTriangle(-halfBrim, brimY, halfBrim, brimY, 0.0f, apexY,
+			COL_STRAW, 0.004f, MODEL_FLAG_SHADED);
+		builder->AddLine(-halfBrim, brimY, halfBrim, brimY, 1.5f, Scale(COL_STRAW, 0.75f), 0.0045f);
 	}
 
 	void BuildSword(ModelBuilder* builder, float height)
@@ -157,8 +216,10 @@ namespace
 		const float halfHip = height * 0.20f;
 
 		builder->AddLine(halfHip * 0.3f, hipY + 2.0f, halfHip * 2.1f, hipY + 9.0f, 4.5f, COL_STEEL, 0.004f);
+		builder->AddLine(halfHip * 0.3f, hipY + 0.8f, halfHip * 2.1f, hipY + 7.8f, 1.0f,
+			RGBA(0.80f, 0.85f, 0.77f), 0.0045f);
 
-		// The one spot of vermilion the player carries: the sword cord.
+		// The muted red cord ties the blade to the player's cloak palette.
 		builder->AddLine(halfHip * 0.1f, hipY + 1.0f, -halfHip * 0.5f, hipY - 2.0f, 3.0f,
 			RGBA(0.66f, 0.24f, 0.16f), 0.005f);
 	}
@@ -174,11 +235,8 @@ namespace
 
 		builder->SetAnim(ANIM_FLAME, 0.0f, 1.2f);
 
-		for (int i = 3; i >= 1; --i)
-		{
-			const Color halo = RGBA(1.0f, 0.66f, 0.30f, 0.12f / i);
-			builder->AddEllipse(lanternX, lanternY, 13.0f * i, 11.0f * i, 14, halo, -0.01f, MODEL_FLAG_UNLIT);
-		}
+		builder->AddSoftEllipse(lanternX, lanternY, 36.0f, 29.0f,
+			RGBA(1.0f, 0.70f, 0.35f, 0.22f), -0.01f);
 
 		builder->ClearAnim();
 		builder->AddLine(-halfHip * 0.8f, shoulderY + 3.0f, lanternX, lanternY - 7.0f, 1.5f,
@@ -195,8 +253,10 @@ namespace
 	{
 		// A vengeful spirit: no shadow, because it does not touch the ground.
 		const float height = 34.0f;
-		const Color pale = RGBA(0.60f, 0.71f, 0.78f, 0.60f);
-		const Color paleDim = RGBA(0.44f, 0.55f, 0.64f, 0.46f);
+		const Color pale = RGBA(0.65f, 0.86f, 0.77f, 0.75f);
+		const Color paleDim = RGBA(0.35f, 0.59f, 0.54f, 0.46f);
+		builder->AddSoftEllipse(0.0f, -height * 0.60f, 18.0f, 24.0f,
+			RGBA(0.32f, 0.72f, 0.63f, 0.16f), -0.01f);
 
 		builder->SetAnim(ANIM_SWAY, 0.0f, 1.8f);
 
@@ -208,7 +268,7 @@ namespace
 			-10.0f, -height * 0.45f
 		};
 
-		builder->AddPolygon(tail, 4, paleDim, 0.0f);
+		builder->AddPolygon(tail, 4, paleDim, 0.0f, MODEL_FLAG_SHADED);
 		builder->ClearAnim();
 
 		const float body[8] =
@@ -219,8 +279,8 @@ namespace
 			-8.0f, -height * 0.72f
 		};
 
-		builder->AddPolygon(body, 4, pale, 0.001f);
-		builder->AddEllipse(0.0f, -height * 0.82f, 6.5f, 7.0f, 12, pale, 0.002f);
+		builder->AddPolygon(body, 4, pale, 0.001f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(0.0f, -height * 0.82f, 7.5f, 8.0f, 10, pale, 0.002f, MODEL_FLAG_SHADED);
 		builder->AddEllipse(-2.6f, -height * 0.84f, 1.5f, 2.0f, 6, RGBA(0.05f, 0.07f, 0.10f, 0.85f), 0.003f);
 		builder->AddEllipse(2.6f, -height * 0.84f, 1.5f, 2.0f, 6, RGBA(0.05f, 0.07f, 0.10f, 0.85f), 0.003f);
 	}
@@ -228,10 +288,11 @@ namespace
 	void BuildOni(ModelBuilder* builder)
 	{
 		const float height = 44.0f;
-		const Color skin = RGBA(0.46f, 0.24f, 0.20f);
-		const Color cloth = RGBA(0.28f, 0.26f, 0.20f);
+		const Color skin = RGBA(0.58f, 0.34f, 0.25f);
+		const Color cloth = RGBA(0.26f, 0.30f, 0.20f);
 
-		builder->AddEllipse(0.0f, 0.0f, 13.0f, 5.5f, 12, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
+		builder->AddSoftEllipse(4.0f, 2.0f, 20.0f, 8.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
 
 		const float body[8] =
 		{
@@ -241,9 +302,15 @@ namespace
 			-10.0f, -height * 0.60f
 		};
 
-		builder->AddPolygon(body, 4, skin, 0.0f);
-		builder->AddRect(-11.0f, -height * 0.30f, 22.0f, height * 0.10f, cloth, 0.001f);
-		builder->AddEllipse(0.0f, -height * 0.74f, 9.0f, 9.5f, 12, skin, 0.002f);
+		builder->AddEllipse(-11.0f, -height * 0.43f, 6.0f, 10.0f, 9,
+			Scale(skin, 0.88f), -0.001f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(11.0f, -height * 0.43f, 6.0f, 10.0f, 9,
+			Scale(skin, 0.75f), -0.001f, MODEL_FLAG_SHADED);
+		builder->AddPolygon(body, 4, skin, 0.0f, MODEL_FLAG_SHADED);
+		builder->AddRect(-11.0f, -height * 0.30f, 22.0f, height * 0.22f, cloth, 0.001f, MODEL_FLAG_SHADED);
+		builder->AddEllipse(0.0f, -height * 0.74f, 9.0f, 9.5f, 10, skin, 0.002f, MODEL_FLAG_SHADED);
+		builder->AddLine(-4.0f, -height * 0.58f, 4.0f, -height * 0.58f, 2.0f,
+			Scale(skin, 0.60f), 0.0025f);
 
 		// Horns.
 		builder->AddTriangle(-7.0f, -height * 0.82f, -3.0f, -height * 0.82f, -7.5f, -height * 1.02f,
@@ -263,13 +330,13 @@ namespace
 
 		builder->SetAnim(ANIM_FLAME, 0.0f, 2.4f);
 
-		for (int i = 3; i >= 1; --i)
-		{
-			const Color halo = RGBA(0.55f, 0.95f, 0.80f, 0.14f / i);
-			builder->AddEllipse(0.0f, centerY, 9.0f * i, 10.0f * i, 14, halo, -0.01f, MODEL_FLAG_UNLIT);
-		}
+		builder->AddSoftEllipse(0.0f, centerY, 28.0f, 31.0f,
+			RGBA(0.39f, 0.95f, 0.80f, 0.26f), -0.01f);
 
-		builder->AddEllipse(0.0f, centerY, 6.0f, 7.5f, 12, RGBA(0.78f, 1.0f, 0.90f), 0.002f, MODEL_FLAG_UNLIT);
+		builder->AddEllipse(0.0f, centerY, 7.0f, 9.0f, 10,
+			RGBA(0.44f, 0.91f, 0.77f), 0.002f, MODEL_FLAG_UNLIT | MODEL_FLAG_SHADED);
+		builder->AddEllipse(-1.0f, centerY - 2.0f, 3.0f, 4.0f, 8,
+			RGBA(0.85f, 1.0f, 0.87f), 0.003f, MODEL_FLAG_UNLIT);
 		builder->ClearAnim();
 	}
 
@@ -281,27 +348,29 @@ namespace
 
 		builder->SetAnim(ANIM_FLAME, 0.0f, 1.1f);
 
-		for (int i = 2; i >= 1; --i)
-		{
-			const Color halo = RGBA(0.62f, 0.82f, 1.0f, 0.18f / i);
-			builder->AddEllipse(0.0f, centerY, 7.0f * i, 7.0f * i, 12, halo, -0.01f, MODEL_FLAG_UNLIT);
-		}
+		builder->AddSoftEllipse(0.0f, centerY, 16.0f, 16.0f,
+			RGBA(0.39f, 0.81f, 0.72f, 0.30f), -0.01f);
 
-		builder->AddEllipse(0.0f, centerY, 4.0f, 4.0f, 10, RGBA(0.80f, 0.92f, 1.0f), 0.002f, MODEL_FLAG_UNLIT);
+		const float crystal[8] = { 0.0f, centerY - 5.0f, 4.0f, centerY, 0.0f, centerY + 5.0f, -4.0f, centerY };
+		builder->AddPolygon(crystal, 4, RGBA(0.70f, 0.95f, 0.79f), 0.002f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_SHADED);
 		builder->ClearAnim();
 	}
 
 	void BuildPotion(ModelBuilder* builder)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 7.0f, 3.0f, 10, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
-		builder->AddEllipse(0.0f, -7.0f, 6.0f, 7.0f, 12, RGBA(0.55f, 0.18f, 0.16f), 0.0f);
+		builder->AddSoftEllipse(2.0f, 1.0f, 10.0f, 4.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		builder->AddEllipse(0.0f, -7.0f, 6.0f, 7.0f, 10, RGBA(0.68f, 0.29f, 0.20f), 0.0f, MODEL_FLAG_SHADED);
+		builder->AddLine(-2.5f, -10.0f, -2.5f, -6.0f, 1.5f, RGBA(0.90f, 0.76f, 0.49f), 0.0005f);
 		builder->AddRect(-2.0f, -16.0f, 4.0f, 6.0f, RGBA(0.42f, 0.38f, 0.32f), 0.001f);
 		builder->AddRect(-3.0f, -19.0f, 6.0f, 3.0f, RGBA(0.30f, 0.26f, 0.21f), 0.002f);
 	}
 
 	void BuildWhetstone(ModelBuilder* builder)
 	{
-		builder->AddEllipse(0.0f, 0.0f, 8.0f, 3.5f, 10, COL_SHADOW, -0.02f, MODEL_FLAG_UNLIT);
+		builder->AddSoftEllipse(2.0f, 1.0f, 11.0f, 4.5f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
 
 		const float block[8] =
 		{
@@ -311,7 +380,7 @@ namespace
 			-6.0f, -11.0f
 		};
 
-		builder->AddPolygon(block, 4, RGBA(0.44f, 0.45f, 0.43f), 0.0f);
+		builder->AddPolygon(block, 4, RGBA(0.52f, 0.56f, 0.48f), 0.0f, MODEL_FLAG_SHADED);
 		builder->AddRect(-6.0f, -12.5f, 12.0f, 2.0f, RGBA(0.58f, 0.58f, 0.55f), 0.001f);
 	}
 
@@ -357,6 +426,7 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 	float scale, float depth, const ShadeParams& shade)
 {
 	float points[MAX_POLY_VERTICES * 2];
+	Color colors[MAX_POLY_VERTICES];
 
 	for (size_t i = 0; i < model.polys.size(); ++i)
 	{
@@ -367,20 +437,28 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 			continue;
 		}
 
+		float minX = model.vertices[poly.firstVertex * 2];
+		float maxX = minX;
+		float minY = model.vertices[poly.firstVertex * 2 + 1];
+		float maxY = minY;
+
 		for (int v = 0; v < poly.vertexCount; ++v)
 		{
 			const int index = (poly.firstVertex + v) * 2;
 			points[v * 2 + 0] = screenX + model.vertices[index + 0] * scale;
 			points[v * 2 + 1] = screenY + model.vertices[index + 1] * scale;
+			minX = fminf(minX, model.vertices[index]);
+			maxX = fmaxf(maxX, model.vertices[index]);
+			minY = fminf(minY, model.vertices[index + 1]);
+			maxY = fmaxf(maxY, model.vertices[index + 1]);
 		}
 
 		Color color = poly.color;
-		float alpha = poly.color.a;
+		const float alpha = poly.color.a * shade.tint.a;
 
 		if ((poly.flags & MODEL_FLAG_TINT) != 0)
 		{
 			color = Modulate(color, shade.tint);
-			alpha *= shade.tint.a;
 		}
 
 		if ((poly.flags & MODEL_FLAG_UNLIT) == 0)
@@ -388,11 +466,28 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 			color = Modulate(color, shade.light);
 		}
 
-		color = Mix(color, shade.fogColor, shade.fog);
-		color.a = alpha;
+		for (int v = 0; v < poly.vertexCount; ++v)
+		{
+			Color surface = color;
+
+			if ((poly.flags & MODEL_FLAG_SHADED) != 0)
+			{
+				const int index = (poly.firstVertex + v) * 2;
+				const float horizontal = (model.vertices[index] - minX) / fmaxf(maxX - minX, 1.0f);
+				const float vertical = (model.vertices[index + 1] - minY) / fmaxf(maxY - minY, 1.0f);
+				surface = Scale(surface, SURFACE_HIGHLIGHT - SURFACE_SHADE_RANGE
+					* (horizontal * 0.35f + vertical * 0.65f));
+			}
+
+			colors[v] = Mix(surface, shade.fogColor, shade.fog);
+			colors[v].a = ((poly.flags & MODEL_FLAG_RADIAL) != 0 && v != 0) ? 0.0f : alpha;
+		}
+
+		const float polyDepth = (poly.flags & MODEL_FLAG_GROUND) != 0
+			? GROUND_SHADOW_DEPTH + depth * 0.01f : depth + poly.depthBias;
 
 		renderer->SetAnim((AnimKind)poly.anim, poly.animPhase, poly.animStrength * scale);
-		renderer->PushPolygon(points, poly.vertexCount, color, depth + poly.depthBias);
+		renderer->PushPolygonShaded(points, colors, poly.vertexCount, polyDepth);
 	}
 
 	renderer->ClearAnim();
@@ -492,6 +587,28 @@ void ModelBuilder::AddEllipse(float centerX, float centerY, float radiusX, float
 	}
 
 	AddPolygon(xy, segments, color, depthBias, flags);
+}
+
+void ModelBuilder::AddSoftEllipse(float centerX, float centerY, float radiusX, float radiusY,
+	const Color& color, float depthBias, unsigned int flags)
+{
+	if (radiusX <= 0.0f || radiusY <= 0.0f)
+	{
+		return;
+	}
+
+	float xy[(SOFT_ELLIPSE_SEGMENTS + 2) * 2];
+	xy[0] = centerX;
+	xy[1] = centerY;
+
+	for (int i = 0; i <= SOFT_ELLIPSE_SEGMENTS; ++i)
+	{
+		const float angle = TWO_PI * (float)i / (float)SOFT_ELLIPSE_SEGMENTS;
+		xy[(i + 1) * 2] = centerX + cosf(angle) * radiusX;
+		xy[(i + 1) * 2 + 1] = centerY + sinf(angle) * radiusY;
+	}
+
+	AddPolygon(xy, SOFT_ELLIPSE_SEGMENTS + 2, color, depthBias, flags | MODEL_FLAG_RADIAL);
 }
 
 void ModelBuilder::AddLine(float x0, float y0, float x1, float y1, float thickness,
@@ -607,6 +724,10 @@ void ModelLibrary::BuildAll()
 	ModelBuilder kasa;
 	BuildKasa(&kasa, PERSON_HEIGHT);
 	m_Models["person_kasa"] = kasa.Get();
+
+	ModelBuilder cloak;
+	BuildPlayerCloak(&cloak, PERSON_HEIGHT);
+	m_Models["player_cloak"] = cloak.Get();
 
 	ModelBuilder sword;
 	BuildSword(&sword, PERSON_HEIGHT);
@@ -800,6 +921,8 @@ bool ModelLibrary::LoadCache(const char* path)
 				|| poly.vertexCount > MAX_POLY_VERTICES
 				|| poly.firstVertex > vertexFloats / 2 - poly.vertexCount
 				|| poly.anim < ANIM_NONE || poly.anim > ANIM_SWAY
+				|| (poly.flags & ~(MODEL_FLAG_UNLIT | MODEL_FLAG_TINT | MODEL_FLAG_SHADED
+					| MODEL_FLAG_RADIAL | MODEL_FLAG_GROUND)) != 0
 				|| !std::isfinite(poly.depthBias) || !std::isfinite(poly.animPhase)
 				|| !std::isfinite(poly.animStrength) || !std::isfinite(poly.color.r)
 				|| !std::isfinite(poly.color.g) || !std::isfinite(poly.color.b)

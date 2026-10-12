@@ -18,7 +18,10 @@ enum ModelPolyFlags
 {
 	MODEL_FLAG_NONE = 0,
 	MODEL_FLAG_UNLIT = 1 << 0,		// a source, not a surface: skip lighting
-	MODEL_FLAG_TINT = 1 << 1		// multiply by the per-instance tint
+	MODEL_FLAG_TINT = 1 << 1,		// multiply by the per-instance tint
+	MODEL_FLAG_SHADED = 1 << 2,	// baked surface receives a top-left gradient
+	MODEL_FLAG_RADIAL = 1 << 3,	// center-first fan with a transparent perimeter
+	MODEL_FLAG_GROUND = 1 << 4	// contact shadows stay beneath every actor
 };
 
 struct ModelPoly
@@ -60,6 +63,8 @@ public:
 		unsigned int flags = MODEL_FLAG_NONE);
 	void AddEllipse(float centerX, float centerY, float radiusX, float radiusY, int segments,
 		const Color& color, float depthBias, unsigned int flags = MODEL_FLAG_NONE);
+	void AddSoftEllipse(float centerX, float centerY, float radiusX, float radiusY,
+		const Color& color, float depthBias, unsigned int flags = MODEL_FLAG_UNLIT);
 	void AddLine(float x0, float y0, float x1, float y1, float thickness, const Color& color,
 		float depthBias, unsigned int flags = MODEL_FLAG_NONE);
 

@@ -44,7 +44,7 @@ struct ShadeParams
 	Color light;		// multiplier applied to lit polygons
 	Color fogColor;
 	float fog;			// 0 = clear, 1 = fully fogged
-	Color tint;			// multiplier for polygons flagged as tintable
+	Color tint;			// RGB for tintable polygons; opacity for the whole instance
 };
 
 ShadeParams DefaultShade();
@@ -79,13 +79,14 @@ public:
 	void SetAnim(AnimKind kind, float phase, float strength);
 	void ClearAnim();
 
-	// Convex polygons only - they are triangulated as a fan.
+	// Convex boundaries or closed center-first fans, triangulated from vertex 0.
 	void PushPolygon(const float* xy, int vertexCount, const Color& color, float depth);
 	void PushPolygonShaded(const float* xy, const Color* colors, int vertexCount, float depth);
 
 	void PushRect(float x, float y, float width, float height, const Color& color, float depth);
 	void PushDiamond(float centerX, float centerY, float halfWidth, float halfHeight, const Color& color, float depth);
 	void PushEllipse(float centerX, float centerY, float radiusX, float radiusY, const Color& color, float depth, int segments = 14);
+	void PushSoftEllipse(float centerX, float centerY, float radiusX, float radiusY, const Color& color, float depth, int segments = 20);
 	void PushLine(float x0, float y0, float x1, float y1, float thickness, const Color& color, float depth);
 
 	// Text is drawn in a separate pass after the polygon batch, in push order.
