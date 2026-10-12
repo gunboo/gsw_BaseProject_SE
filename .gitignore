@@ -1,2 +1,7 @@
 # Visual Studio local cache and workspace settings
 .vs/
+
+# Generated build files (keep runtime DLL dependencies)
+SimpleGame/x64/
+x64/**/*.exe
+x64/**/*.pdb

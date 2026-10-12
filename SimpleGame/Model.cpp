@@ -425,34 +425,10 @@ namespace
 void DrawModel(Renderer* renderer, const Model& model, float screenX, float screenY,
 	float scale, float depth, const ShadeParams& shade)
 {
-	float points[MAX_POLY_VERTICES * 2];
-	Color colors[MAX_POLY_VERTICES];
+	const float cornerShade[4] = { 0.0f, 0.35f, 1.0f, 0.65f };
 
-	for (size_t i = 0; i < model.polys.size(); ++i)
+	for (const ModelPoly& poly : model.polys)
 	{
-		const ModelPoly& poly = model.polys[i];
-
-		if (poly.vertexCount < 3 || poly.vertexCount > MAX_POLY_VERTICES)
-		{
-			continue;
-		}
-
-		float minX = model.vertices[poly.firstVertex * 2];
-		float maxX = minX;
-		float minY = model.vertices[poly.firstVertex * 2 + 1];
-		float maxY = minY;
-
-		for (int v = 0; v < poly.vertexCount; ++v)
-		{
-			const int index = (poly.firstVertex + v) * 2;
-			points[v * 2 + 0] = screenX + model.vertices[index + 0] * scale;
-			points[v * 2 + 1] = screenY + model.vertices[index + 1] * scale;
-			minX = fminf(minX, model.vertices[index]);
-			maxX = fmaxf(maxX, model.vertices[index]);
-			minY = fminf(minY, model.vertices[index + 1]);
-			maxY = fmaxf(maxY, model.vertices[index + 1]);
-		}
-
 		Color color = poly.color;
 		const float alpha = poly.color.a * shade.tint.a;
 
@@ -466,28 +442,21 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 			color = Modulate(color, shade.light);
 		}
 
-		for (int v = 0; v < poly.vertexCount; ++v)
+		Color colors[4];
+
+		for (int corner = 0; corner < 4; ++corner)
 		{
-			Color surface = color;
-
-			if ((poly.flags & MODEL_FLAG_SHADED) != 0)
-			{
-				const int index = (poly.firstVertex + v) * 2;
-				const float horizontal = (model.vertices[index] - minX) / fmaxf(maxX - minX, 1.0f);
-				const float vertical = (model.vertices[index + 1] - minY) / fmaxf(maxY - minY, 1.0f);
-				surface = Scale(surface, SURFACE_HIGHLIGHT - SURFACE_SHADE_RANGE
-					* (horizontal * 0.35f + vertical * 0.65f));
-			}
-
-			colors[v] = Mix(surface, shade.fogColor, shade.fog);
-			colors[v].a = ((poly.flags & MODEL_FLAG_RADIAL) != 0 && v != 0) ? 0.0f : alpha;
+			const float factor = (poly.flags & MODEL_FLAG_SHADED) != 0
+				? SURFACE_HIGHLIGHT - SURFACE_SHADE_RANGE * cornerShade[corner] : 1.0f;
+			colors[corner] = Mix(Scale(color, factor), shade.fogColor, shade.fog);
+			colors[corner].a = alpha;
 		}
 
 		const float polyDepth = (poly.flags & MODEL_FLAG_GROUND) != 0
 			? GROUND_SHADOW_DEPTH + depth * 0.01f : depth + poly.depthBias;
-
 		renderer->SetAnim((AnimKind)poly.anim, poly.animPhase, poly.animStrength * scale);
-		renderer->PushPolygonShaded(points, colors, poly.vertexCount, polyDepth);
+		renderer->PushMeshShaded(poly.mesh, screenX, screenY, scale, scale,
+			colors, poly.shadeBounds, (poly.flags & MODEL_FLAG_RADIAL) != 0, polyDepth);
 	}
 
 	renderer->ClearAnim();
@@ -687,6 +656,43 @@ const Model* ModelLibrary::Find(const std::string& name) const
 	}
 
 	return &it->second;
+}
+
+bool ModelLibrary::RegisterMeshes(Renderer* renderer)
+{
+	for (auto& entry : m_Models)
+	{
+		Model& model = entry.second;
+
+		for (size_t i = 0; i < model.polys.size(); ++i)
+		{
+			ModelPoly& poly = model.polys[i];
+			const float* xy = &model.vertices[poly.firstVertex * 2];
+			float minX = xy[0], maxX = xy[0], minY = xy[1], maxY = xy[1];
+			for (int vertex = 1; vertex < poly.vertexCount; ++vertex)
+			{
+				minX = fminf(minX, xy[vertex * 2]);
+				maxX = fmaxf(maxX, xy[vertex * 2]);
+				minY = fminf(minY, xy[vertex * 2 + 1]);
+				maxY = fmaxf(maxY, xy[vertex * 2 + 1]);
+			}
+			poly.shadeBounds[0] = minX;
+			poly.shadeBounds[1] = minY;
+			poly.shadeBounds[2] = fmaxf(maxX - minX, 1.0f);
+			poly.shadeBounds[3] = fmaxf(maxY - minY, 1.0f);
+			poly.mesh = renderer->RegisterMesh("model/" + entry.first + "/" + std::to_string(i),
+				&model.vertices[poly.firstVertex * 2], poly.vertexCount);
+
+			if (poly.mesh < 0)
+			{
+				return false;
+			}
+		}
+	}
+
+	renderer->PrepareMeshes();
+
+	return renderer->IsInitialized();
 }
 
 void ModelLibrary::BuildAll()

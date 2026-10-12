@@ -8,12 +8,7 @@
 #include <thread>
 #include <vector>
 
-struct MonitoredPosition
-{
-	float x = 0.0f;
-	float y = 0.0f;
-	float z = 0.0f;
-};
+#include "Actor.h"
 
 // Plain snapshots keep the protocol independent of scene ownership and transport.
 struct MonitoredEntity
@@ -23,7 +18,7 @@ struct MonitoredEntity
 	std::string kind;
 	std::string behavior;
 	std::string state;
-	MonitoredPosition position;
+	ActorPosition position = {};
 	bool alive = true;
 	bool hasHealth = false;
 	float health = 0.0f;
@@ -57,7 +52,7 @@ public:
 	~MonitoringPublisher();
 	void Start();
 	void Stop();
-	bool IsDue();
+	bool IsDue(double nowMs);
 	void Publish(const std::vector<MonitoredWorld>& worlds);
 
 private:

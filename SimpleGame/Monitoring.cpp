@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Monitoring.h"
+#include "AnalysisLog.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -14,7 +15,6 @@
 #include <cstdlib>
 #include <exception>
 #include <iomanip>
-#include <iostream>
 #include <locale>
 #include <sstream>
 
@@ -25,11 +25,6 @@ namespace
 	const double PUBLISH_INTERVAL_MS = 1000.0;
 	const int HTTP_TIMEOUT_MS = 250;
 	const char* const HEX = "0123456789abcdef";
-
-	void LogEvent(const char* kind, const std::string& detail)
-	{
-		std::cout << "[monitor] " << kind << ": " << detail << '\n';
-	}
 
 	std::string Environment(const char* name)
 	{
@@ -232,7 +227,7 @@ void MonitoringPublisher::Start()
 	if (!IsIdentifier(m_SourceId) || (!portText.empty()
 		&& (portText[0] < '0' || portText[0] > '9' || *end != '\0' || port == 0 || port > 65535)))
 	{
-		LogEvent("monitor.config_invalid", "source_or_port;disabled");
+		AnalysisLog::Get().Event("monitor.config_invalid", "source_or_port;disabled");
 		return;
 	}
 
@@ -243,19 +238,17 @@ void MonitoringPublisher::Start()
 	m_Stopping = false;
 	m_Sequence = 0;
 	m_NextPublishMs = 0.0;
-	m_Connection.store(0);
-	m_LastConnection = 0;
 
 	try
 	{
 		m_Worker = std::thread(&MonitoringPublisher::Run, this);
 		m_Enabled = true;
-		LogEvent("monitor.started", "source=" + m_SourceId + ";instance=" + m_InstanceId
+		AnalysisLog::Get().Event("monitor.started", "source=" + m_SourceId + ";instance=" + m_InstanceId
 			+ ";port=" + std::to_string(m_Port));
 	}
 	catch (const std::exception&)
 	{
-		LogEvent("monitor.failed", "worker_creation;disabled");
+		AnalysisLog::Get().Event("monitor.failed", "worker_creation;disabled");
 	}
 }
 
@@ -275,18 +268,16 @@ void MonitoringPublisher::Stop()
 	m_Wake.notify_one();
 	m_Worker.join();
 	m_Enabled = false;
-	LogEvent("monitor.stopped", "publisher_shutdown");
+	AnalysisLog::Get().Event("monitor.stopped", "publisher_shutdown");
 }
 
-bool MonitoringPublisher::IsDue()
+bool MonitoringPublisher::IsDue(double nowMs)
 {
 	const int connection = m_Connection.load();
-	const double nowMs = std::chrono::duration<double, std::milli>(
-		std::chrono::steady_clock::now().time_since_epoch()).count();
 
 	if (connection != m_LastConnection)
 	{
-		LogEvent(connection == 1 ? "monitor.connected" : "monitor.disconnected", "local_receiver");
+		AnalysisLog::Get().Event(connection == 1 ? "monitor.connected" : "monitor.disconnected", "local_receiver");
 		m_LastConnection = connection;
 	}
 

@@ -85,7 +85,7 @@ namespace VisualStyle
 	}
 
 	inline void DrawGroundTile(Renderer* renderer, const World& world, const Lighting& lighting,
-		int x, int y)
+		int x, int y, float worldZ = 0.0f)
 	{
 		const int cornerX[4] = { x, x + 1, x + 1, x };
 		const int cornerY[4] = { y, y, y + 1, y + 1 };
@@ -97,7 +97,7 @@ namespace VisualStyle
 
 		for (int i = 0; i < 4; ++i)
 		{
-			renderer->WorldToScreen((float)cornerX[i], (float)cornerY[i], 0.0f,
+			renderer->WorldToScreen((float)cornerX[i], (float)cornerY[i], worldZ,
 				&points[i * 2], &points[i * 2 + 1]);
 			colors[i] = tile == TILE_WATER
 				? lighting.Apply(GroundColor(tile), (float)cornerX[i], (float)cornerY[i])
@@ -108,7 +108,7 @@ namespace VisualStyle
 
 		float screenX = 0.0f;
 		float screenY = 0.0f;
-		renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, 0.0f, &screenX, &screenY);
+		renderer->WorldToScreen((float)x + 0.5f, (float)y + 0.5f, worldZ, &screenX, &screenY);
 
 		if (tile == TILE_WATER)
 		{
@@ -180,7 +180,13 @@ namespace VisualStyle
 		const Color top = RGBA(0.075f, 0.105f, 0.095f, alpha);
 		const Color bottom = RGBA(0.025f, 0.042f, 0.038f, alpha);
 		const Color colors[8] = { top, top, top, bottom, bottom, bottom, bottom, top };
-		renderer->PushPolygonShaded(points, colors, 8, depth);
+		for (int i = 1; i < 7; ++i)
+		{
+			const float triangle[] = { points[0], points[1], points[i * 2], points[i * 2 + 1],
+				points[(i + 1) * 2], points[(i + 1) * 2 + 1] };
+			const Color tint[] = { colors[0], colors[i], colors[i + 1] };
+			renderer->PushPolygonShaded(triangle, tint, 3, depth);
+		}
 		renderer->PushLine(x + corner, y, x + width - corner, y, UI_BORDER,
 			RGBA(0.67f, 0.72f, 0.57f, alpha * 0.35f), depth + 0.1f);
 		renderer->PushLine(x + corner, y + height, x + width - corner, y + height, UI_BORDER,

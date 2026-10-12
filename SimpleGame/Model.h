@@ -34,6 +34,8 @@ struct ModelPoly
 	int anim;
 	float animPhase;
 	float animStrength;
+	float shadeBounds[4] = {}; // runtime gradient bounds
+	int mesh = -1;			// runtime Renderer handle, not serialized in models.cache
 };
 
 struct Model
@@ -88,6 +90,7 @@ public:
 	ModelLibrary();
 
 	bool LoadOrBuild(const char* cachePath);
+	bool RegisterMeshes(Renderer* renderer);
 
 	const Model* Find(const std::string& name) const;
 	int GetCount() const
