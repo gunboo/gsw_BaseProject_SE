@@ -27,8 +27,20 @@ enum PropType
 	PROP_DOCK,
 	PROP_STONE,
 	PROP_LANTERN,
+	PROP_KEEP,
+	PROP_TOWER,
+	PROP_WALL,
+	PROP_GATE,
 	PROP_UNKNOWN
 };
+
+namespace StructureDimensions
+{
+	const float GATE_PIER_WIDTH = 0.65f;
+	const float TORII_HALF_SPAN = 0.9f;
+	const float TORII_BASE_HALF_WIDTH = 0.22f;
+	const float TORII_BASE_HALF_DEPTH = 0.24f;
+}
 
 // For sized props (house, shrine, ruin) x/y is the minimum corner of the
 // footprint and sizeX/sizeY its extent. Point props keep size 0 and are
@@ -56,6 +68,13 @@ struct BlockRect
 	float minY;
 	float maxX;
 	float maxY;
+};
+
+struct TerrainSurface
+{
+	float height = 0.0f;
+	float slopeX = 0.0f;
+	float slopeY = 0.0f;
 };
 
 // Small xorshift generator. Deterministic for a given seed so a level can be
@@ -94,6 +113,12 @@ public:
 
 	// Circle test against solid tiles and prop footprints.
 	bool IsBlocked(float worldX, float worldY, float radius) const;
+	bool CanMove(float fromX, float fromY, float toX, float toY, float radius) const;
+	float GetElevation(float worldX, float worldY) const;
+	float GetTileElevation(int x, int y, float localX = 0.5f, float localY = 0.5f) const;
+	bool IsStairTile(int x, int y) const;
+	bool StairsRunAlongX(int x, int y) const;
+	static const int STAIR_TREADS_PER_TILE = 2;
 
 	const std::vector<Prop>& GetProps() const { return m_Props; }
 	const std::vector<SpawnPoint>& GetNpcSpawns() const { return m_NpcSpawns; }
@@ -115,6 +140,7 @@ private:
 	int m_Width;
 	int m_Height;
 	std::vector<unsigned char> m_Tiles;
+	std::vector<TerrainSurface> m_Surfaces;
 	std::vector<Prop> m_Props;
 	std::vector<BlockRect> m_Blockers;
 	std::vector<SpawnPoint> m_NpcSpawns;

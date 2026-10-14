@@ -21,7 +21,8 @@ namespace
 	{
 		const ActorPosition world = actor.GetWorldPosition();
 		const ActorPosition local = actor.GetPosition();
-		actor.SetPosition(local.x + position.x - world.x, local.y + position.y - world.y, local.z);
+		actor.SetPosition(local.x + position.x - world.x, local.y + position.y - world.y,
+			local.z + position.z - world.z);
 	}
 }
 
@@ -60,8 +61,11 @@ bool Bow::ClearShot(const ActorPosition& origin, const ActorPosition& target) co
 	for (int i = 0; i <= steps; ++i)
 	{
 		const float t = steps == 0 ? 0.0f : static_cast<float>(i) / steps;
+		const float x = origin.x + dx * t;
+		const float y = origin.y + dy * t;
+		const float shotHeight = origin.z + (target.z - origin.z) * t + DRAW_HEIGHT;
 
-		if (m_World->IsBlocked(origin.x + dx * t, origin.y + dy * t, ARROW_RADIUS))
+		if (m_World->IsBlocked(x, y, ARROW_RADIUS) || m_World->GetElevation(x, y) > shotHeight - ARROW_RADIUS)
 		{
 			return false;
 		}
@@ -112,6 +116,7 @@ bool Bow::Shoot(const ActorPosition& origin, float damage)
 		const float distance = sqrtf(best);
 		arrow.dx = (target.x - origin.x) / distance;
 		arrow.dy = (target.y - origin.y) / distance;
+		arrow.dz = (target.z - origin.z) / distance;
 		arrow.remaining = RANGE;
 		arrow.damage = damage;
 		Place(*arrow.actor, origin);
@@ -154,10 +159,12 @@ void Bow::Update(size_t index, float deltaSeconds)
 		const float step = (std::min)(travel, COLLISION_STEP);
 		position.x += arrow.dx * step;
 		position.y += arrow.dy * step;
+		position.z += arrow.dz * step;
 		travel -= step;
 		arrow.remaining -= step;
 
-		if (m_World->IsBlocked(position.x, position.y, ARROW_RADIUS))
+		if (m_World->IsBlocked(position.x, position.y, ARROW_RADIUS)
+			|| m_World->GetElevation(position.x, position.y) > position.z + DRAW_HEIGHT - ARROW_RADIUS)
 		{
 			Stop(arrow);
 			return;
@@ -176,7 +183,8 @@ void Bow::Update(size_t index, float deltaSeconds)
 			const float dx = enemy.x - position.x;
 			const float dy = enemy.y - position.y;
 
-			if (dx * dx + dy * dy <= HIT_RADIUS * HIT_RADIUS && ClearShot(position, enemy))
+			if (dx * dx + dy * dy <= HIT_RADIUS * HIT_RADIUS
+				&& fabsf(enemy.z - position.z) <= HIT_RADIUS && ClearShot(position, enemy))
 			{
 				const float damage = arrow.damage;
 				Stop(arrow);
@@ -200,9 +208,9 @@ void Bow::Draw(size_t index, Renderer& renderer)
 	const Arrow& arrow = m_Arrows[index];
 	const ActorPosition position = arrow.actor->GetWorldPosition();
 	float x, y, tailX, tailY;
-	renderer.WorldToScreen(position.x, position.y, DRAW_HEIGHT, &x, &y);
+	renderer.WorldToScreen(position.x, position.y, position.z + DRAW_HEIGHT, &x, &y);
 	renderer.WorldToScreen(position.x - arrow.dx * TAIL_LENGTH,
-		position.y - arrow.dy * TAIL_LENGTH, DRAW_HEIGHT, &tailX, &tailY);
+		position.y - arrow.dy * TAIL_LENGTH, position.z - arrow.dz * TAIL_LENGTH + DRAW_HEIGHT, &tailX, &tailY);
 	const float depth = position.x + position.y + 0.2f;
 	renderer.PushLine(tailX, tailY, x, y, 2.5f, RGBA(0.9f, 0.77f, 0.45f), depth);
 	renderer.PushDiamond(x, y, 3.0f, 3.0f, RGBA(1.0f, 0.95f, 0.8f), depth + 0.01f);

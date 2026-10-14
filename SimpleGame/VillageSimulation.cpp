@@ -284,8 +284,10 @@ int VillageSimulation::Cell(const ActorPosition& position) const
 
 ActorPosition VillageSimulation::Center(int cell) const
 {
-	return { static_cast<float>(cell % m_World->GetWidth()) + 0.5f,
-		static_cast<float>(cell / m_World->GetWidth()) + 0.5f, 0.0f };
+	const float x = static_cast<float>(cell % m_World->GetWidth()) + 0.5f;
+	const float y = static_cast<float>(cell / m_World->GetWidth()) + 0.5f;
+
+	return { x, y, m_World->GetElevation(x, y) };
 }
 
 bool VillageSimulation::Safe(const ActorPosition& position) const
@@ -377,15 +379,23 @@ void VillageSimulation::BuildNavigation()
 bool VillageSimulation::ClearLine(const ActorPosition& a, const ActorPosition& b) const
 {
 	const int steps = static_cast<int>(ceilf(Distance(a, b) / COLLISION_SAMPLE_STEP));
+	float previousX = a.x;
+	float previousY = a.y;
 
 	for (int i = 0; i <= steps; ++i)
 	{
 		const float t = steps == 0 ? 0.0f : static_cast<float>(i) / steps;
 
-		if (m_World->IsBlocked(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, BODY_RADIUS))
+		const float x = a.x + (b.x - a.x) * t;
+		const float y = a.y + (b.y - a.y) * t;
+
+		if (!m_World->CanMove(previousX, previousY, x, y, BODY_RADIUS))
 		{
 			return false;
 		}
+
+		previousX = x;
+		previousY = y;
 	}
 
 	return true;
@@ -493,6 +503,7 @@ void VillageSimulation::Navigate(Walker& walker, int target, float speed, float 
 	const float step = (std::min)(speed * deltaSeconds, distance);
 	ActorPosition next = { position.x + (goal.x - position.x) * step / distance,
 		position.y + (goal.y - position.y) * step / distance, position.z };
+	next.z = m_World->GetElevation(next.x, next.y);
 
 	if (ClearLine(position, next))
 	{
@@ -646,7 +657,7 @@ bool VillageSimulation::SpawnMonster(size_t index, bool initial)
 			continue;
 		}
 
-		monster.walker.actor->SetPosition(position.x, position.y);
+		monster.walker.actor->SetPosition(position.x, position.y, position.z);
 		monster.walker.actor->SetVisible(true);
 		monster.walker.home = position;
 		monster.walker.route.clear();
@@ -716,7 +727,8 @@ void VillageSimulation::HurtPlayer(float damage)
 
 	if (m_Health <= 0.0f)
 	{
-		m_Player->SetPosition(m_World->GetPlayerStartX(), m_World->GetPlayerStartY());
+		m_Player->SetPosition(m_World->GetPlayerStartX(), m_World->GetPlayerStartY(),
+			m_World->GetElevation(m_World->GetPlayerStartX(), m_World->GetPlayerStartY()));
 		m_Health = MAX_HEALTH;
 		m_Invulnerable = RECOVERY_GRACE_TIME;
 		m_Bow.Clear();
@@ -923,7 +935,7 @@ void VillageSimulation::DrawSwing(Renderer& renderer)
 
 	const ActorPosition player = m_Player->GetWorldPosition();
 	float x, y;
-	renderer.WorldToScreen(player.x, player.y, 0.0f, &x, &y);
+	renderer.WorldToScreen(player.x, player.y, player.z, &x, &y);
 	renderer.PushEllipse(x, y - 10.0f, ATTACK_RANGE * 40.0f, ATTACK_RANGE * 20.0f,
 		RGBA(0.8f, 0.85f, 0.95f, m_Swing * 1.4f), player.x + player.y + 0.5f, 24);
 }

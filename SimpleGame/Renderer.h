@@ -101,7 +101,8 @@ public:
 	void PushMeshShaded(int mesh, float x, float y, float scaleX, float scaleY,
 		const Color* colors, const float* bounds, bool radial, float depth);
 
-	void SetCamera(float worldX, float worldY);
+	// Raised scenes follow the ground height; flat scenes keep the default zero.
+	void SetCamera(float worldX, float worldY, float worldZ = 0.0f);
 	void WorldToScreen(float worldX, float worldY, float worldZ, float* screenX, float* screenY) const;
 
 	// Applies to every polygon pushed until the next call. Reset with ClearAnim.
@@ -193,6 +194,7 @@ private:
 
 	float m_CameraX;
 	float m_CameraY;
+	float m_CameraZ;
 	float m_ElapsedSeconds;
 
 	float m_AnimKind;

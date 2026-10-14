@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "World.h"
+#include "AnalysisLog.h"
 
 #include <cmath>
 #include <fstream>
@@ -8,6 +9,9 @@
 
 namespace
 {
+	const float MAX_STEP_HEIGHT = 0.40f;
+	const float MOVEMENT_SAMPLE_STEP = 0.20f;
+	const float MAX_TERRAIN_HEIGHT = 12.0f;
 	TileType TileFromChar(char c)
 	{
 		switch (c)
@@ -42,7 +46,11 @@ namespace
 		{ "cart",    PROP_CART },
 		{ "dock",    PROP_DOCK },
 		{ "stone",   PROP_STONE },
-		{ "lantern", PROP_LANTERN }
+		{ "lantern", PROP_LANTERN },
+		{ "keep",    PROP_KEEP },
+		{ "tower",   PROP_TOWER },
+		{ "wall",    PROP_WALL },
+		{ "gate",    PROP_GATE }
 	};
 
 	PropType PropFromName(const std::string& name)
@@ -94,10 +102,15 @@ bool World::Load(const char* path)
 		return false;
 	}
 
-	enum Section { SECTION_NONE, SECTION_TILES, SECTION_PROPS, SECTION_NPCS };
+	enum Section { SECTION_NONE, SECTION_TILES, SECTION_PROPS, SECTION_NPCS, SECTION_ELEVATIONS };
 	Section section = SECTION_NONE;
 	int rowsRead = 0;
 	std::string line;
+	m_Props.clear();
+	m_Blockers.clear();
+	m_NpcSpawns.clear();
+	m_OpenCells.clear();
+	m_Surfaces.clear();
 
 	while (std::getline(file, line))
 	{
@@ -133,6 +146,7 @@ bool World::Load(const char* path)
 				}
 
 				m_Tiles.assign((size_t)m_Width * m_Height, (unsigned char)TILE_GRASS);
+				m_Surfaces.assign((size_t)m_Width * m_Height, TerrainSurface());
 				continue;
 			}
 
@@ -155,6 +169,12 @@ bool World::Load(const char* path)
 				continue;
 			}
 
+			if (keyword == "ELEVATIONS")
+			{
+				section = SECTION_ELEVATIONS;
+				continue;
+			}
+
 			if (keyword == "PLAYER")
 			{
 				stream >> m_PlayerStartX >> m_PlayerStartY;
@@ -170,6 +190,60 @@ bool World::Load(const char* path)
 				if (prop.type != PROP_UNKNOWN)
 				{
 					m_Props.push_back(prop);
+				}
+
+				continue;
+			}
+
+			if (section == SECTION_ELEVATIONS)
+			{
+				int x, y, width, height;
+				float startHeight, endHeight;
+				std::string axis;
+
+				if (!(stream >> x >> y >> width >> height >> startHeight)
+					|| width <= 0 || height <= 0 || x < 0 || y < 0
+					|| width > m_Width - x || height > m_Height - y
+					|| !std::isfinite(startHeight) || startHeight < 0.0f || startHeight > MAX_TERRAIN_HEIGHT
+					|| (keyword != "terrace" && keyword != "stairs"))
+				{
+					std::cout << path << " has an invalid elevation region.\n";
+					AnalysisLog::Get().Event("world.elevation_invalid", "region;path=" + std::string(path));
+					return false;
+				}
+
+				endHeight = startHeight;
+
+				if (keyword == "stairs" && (!(stream >> endHeight >> axis)
+					|| !std::isfinite(endHeight) || endHeight < 0.0f || endHeight > MAX_TERRAIN_HEIGHT
+					|| (axis != "x" && axis != "y")))
+				{
+					std::cout << path << " has invalid stairs.\n";
+					AnalysisLog::Get().Event("world.elevation_invalid", "stairs;path=" + std::string(path));
+					return false;
+				}
+
+				const float slopeX = axis == "x" ? (endHeight - startHeight) / width : 0.0f;
+				const float slopeY = axis == "y" ? (endHeight - startHeight) / height : 0.0f;
+
+				if (fabsf(slopeX + slopeY) / STAIR_TREADS_PER_TILE > MAX_STEP_HEIGHT)
+				{
+					std::cout << path << " has stairs too steep to climb.\n";
+					AnalysisLog::Get().Event("world.elevation_invalid", "slope;path=" + std::string(path));
+					return false;
+				}
+
+				for (int tileY = y; tileY < y + height; ++tileY)
+				{
+					for (int tileX = x; tileX < x + width; ++tileX)
+					{
+						TerrainSurface& surface = m_Surfaces[(size_t)tileY * m_Width + tileX];
+						surface.height = startHeight + (tileX - x + 0.5f) * slopeX
+							+ (tileY - y + 0.5f) * slopeY;
+						surface.slopeX = slopeX;
+						surface.slopeY = slopeY;
+						SetTile(tileX, tileY, TILE_STONE);
+					}
 				}
 
 				continue;
@@ -204,6 +278,17 @@ bool World::Load(const char* path)
 
 	FlattenPropFootprints();
 	BuildBlockers();
+	int raisedTiles = 0;
+	int stairTiles = 0;
+
+	for (const TerrainSurface& surface : m_Surfaces)
+	{
+		raisedTiles += surface.height > 0.0f ? 1 : 0;
+		stairTiles += surface.slopeX != 0.0f || surface.slopeY != 0.0f ? 1 : 0;
+	}
+
+	AnalysisLog::Get().Event("world.elevations_loaded", "raised_tiles=" + std::to_string(raisedTiles)
+		+ ";stair_tiles=" + std::to_string(stairTiles));
 
 	std::cout << path << " loaded: " << m_Width << "x" << m_Height
 		<< ", props " << m_Props.size() << ", npcs " << m_NpcSpawns.size() << "\n";
@@ -219,7 +304,8 @@ void World::FlattenPropFootprints()
 	{
 		const Prop& prop = m_Props[i];
 
-		if (prop.type != PROP_HOUSE && prop.type != PROP_RUIN && prop.type != PROP_SHRINE)
+		if (prop.type != PROP_HOUSE && prop.type != PROP_RUIN && prop.type != PROP_SHRINE
+			&& prop.type != PROP_KEEP && prop.type != PROP_TOWER && prop.type != PROP_WALL)
 		{
 			continue;
 		}
@@ -262,10 +348,33 @@ void World::BuildBlockers()
 		case PROP_HOUSE:
 		case PROP_RUIN:
 		case PROP_SHRINE:
+		case PROP_KEEP:
+		case PROP_TOWER:
+		case PROP_WALL:
 			rect.minX = prop.x;
 			rect.minY = prop.y;
 			rect.maxX = prop.x + prop.sizeX;
 			rect.maxY = prop.y + prop.sizeY;
+			break;
+
+		case PROP_GATE:
+			// The lintel is overhead; only the two piers block the passage.
+			rect = { prop.x, prop.y, prop.x + StructureDimensions::GATE_PIER_WIDTH, prop.y + prop.sizeY };
+			m_Blockers.push_back(rect);
+			rect = { prop.x + prop.sizeX - StructureDimensions::GATE_PIER_WIDTH, prop.y,
+				prop.x + prop.sizeX, prop.y + prop.sizeY };
+			break;
+
+		case PROP_TORII:
+			rect = { prop.x - StructureDimensions::TORII_HALF_SPAN - StructureDimensions::TORII_BASE_HALF_WIDTH,
+				prop.y - StructureDimensions::TORII_BASE_HALF_DEPTH,
+				prop.x - StructureDimensions::TORII_HALF_SPAN + StructureDimensions::TORII_BASE_HALF_WIDTH,
+				prop.y + StructureDimensions::TORII_BASE_HALF_DEPTH };
+			m_Blockers.push_back(rect);
+			rect = { prop.x + StructureDimensions::TORII_HALF_SPAN - StructureDimensions::TORII_BASE_HALF_WIDTH,
+				prop.y - StructureDimensions::TORII_BASE_HALF_DEPTH,
+				prop.x + StructureDimensions::TORII_HALF_SPAN + StructureDimensions::TORII_BASE_HALF_WIDTH,
+				prop.y + StructureDimensions::TORII_BASE_HALF_DEPTH };
 			break;
 
 		case PROP_WELL:
@@ -278,7 +387,7 @@ void World::BuildBlockers()
 			break;
 
 		default:
-			// Torii, lanterns and the dock are walked through or under.
+			// Lanterns and the dock do not block the ground plane.
 			continue;
 		}
 
@@ -348,6 +457,90 @@ bool World::IsBlocked(float worldX, float worldY, float radius) const
 }
 
 // ---------------------------------------------------------------- random generation
+
+float World::GetTileElevation(int x, int y, float localX, float localY) const
+{
+	if (x < 0 || y < 0 || x >= m_Width || y >= m_Height || m_Surfaces.empty())
+	{
+		return 0.0f;
+	}
+
+	const TerrainSurface& surface = m_Surfaces[(size_t)y * m_Width + x];
+
+	return surface.height + (localX - 0.5f) * surface.slopeX + (localY - 0.5f) * surface.slopeY;
+}
+
+bool World::IsStairTile(int x, int y) const
+{
+	return StairsRunAlongX(x, y)
+		|| fabsf(GetTileElevation(x, y, 0.5f, 1.0f) - GetTileElevation(x, y, 0.5f, 0.0f)) > 0.001f;
+}
+
+bool World::StairsRunAlongX(int x, int y) const
+{
+	return fabsf(GetTileElevation(x, y, 1.0f, 0.5f) - GetTileElevation(x, y, 0.0f, 0.5f)) > 0.001f;
+}
+
+float World::GetElevation(float worldX, float worldY) const
+{
+	const int x = (int)floorf(worldX);
+	const int y = (int)floorf(worldY);
+	float localX = worldX - x;
+	float localY = worldY - y;
+
+	if (IsStairTile(x, y))
+	{
+		if (StairsRunAlongX(x, y))
+		{
+			localX = (floorf(localX * STAIR_TREADS_PER_TILE) + 0.5f) / STAIR_TREADS_PER_TILE;
+		}
+		else
+		{
+			localY = (floorf(localY * STAIR_TREADS_PER_TILE) + 0.5f) / STAIR_TREADS_PER_TILE;
+		}
+	}
+
+	return GetTileElevation(x, y, localX, localY);
+}
+
+bool World::CanMove(float fromX, float fromY, float toX, float toY, float radius) const
+{
+	const float dx = toX - fromX;
+	const float dy = toY - fromY;
+	const int steps = (int)ceilf(sqrtf(dx * dx + dy * dy) / MOVEMENT_SAMPLE_STEP) + 1;
+	float previousHeight = GetElevation(fromX, fromY);
+	const float offsets[8][2] =
+	{
+		{ 1.0f, 0.0f }, { -1.0f, 0.0f }, { 0.0f, 1.0f }, { 0.0f, -1.0f },
+		{ 0.7071f, 0.7071f }, { -0.7071f, 0.7071f }, { 0.7071f, -0.7071f }, { -0.7071f, -0.7071f }
+	};
+
+	for (int i = 1; i <= steps; ++i)
+	{
+		const float t = (float)i / steps;
+		const float x = fromX + dx * t;
+		const float y = fromY + dy * t;
+		const float height = GetElevation(x, y);
+
+		if (IsBlocked(x, y, radius) || fabsf(height - previousHeight) > MAX_STEP_HEIGHT)
+		{
+			return false;
+		}
+
+		for (int sample = 0; sample < 8; ++sample)
+		{
+			if (fabsf(GetElevation(x + offsets[sample][0] * radius,
+				y + offsets[sample][1] * radius) - height) > MAX_STEP_HEIGHT)
+			{
+				return false;
+			}
+		}
+
+		previousHeight = height;
+	}
+
+	return true;
+}
 
 void Rng::Seed(unsigned int value)
 {
@@ -769,6 +962,7 @@ bool World::Generate(unsigned int seed, int width, int height)
 	m_Width = width;
 	m_Height = height;
 	m_Tiles.assign((size_t)m_Width * m_Height, (unsigned char)TILE_GRASS);
+	m_Surfaces.assign((size_t)m_Width * m_Height, TerrainSurface());
 	m_Props.clear();
 	m_Blockers.clear();
 	m_NpcSpawns.clear();

@@ -18,12 +18,12 @@ namespace
 
 	// Bump this whenever a builder below changes shape, so a stale cache from an
 	// earlier run is discarded instead of being drawn.
-	const int MODEL_CACHE_VERSION = 4;
+	const int MODEL_CACHE_VERSION = 5;
 	const char MODEL_CACHE_MAGIC[4] = { 'M', 'D', 'L', '1' };
 
 	// --- shared palette for the baked shapes -----------------------------
-	const Color COL_FOLIAGE = { 0.30f, 0.43f, 0.28f, 1.0f };
-	const Color COL_TRUNK = { 0.36f, 0.29f, 0.21f, 1.0f };
+	const Color COL_FOLIAGE = { 0.43f, 0.55f, 0.29f, 1.0f };
+	const Color COL_TRUNK = { 0.40f, 0.32f, 0.24f, 1.0f };
 	const Color COL_SKIN = { 0.77f, 0.66f, 0.50f, 1.0f };
 	const Color COL_HAIR = { 0.11f, 0.10f, 0.11f, 1.0f };
 	const Color COL_SASH = { 0.73f, 0.69f, 0.54f, 1.0f };
@@ -41,70 +41,83 @@ namespace
 
 	// --- builders --------------------------------------------------------
 
-	void BuildCedar(ModelBuilder* builder, float height, int tier)
+	void BuildCrownVolume(ModelBuilder* builder, float cx, float cy, float rx, float ry,
+		float thickness, const Color& color, float depth)
 	{
-		builder->AddSoftEllipse(8.0f, 4.0f, 34.0f, 13.0f, COL_SHADOW, -0.02f,
-			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
-		const float trunk[8] = { -5.0f, 1.0f, 6.0f, 1.0f, 2.0f, -height * 0.49f, -3.0f, -height * 0.49f };
-		builder->AddPolygon(trunk, 4, COL_TRUNK, -0.01f, MODEL_FLAG_SHADED);
-		builder->AddLine(-1.0f, -height * 0.30f, -12.0f, -height * 0.40f, 3.0f,
-			Scale(COL_TRUNK, 0.78f), -0.005f);
-
-		for (int k = 0; k < 3; ++k)
+		const float ring[12] =
 		{
-			const float baseFraction = 0.28f + 0.20f * k;
-			const float apexFraction = 0.62f + 0.20f * k;
-			const float halfWidth = 30.0f - k * 6.0f - tier * 1.2f;
+			cx - rx, cy, cx - rx * 0.52f, cy - ry,
+			cx + rx * 0.45f, cy - ry * 0.90f, cx + rx, cy,
+			cx + rx * 0.42f, cy + ry * 0.65f, cx - rx * 0.48f, cy + ry * 0.75f
+		};
+		const float faceShade[6] = { 1.04f, 1.18f, 1.03f, 0.77f, 0.86f, 0.98f };
+		const float centerX = cx - rx * 0.16f;
+		const float centerY = cy - ry * 0.28f;
 
-			const float yBase = -height * baseFraction;
-			const float yApex = -height * apexFraction;
-
-			const Color leaf = Scale(COL_FOLIAGE, 0.87f + 0.11f * k);
-
-			// Higher skirts sway further, which is what sells wind in a still frame.
-			builder->SetAnim(ANIM_SWAY, (float)tier * 1.7f, 0.45f + 0.35f * k);
-			const float crown[12] =
+		// The visible lower rim supplies thickness; triangular caps supply flat facets.
+		for (int edge = 3; edge < 6; ++edge)
+		{
+			const int next = (edge + 1) % 6;
+			const float side[8] =
 			{
-				-halfWidth, yBase - 5.0f, -halfWidth * 0.63f, yBase + 1.0f,
-				halfWidth * 0.58f, yBase + 2.0f, halfWidth, yBase - 6.0f,
-				halfWidth * 0.29f, yApex + 4.0f, -halfWidth * 0.10f, yApex
+				ring[edge * 2], ring[edge * 2 + 1], ring[next * 2], ring[next * 2 + 1],
+				ring[next * 2] * 0.96f + cx * 0.04f, ring[next * 2 + 1] + thickness,
+				ring[edge * 2] * 0.96f + cx * 0.04f, ring[edge * 2 + 1] + thickness
 			};
-			builder->AddPolygon(crown, 6, leaf, (float)k * 0.001f, MODEL_FLAG_SHADED);
+			builder->AddPolygon(side, 4, Scale(color, 0.52f + (edge - 3) * 0.09f), depth);
 		}
 
+		for (int face = 0; face < 6; ++face)
+		{
+			const int next = (face + 1) % 6;
+			builder->AddTriangle(centerX, centerY, ring[face * 2], ring[face * 2 + 1],
+				ring[next * 2], ring[next * 2 + 1], Scale(color, faceShade[face]), depth + 0.001f);
+		}
+	}
+
+	void BuildTreeTrunk(ModelBuilder* builder, float height, float width)
+	{
+		const float left[8] = { -width, 0.0f, 0.0f, 4.0f, 0.0f, -height * 0.70f, -width * 0.52f, -height * 0.74f };
+		const float right[8] = { 0.0f, 4.0f, width, 0.0f, width * 0.48f, -height * 0.71f, 0.0f, -height * 0.70f };
+		builder->AddPolygon(left, 4, Scale(COL_TRUNK, 1.20f), -0.01f);
+		builder->AddPolygon(right, 4, Scale(COL_TRUNK, 0.61f), -0.009f);
+		builder->AddLine(-1.0f, -height * 0.42f, -22.0f, -height * 0.70f,
+			width * 0.60f, Scale(COL_TRUNK, 0.95f), -0.007f);
+		builder->AddLine(2.0f, -height * 0.52f, 23.0f, -height * 0.80f,
+			width * 0.55f, Scale(COL_TRUNK, 0.68f), -0.006f);
+		builder->AddTriangle(-width, -8.0f, -width * 1.9f, 5.0f, 0.0f, 2.0f,
+			Scale(COL_TRUNK, 1.05f), -0.005f);
+		builder->AddTriangle(0.0f, 2.0f, width * 1.6f, 5.0f, width, -8.0f,
+			Scale(COL_TRUNK, 0.65f), -0.004f);
+	}
+
+	void BuildCedar(ModelBuilder* builder, float height, int tier)
+	{
+		builder->AddSoftEllipse(18.0f, 8.0f, 48.0f, 19.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		BuildTreeTrunk(builder, height, 6.5f + tier * 0.6f);
+		builder->SetAnim(ANIM_SWAY, tier * 1.7f, 0.45f);
+		BuildCrownVolume(builder, 17.0f, -height * 0.80f, 28.0f, 20.0f, 10.0f,
+			Scale(COL_FOLIAGE, 0.98f), 0.002f);
+		builder->SetAnim(ANIM_SWAY, tier * 1.7f, 0.60f);
+		BuildCrownVolume(builder, -17.0f, -height * 0.66f, 31.0f, 22.0f, 12.0f,
+			Scale(COL_FOLIAGE, 1.12f), 0.004f);
 		builder->ClearAnim();
 	}
 
 	void BuildBroadleaf(ModelBuilder* builder, float height)
 	{
-		builder->AddSoftEllipse(9.0f, 5.0f, 39.0f, 16.0f, COL_SHADOW, -0.02f,
+		builder->AddSoftEllipse(20.0f, 8.0f, 62.0f, 22.0f, COL_SHADOW, -0.02f,
 			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
-		const float lowerTrunk[8] =
-		{
-			-7.0f, 1.0f, 7.0f, 1.0f, 3.5f, -height * 0.35f,
-			-4.0f, -height * 0.36f
-		};
-		const float upperTrunk[8] =
-		{
-			-4.0f, -height * 0.36f, 3.5f, -height * 0.35f,
-			7.0f, -height * 0.64f, 0.0f, -height * 0.67f
-		};
-		builder->AddPolygon(lowerTrunk, 4, COL_TRUNK, -0.01f, MODEL_FLAG_SHADED);
-		builder->AddPolygon(upperTrunk, 4, COL_TRUNK, -0.009f, MODEL_FLAG_SHADED);
-		builder->AddLine(1.0f, -height * 0.35f, -18.0f, -height * 0.67f, 4.0f,
-			Scale(COL_TRUNK, 0.82f), -0.005f);
-
-		for (int i = 0; i < 3; ++i)
-		{
-			const float offsetX = (i - 1) * 16.0f;
-			const float offsetY = -height * (0.62f + (i == 1 ? 0.19f : 0.0f));
-
-			const Color leaf = Scale(COL_FOLIAGE, 0.88f + 0.09f * i);
-			builder->SetAnim(ANIM_SWAY, 0.7f, 0.65f);
-			builder->AddEllipse(offsetX, offsetY, 23.0f - i * 1.5f, 20.0f, 9,
-				leaf, (float)i * 0.001f, MODEL_FLAG_SHADED);
-		}
-
+		BuildTreeTrunk(builder, height, 10.0f);
+		builder->SetAnim(ANIM_SWAY, 0.7f, 0.45f);
+		BuildCrownVolume(builder, 0.0f, -height * 0.91f, 31.0f, 22.0f, 12.0f,
+			Scale(COL_FOLIAGE, 1.03f), 0.002f);
+		BuildCrownVolume(builder, 25.0f, -height * 0.70f, 34.0f, 24.0f, 13.0f,
+			Scale(COL_FOLIAGE, 0.91f), 0.004f);
+		builder->SetAnim(ANIM_SWAY, 0.7f, 0.65f);
+		BuildCrownVolume(builder, -25.0f, -height * 0.63f, 35.0f, 24.0f, 13.0f,
+			Scale(COL_FOLIAGE, 1.13f), 0.006f);
 		builder->ClearAnim();
 	}
 
@@ -118,9 +131,8 @@ namespace
 		leaf.g += 0.06f;
 
 		builder->SetAnim(ANIM_SWAY, 0.4f, 0.65f);
-		builder->AddEllipse(-6.0f, -8.0f, 12.0f, 10.0f, 9, leaf, 0.0f, MODEL_FLAG_SHADED);
-		builder->AddEllipse(6.0f, -7.0f, 11.0f, 9.0f, 8, Scale(leaf, 0.88f), 0.001f, MODEL_FLAG_SHADED);
-		builder->AddEllipse(-1.0f, -13.0f, 8.0f, 8.0f, 8, Scale(leaf, 1.10f), 0.002f, MODEL_FLAG_SHADED);
+		BuildCrownVolume(builder, 6.0f, -9.0f, 12.0f, 8.0f, 5.0f, Scale(leaf, 0.88f), 0.0f);
+		BuildCrownVolume(builder, -6.0f, -12.0f, 13.0f, 9.0f, 5.0f, leaf, 0.002f);
 		builder->ClearAnim();
 	}
 
@@ -700,19 +712,19 @@ void ModelLibrary::BuildAll()
 	m_Models.clear();
 
 	ModelBuilder cedarSmall;
-	BuildCedar(&cedarSmall, 78.0f, 0);
+	BuildCedar(&cedarSmall, 98.0f, 0);
 	m_Models["tree_cedar_small"] = cedarSmall.Get();
 
 	ModelBuilder cedarMid;
-	BuildCedar(&cedarMid, 92.0f, 1);
+	BuildCedar(&cedarMid, 116.0f, 1);
 	m_Models["tree_cedar_mid"] = cedarMid.Get();
 
 	ModelBuilder cedarTall;
-	BuildCedar(&cedarTall, 106.0f, 2);
+	BuildCedar(&cedarTall, 134.0f, 2);
 	m_Models["tree_cedar_tall"] = cedarTall.Get();
 
 	ModelBuilder broadleaf;
-	BuildBroadleaf(&broadleaf, 62.0f);
+	BuildBroadleaf(&broadleaf, 102.0f);
 	m_Models["tree_broadleaf"] = broadleaf.Get();
 
 	ModelBuilder bush;

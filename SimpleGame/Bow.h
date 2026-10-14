@@ -28,6 +28,7 @@ private:
 		Actor* actor = NULL;
 		float dx = 0.0f;
 		float dy = 0.0f;
+		float dz = 0.0f;
 		float remaining = 0.0f;
 		float damage = 0.0f;
 	};

@@ -131,9 +131,7 @@ private:
 	void DrawTree(float worldX, float worldY, int variant, float worldZ);
 	void DrawBush(float worldX, float worldY, float worldZ);
 	void DrawRock(float worldX, float worldY, float worldZ);
-	void DrawBuilding(const Prop& prop, const Color& wall, const Color& roof, bool litWindow, float worldZ);
-	void DrawRuin(const Prop& prop, float worldZ);
-	void DrawTorii(const Prop& prop, float worldZ);
+	void DrawStructure(const Prop& prop, float worldZ);
 	void DrawLantern(const Prop& prop, float worldZ);
 	void DrawWell(const Prop& prop, float worldZ);
 	void DrawCart(const Prop& prop, float worldZ);
@@ -177,6 +175,7 @@ private:
 	// the camera trails the player instead of snapping to it
 	float m_CameraX;
 	float m_CameraY;
+	float m_CameraZ;
 
 	// quest
 	bool m_MetElder;

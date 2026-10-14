@@ -93,6 +93,7 @@ Renderer::Renderer(int windowSizeX, int windowSizeY)
 	, m_WindowSizeY(windowSizeY)
 	, m_CameraX(0.0f)
 	, m_CameraY(0.0f)
+	, m_CameraZ(0.0f)
 	, m_ElapsedSeconds(0.0f)
 	, m_AnimKind(0.0f)
 	, m_AnimPhase(0.0f)
@@ -396,10 +397,11 @@ void Renderer::Resize(int windowSizeX, int windowSizeY)
 	glViewport(0, 0, windowSizeX, windowSizeY);
 }
 
-void Renderer::SetCamera(float worldX, float worldY)
+void Renderer::SetCamera(float worldX, float worldY, float worldZ)
 {
 	m_CameraX = worldX;
 	m_CameraY = worldY;
+	m_CameraZ = worldZ;
 }
 
 void Renderer::WorldToScreen(float worldX, float worldY, float worldZ, float* screenX, float* screenY) const
@@ -408,7 +410,7 @@ void Renderer::WorldToScreen(float worldX, float worldY, float worldZ, float* sc
 	const float dy = worldY - m_CameraY;
 
 	*screenX = (dx - dy) * TileHalfWidth();
-	*screenY = (dx + dy) * TileHalfHeight() - worldZ * HeightScale();
+	*screenY = (dx + dy) * TileHalfHeight() - (worldZ - m_CameraZ) * HeightScale();
 }
 
 void Renderer::BeginFrame(const Color& clearColor, float elapsedSeconds)

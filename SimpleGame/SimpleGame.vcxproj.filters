@@ -57,6 +57,9 @@
     <ClInclude Include="VisualStyle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="EnvironmentArt.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp">
@@ -87,6 +90,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="EnvironmentArt.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

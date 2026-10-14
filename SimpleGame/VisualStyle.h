@@ -22,6 +22,9 @@ namespace VisualStyle
 	const int HEALTH_SEGMENTS = 5;
 	const float HEALTH_GAP = 4.0f;
 	const float SHORE_WIDTH = 1.2f;
+	const Color COL_CLIFF = { 0.46f, 0.51f, 0.43f, 1.0f };
+	const float MASONRY_COURSE_HEIGHT = 0.65f;
+	const float TERRAIN_EDGE_DEPTH = 1.51f;
 
 	inline float Clamp(float value, float low, float high)
 	{
@@ -84,6 +87,37 @@ namespace VisualStyle
 		return lighting.Apply(Scale(base, broadShade), (float)x, (float)y);
 	}
 
+	inline void DrawTerrainFace(Renderer* renderer, float ax, float ay, float bx, float by,
+		float bottomA, float bottomB, float topA, float topB, const Color& color, float depth)
+	{
+		if (topA <= bottomA + 0.01f && topB <= bottomB + 0.01f)
+		{
+			return;
+		}
+
+		float points[8];
+		renderer->WorldToScreen(ax, ay, bottomA, &points[0], &points[1]);
+		renderer->WorldToScreen(bx, by, bottomB, &points[2], &points[3]);
+		renderer->WorldToScreen(bx, by, topB, &points[4], &points[5]);
+		renderer->WorldToScreen(ax, ay, topA, &points[6], &points[7]);
+		const Color colors[4] = { Scale(color, 0.48f), Scale(color, 0.60f), color, Scale(color, 1.13f) };
+		renderer->PushPolygonShaded(points, colors, 4, depth);
+		renderer->PushLine(points[6], points[7], points[4], points[5], 1.5f,
+			Scale(color, 1.22f), depth + 0.02f);
+
+		const float lowestTop = fminf(topA, topB);
+		const float highestBottom = fmaxf(bottomA, bottomB);
+
+		for (float z = highestBottom + MASONRY_COURSE_HEIGHT; z < lowestTop; z += MASONRY_COURSE_HEIGHT)
+		{
+			float leftX, leftY, rightX, rightY;
+			renderer->WorldToScreen(ax, ay, z, &leftX, &leftY);
+			renderer->WorldToScreen(bx, by, z, &rightX, &rightY);
+			renderer->PushLine(leftX, leftY, rightX, rightY, 0.7f,
+				Scale(color, 0.72f), depth + 0.03f);
+		}
+	}
+
 	inline void DrawGroundTile(Renderer* renderer, const World& world, const Lighting& lighting,
 		int x, int y, float worldZ = 0.0f)
 	{
@@ -94,17 +128,68 @@ namespace VisualStyle
 		const float depth = GROUND_DEPTH + (float)(x + y) * 0.01f;
 		const TileType tile = world.GetTile(x, y);
 		const unsigned int hash = Hash(x, y);
+		const float heightOffset = worldZ - world.GetElevation(x + 0.5f, y + 0.5f);
+		float heights[4];
 
 		for (int i = 0; i < 4; ++i)
 		{
-			renderer->WorldToScreen((float)cornerX[i], (float)cornerY[i], worldZ,
+			heights[i] = world.GetTileElevation(x, y, (float)(cornerX[i] - x),
+				(float)(cornerY[i] - y)) + heightOffset;
+			renderer->WorldToScreen((float)cornerX[i], (float)cornerY[i], heights[i],
 				&points[i * 2], &points[i * 2 + 1]);
 			colors[i] = tile == TILE_WATER
 				? lighting.Apply(GroundColor(tile), (float)cornerX[i], (float)cornerY[i])
 				: GroundCorner(world, lighting, cornerX[i], cornerY[i]);
 		}
 
-		renderer->PushPolygonShaded(points, colors, 4, depth);
+		if (world.IsStairTile(x, y))
+		{
+			const bool alongX = world.StairsRunAlongX(x, y);
+			const Color stone = lighting.Apply(GroundColor(TILE_STONE), x + 0.5f, y + 0.5f);
+
+			for (int tread = 0; tread < World::STAIR_TREADS_PER_TILE; ++tread)
+			{
+				const float start = (float)tread / World::STAIR_TREADS_PER_TILE;
+				const float end = (float)(tread + 1) / World::STAIR_TREADS_PER_TILE;
+				const float middle = (start + end) * 0.5f;
+				const float z = world.GetTileElevation(x, y, alongX ? middle : 0.5f,
+					alongX ? 0.5f : middle) + heightOffset;
+				const float treadX[4] = { (float)x + (alongX ? start : 0.0f), (float)x + (alongX ? end : 1.0f),
+					(float)x + (alongX ? end : 1.0f), (float)x + (alongX ? start : 0.0f) };
+				const float treadY[4] = { (float)y + (alongX ? 0.0f : start), (float)y + (alongX ? 0.0f : start),
+					(float)y + (alongX ? 1.0f : end), (float)y + (alongX ? 1.0f : end) };
+				float treadPoints[8];
+
+				for (int corner = 0; corner < 4; ++corner)
+				{
+					renderer->WorldToScreen(treadX[corner], treadY[corner], z,
+						&treadPoints[corner * 2], &treadPoints[corner * 2 + 1]);
+				}
+
+				renderer->PushPolygonShaded(treadPoints, colors, 4, depth + tread * 0.1f);
+				const float edgeX = alongX ? x + end : x;
+				const float edgeY = alongX ? y : y + end;
+				const float nextZ = world.GetElevation(alongX ? x + end + 0.001f : x + 0.5f,
+					alongX ? y + 0.5f : y + end + 0.001f) + heightOffset;
+				DrawTerrainFace(renderer, edgeX, edgeY, alongX ? edgeX : x + 1.0f,
+					alongX ? y + 1.0f : edgeY, fminf(z, nextZ), fminf(z, nextZ),
+					fmaxf(z, nextZ), fmaxf(z, nextZ), Scale(stone, 0.80f), x + y + TERRAIN_EDGE_DEPTH + tread * 0.01f);
+			}
+		}
+		else
+		{
+			renderer->PushPolygonShaded(points, colors, 4, depth);
+		}
+
+		const Color cliff = lighting.Apply(COL_CLIFF, x + 0.5f, y + 0.5f);
+		DrawTerrainFace(renderer, x + 1.0f, (float)y, x + 1.0f, y + 1.0f,
+			world.GetTileElevation(x + 1, y, 0.0f, 0.0f) + heightOffset,
+			world.GetTileElevation(x + 1, y, 0.0f, 1.0f) + heightOffset,
+			heights[1], heights[2], Scale(cliff, 0.74f), x + y + TERRAIN_EDGE_DEPTH);
+		DrawTerrainFace(renderer, (float)x, y + 1.0f, x + 1.0f, y + 1.0f,
+			world.GetTileElevation(x, y + 1, 0.0f, 0.0f) + heightOffset,
+			world.GetTileElevation(x, y + 1, 1.0f, 0.0f) + heightOffset,
+			heights[3], heights[2], cliff, x + y + TERRAIN_EDGE_DEPTH);
 
 		float screenX = 0.0f;
 		float screenY = 0.0f;
@@ -130,7 +215,7 @@ namespace VisualStyle
 			}
 		}
 
-		if (tile == TILE_STONE)
+		if (tile == TILE_STONE && !world.IsStairTile(x, y))
 		{
 			const float halfWidth = Renderer::TileHalfWidth() * 0.80f;
 			const float halfHeight = Renderer::TileHalfHeight() * 0.80f;
