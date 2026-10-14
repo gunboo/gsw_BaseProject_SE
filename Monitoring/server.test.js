@@ -155,6 +155,22 @@ test("HTTP handler rejects other hosts and origins and limits static file routes
   assert.equal((await request(handler, "GET", "/")).status, 200);
 });
 
+test("dashboard assets resolve beside a directly opened HTML file and through HTTP", async () => {
+  const handler = createHandler();
+  const page = await request(handler, "GET", "/index.html");
+  const assets = [...page.body.matchAll(/(?:href|src)="([^"]+\.(css|js))"/g)];
+  assert.equal(assets.length, 2);
+  for (const [, reference, extension] of assets) {
+    const local = new URL(reference, "file:///C:/project/Monitoring/index.html");
+    assert.equal(local.pathname, `/C:/project/Monitoring/dashboard.${extension}`);
+    const remote = new URL(reference, "http://127.0.0.1:8765/index.html");
+    const asset = await request(handler, "GET", remote.pathname);
+    assert.equal(asset.status, 200);
+    assert.match(asset.headers["Content-Type"], extension === "css" ? /^text\/css/ : /^text\/javascript/);
+    assert.ok(asset.body.length > 0);
+  }
+});
+
 test("source capacity rejects overflow while live, then reuses an offline slot", () => {
   let now = 10000;
   const store = new SnapshotStore(() => now);

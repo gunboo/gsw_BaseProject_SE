@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>월드 모니터 · GSW</title>
-  <link rel="stylesheet" href="/dashboard.css">
-  <script src="/dashboard.js" defer></script>
+  <link rel="stylesheet" href="./dashboard.css">
+  <script src="./dashboard.js" defer></script>
 </head>
 <body>
   <header>
@@ -28,7 +28,7 @@
       <div id="world-cards" class="world-grid"></div>
     </section>
     <section aria-label="엔티티 상세">
-      <div class="section-title"><h2>엔티티 상세</h2><a href="/api/state" target="_blank" rel="noopener">수신 JSON 보기 ↗</a></div>
+      <div class="section-title"><h2>엔티티 상세</h2><a id="json-link" href="./api/state" target="_blank" rel="noopener">수신 JSON 보기 ↗</a></div>
       <div class="toolbar">
         <label>월드<select id="world-filter"><option value="">전체 월드</option></select></label>
         <label>마을<select id="village-filter"><option value="">전체 마을</option></select></label>

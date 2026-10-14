@@ -151,8 +151,13 @@ async function poll() {
 for (const id of ["world-filter", "village-filter", "kind-filter", "offline-filter"]) $(id).addEventListener("change", render);
 $("search").addEventListener("input", render);
 if (location.protocol === "file:") {
+  $("connection").className = "badge offline";
   $("connection").textContent = "서버 주소로 열어 주세요";
-  $("notice").textContent = "server.js를 실행하고 http://127.0.0.1:8765에서 확인하세요. HTML 파일을 직접 열면 실시간 수신이 연결되지 않습니다.";
+  $("notice").textContent = "start-monitor.cmd를 실행한 뒤 아래 링크로 접속하세요. HTML 파일을 직접 열면 실시간 수신이 연결되지 않습니다. ";
+  const link = element("a", "로컬 모니터 열기 ↗");
+  link.href = "http://127.0.0.1:8765/";
+  $("notice").append(link);
+  $("json-link").href = "http://127.0.0.1:8765/api/state";
 } else {
   poll();
 }
