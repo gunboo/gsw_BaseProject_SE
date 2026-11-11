@@ -3,9 +3,10 @@
 #include <string>
 #include <vector>
 
-#include "Dependencies\glew.h"
+#include <GL/glew.h>
 #include "TextRenderer.h"
 #include "MeshCache.h"
+#include "PainterOrder.h"
 
 struct Color
 {
@@ -27,14 +28,21 @@ enum TextAlign
 	ALIGN_RIGHT = 2
 };
 
-// Vertex animation kinds handled by Shaders/Batch.vs. Anything listed here
-// moves on the GPU; the CPU only supplies a phase and an amplitude.
+// GPU effects handled by Shaders/Batch.vs/.fs. Ground effects use phase and
+// strength as world X/Y so their material patterns stay fixed under the camera.
 enum AnimKind
 {
 	ANIM_NONE = 0,
 	ANIM_WATER = 1,
 	ANIM_FLAME = 2,
-	ANIM_SWAY = 3
+	ANIM_SWAY = 3,
+	ANIM_GROUND = 4,
+	ANIM_STONE_GROUND = 5,
+	ANIM_STAIR_X = 6,
+	ANIM_STAIR_Y = 7,
+	ANIM_PLAYER_POSE = 8,
+	ANIM_PLAYER_LEG = 9,
+	ANIM_PLAYER_CAPE = 10
 };
 
 // Everything needed to shade one instance. Lighting is evaluated once per
@@ -82,7 +90,7 @@ public:
 	~Renderer();
 
 	bool IsInitialized() const;
-	void Resize(int windowSizeX, int windowSizeY);
+	void Resize(int windowSizeX, int windowSizeY, int framebufferWidth = 0, int framebufferHeight = 0);
 
 	int GetWidth() const { return (int)m_WindowSizeX; }
 	int GetHeight() const { return (int)m_WindowSizeY; }
@@ -91,6 +99,7 @@ public:
 	void EndFrame();
 	const RenderStats& GetStats() const;
 	TextCacheStats GetTextCacheStats() const;
+	const char* FontBackend() const { return m_Text.FontBackend(); }
 
 	// Register immutable geometry during initialization, then upload/save once.
 	int RegisterMesh(const std::string& name, const float* xy, int vertexCount);
@@ -123,6 +132,8 @@ public:
 	// Text is drawn in a separate pass after the polygon batch, in push order.
 	void PushText(const std::wstring& text, float x, float y, int pixelSize, FontFace face,
 		bool bold, const Color& color, TextAlign align = ALIGN_LEFT);
+	// Opaque HUD panels cover text from the separately queued world text pass.
+	void DiscardTextInRect(float x, float y, float width, float height);
 	float MeasureTextWidth(const std::wstring& text, int pixelSize, FontFace face, bool bold);
 	float MeasureTextHeight(const std::wstring& text, int pixelSize, FontFace face, bool bold);
 
@@ -152,7 +163,8 @@ private:
 	struct BatchItem
 	{
 		float depth;
-		int mesh;
+		int firstVertex;
+		int triangleCount;
 		PolygonInstance instance;
 	};
 
@@ -186,11 +198,17 @@ private:
 	void FlushPolygons();
 	void FlushText();
 	PolygonInstance MakeInstance(const Color& color) const;
+	void QueueItem(BatchItem& item, int mesh);
 
 	bool m_Initialized;
 
 	unsigned int m_WindowSizeX;
 	unsigned int m_WindowSizeY;
+	int m_FramebufferWidth = 0;
+	int m_FramebufferHeight = 0;
+	GLuint m_PresentationFramebuffer = 0;
+	GLuint m_PresentationColor = 0;
+	bool m_UsePresentationFramebuffer = false;
 
 	float m_CameraX;
 	float m_CameraY;
@@ -239,6 +257,7 @@ private:
 	std::vector<PolygonInstance> m_Instances;
 	std::vector<TriangleCommand> m_Commands;
 	std::vector<int> m_SortOrder;
+	PainterOrder m_DepthOrder;
 	std::vector<TextItem> m_TextItems;
 	std::vector<TextInstance> m_TextInstances;
 

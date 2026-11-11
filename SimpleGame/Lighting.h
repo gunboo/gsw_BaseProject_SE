@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 
 #include "Renderer.h"
 
@@ -47,7 +48,21 @@ public:
 	ShadeParams Shade(float worldX, float worldY, const Color& tint) const;
 
 private:
+	static const int LIGHT_BUCKET_COUNT = 256;
+	struct LightCell
+	{
+		int x;
+		int y;
+		int source;
+	};
+
+	void PrepareSamples() const;
+	static unsigned int CellBucket(int x, int y);
 	std::vector<LightSource> m_Lights;
+	mutable std::array<std::vector<LightCell>, LIGHT_BUCKET_COUNT> m_LightCells;
+	mutable std::vector<float> m_Flicker;
+	mutable bool m_CellsDirty = true;
+	mutable bool m_FlickerDirty = true;
 
 	Color m_Ambient;
 	Color m_FogColor;

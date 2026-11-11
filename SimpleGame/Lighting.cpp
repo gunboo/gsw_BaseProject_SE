@@ -5,6 +5,7 @@
 
 namespace
 {
+	const float LIGHT_CELL_SIZE = 8.0f;
 	float Clamp(float value, float low, float high)
 	{
 		if (value < low)
@@ -36,6 +37,7 @@ Lighting::Lighting()
 void Lighting::Clear()
 {
 	m_Lights.clear();
+	m_CellsDirty = m_FlickerDirty = true;
 }
 
 int Lighting::AddLight(float x, float y, float radius, float intensity, const Color& color, bool flicker)
@@ -49,6 +51,7 @@ int Lighting::AddLight(float x, float y, float radius, float intensity, const Co
 	light.flicker = flicker;
 
 	m_Lights.push_back(light);
+	m_CellsDirty = m_FlickerDirty = true;
 
 	return (int)m_Lights.size() - 1;
 }
@@ -62,6 +65,7 @@ void Lighting::MoveLight(int index, float x, float y)
 
 	m_Lights[index].x = x;
 	m_Lights[index].y = y;
+	m_CellsDirty = true;
 }
 
 void Lighting::SetViewer(float worldX, float worldY)
@@ -72,7 +76,64 @@ void Lighting::SetViewer(float worldX, float worldY)
 
 void Lighting::SetTime(float seconds)
 {
+	m_FlickerDirty = m_FlickerDirty || m_Time != seconds;
 	m_Time = seconds;
+}
+
+unsigned int Lighting::CellBucket(int x, int y)
+{
+	return (static_cast<unsigned int>(x) * 73856093u
+		^ static_cast<unsigned int>(y) * 19349663u) & (LIGHT_BUCKET_COUNT - 1);
+}
+
+void Lighting::PrepareSamples() const
+{
+	const LightSource* lights = m_Lights.data();
+	const size_t count = m_Lights.size();
+
+	if (m_CellsDirty)
+	{
+		for (std::vector<LightCell>& cell : m_LightCells)
+		{
+			cell.clear();
+		}
+
+		// Keep source order within each cell so floating-point accumulation is unchanged.
+		for (size_t i = 0; i < count; ++i)
+		{
+			const LightSource& light = lights[i];
+			const float radius = fabsf(light.radius);
+			const int minX = static_cast<int>(floorf((light.x - radius) / LIGHT_CELL_SIZE));
+			const int minY = static_cast<int>(floorf((light.y - radius) / LIGHT_CELL_SIZE));
+			const int maxX = static_cast<int>(floorf((light.x + radius) / LIGHT_CELL_SIZE));
+			const int maxY = static_cast<int>(floorf((light.y + radius) / LIGHT_CELL_SIZE));
+
+			for (int y = minY; y <= maxY; ++y)
+			{
+				for (int x = minX; x <= maxX; ++x)
+				{
+					m_LightCells[CellBucket(x, y)].push_back({ x, y, static_cast<int>(i) });
+				}
+			}
+		}
+
+		m_CellsDirty = false;
+	}
+
+	if (m_FlickerDirty)
+	{
+		m_Flicker.resize(count);
+		float* flicker = m_Flicker.data();
+
+		for (size_t i = 0; i < count; ++i)
+		{
+			flicker[i] = lights[i].flicker
+				? 1.0f + 0.09f * sinf(m_Time * 6.3f + (float)i * 2.1f)
+					+ 0.05f * sinf(m_Time * 11.7f + (float)i) : 1.0f;
+		}
+
+		m_FlickerDirty = false;
+	}
 }
 
 void Lighting::SetAmbient(const Color& ambient)
@@ -100,11 +161,24 @@ float Lighting::FogFactor(float worldX, float worldY) const
 
 Color Lighting::SampleLight(float worldX, float worldY) const
 {
+	PrepareSamples();
 	Color multiplier = m_Ambient;
+	const int cellX = static_cast<int>(floorf(worldX / LIGHT_CELL_SIZE));
+	const int cellY = static_cast<int>(floorf(worldY / LIGHT_CELL_SIZE));
+	const std::vector<LightCell>& candidates = m_LightCells[CellBucket(cellX, cellY)];
+	const LightCell* cells = candidates.data();
+	const LightSource* lights = m_Lights.data();
+	const float* flicker = m_Flicker.data();
 
-	for (size_t i = 0; i < m_Lights.size(); ++i)
+	for (size_t i = 0; i < candidates.size(); ++i)
 	{
-		const LightSource& light = m_Lights[i];
+		if (cells[i].x != cellX || cells[i].y != cellY)
+		{
+			continue;
+		}
+
+		const int source = cells[i].source;
+		const LightSource& light = lights[source];
 		const float dx = worldX - light.x;
 		const float dy = worldY - light.y;
 		const float distanceSq = dx * dx + dy * dy;
@@ -119,13 +193,7 @@ Color Lighting::SampleLight(float worldX, float worldY) const
 
 		float amount = falloff * light.intensity;
 
-		if (light.flicker)
-		{
-			// The flame itself flickers on the GPU, but the light it throws on
-			// everything else has to be computed here.
-			amount *= 1.0f + 0.09f * sinf(m_Time * 6.3f + (float)i * 2.1f)
-				+ 0.05f * sinf(m_Time * 11.7f + (float)i);
-		}
+		amount *= flicker[source];
 
 		multiplier.r += light.color.r * amount;
 		multiplier.g += light.color.g * amount;

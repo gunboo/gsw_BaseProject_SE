@@ -128,6 +128,8 @@ Renderer::Renderer(int windowSizeX, int windowSizeY)
 
 Renderer::~Renderer()
 {
+	glDeleteFramebuffers(1, &m_PresentationFramebuffer);
+	glDeleteRenderbuffers(1, &m_PresentationColor);
 	for (const GpuQuery& query : m_GpuQueries)
 	{
 		if (query.id != 0)
@@ -380,7 +382,7 @@ bool Renderer::IsInitialized() const
 	return m_Initialized;
 }
 
-void Renderer::Resize(int windowSizeX, int windowSizeY)
+void Renderer::Resize(int windowSizeX, int windowSizeY, int framebufferWidth, int framebufferHeight)
 {
 	if (windowSizeX < 1)
 	{
@@ -394,7 +396,29 @@ void Renderer::Resize(int windowSizeX, int windowSizeY)
 
 	m_WindowSizeX = windowSizeX;
 	m_WindowSizeY = windowSizeY;
-	glViewport(0, 0, windowSizeX, windowSizeY);
+	m_FramebufferWidth = framebufferWidth > 0 ? framebufferWidth : windowSizeX;
+	m_FramebufferHeight = framebufferHeight > 0 ? framebufferHeight : windowSizeY;
+	m_UsePresentationFramebuffer = m_FramebufferWidth != windowSizeX || m_FramebufferHeight != windowSizeY;
+
+	if (m_UsePresentationFramebuffer)
+	{
+		if (m_PresentationFramebuffer == 0)
+		{
+			glGenFramebuffers(1, &m_PresentationFramebuffer);
+			glGenRenderbuffers(1, &m_PresentationColor);
+		}
+
+		// Match the old logical-pixel workload instead of quadrupling shader work at 200% DPI.
+		glBindRenderbuffer(GL_RENDERBUFFER, m_PresentationColor);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, windowSizeX, windowSizeY);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_PresentationFramebuffer);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_PresentationColor);
+		m_UsePresentationFramebuffer = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	}
+
+	glViewport(0, 0, m_FramebufferWidth, m_FramebufferHeight);
 }
 
 void Renderer::SetCamera(float worldX, float worldY, float worldZ)
@@ -415,6 +439,9 @@ void Renderer::WorldToScreen(float worldX, float worldY, float worldZ, float* sc
 
 void Renderer::BeginFrame(const Color& clearColor, float elapsedSeconds)
 {
+	glBindFramebuffer(GL_FRAMEBUFFER, m_UsePresentationFramebuffer ? m_PresentationFramebuffer : 0);
+	glViewport(0, 0, m_UsePresentationFramebuffer ? m_WindowSizeX : (m_FramebufferWidth > 0 ? m_FramebufferWidth : m_WindowSizeX),
+		m_UsePresentationFramebuffer ? m_WindowSizeY : (m_FramebufferHeight > 0 ? m_FramebufferHeight : m_WindowSizeY));
 	m_Stats = {};
 	m_Stats.frameId = ++m_RenderFrame;
 	m_Stats.gpuElapsedMs = -1.0;
@@ -446,6 +473,15 @@ void Renderer::EndFrame()
 	const double textStart = AnalysisLog::NowMs();
 	FlushText();
 	m_Stats.textSubmitCpuMs = AnalysisLog::NowMs() - textStart;
+
+	if (m_UsePresentationFramebuffer)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_PresentationFramebuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBlitFramebuffer(0, 0, m_WindowSizeX, m_WindowSizeY, 0, 0, m_FramebufferWidth, m_FramebufferHeight,
+			GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 
 	if (m_ActiveGpuQuery >= 0)
 	{
@@ -512,14 +548,12 @@ void Renderer::PushMesh(int mesh, float x, float y, float scaleX, float scaleY,
 
 	BatchItem item;
 	item.depth = depth;
-	item.mesh = mesh;
 	item.instance = MakeInstance(color);
 	item.instance.transform[0] = x;
 	item.instance.transform[1] = y;
 	item.instance.transform[2] = scaleX;
 	item.instance.transform[3] = scaleY;
-	m_SortOrder.push_back(static_cast<int>(m_Items.size()));
-	m_Items.push_back(item);
+	QueueItem(item, mesh);
 }
 
 void Renderer::PushMeshShaded(int mesh, float x, float y, float scaleX, float scaleY,
@@ -529,7 +563,6 @@ void Renderer::PushMeshShaded(int mesh, float x, float y, float scaleX, float sc
 		return;
 	BatchItem item;
 	item.depth = depth;
-	item.mesh = mesh;
 	item.instance = MakeInstance(colors[0]);
 	for (int i = 0; i < 4; ++i)
 	{
@@ -541,8 +574,7 @@ void Renderer::PushMeshShaded(int mesh, float x, float y, float scaleX, float sc
 	item.instance.transform[1] = y;
 	item.instance.transform[2] = scaleX;
 	item.instance.transform[3] = scaleY;
-	m_SortOrder.push_back(static_cast<int>(m_Items.size()));
-	m_Items.push_back(item);
+	QueueItem(item, mesh);
 }
 
 void Renderer::PushPolygonShaded(const float* xy, const Color* colors, int vertexCount, float depth)
@@ -554,7 +586,6 @@ void Renderer::PushPolygonShaded(const float* xy, const Color* colors, int verte
 
 	BatchItem item;
 	item.depth = depth;
-	item.mesh = vertexCount == 3 ? m_TriangleMesh : m_QuadMesh;
 	item.instance = MakeInstance(colors[0]);
 	item.instance.animation[3] = 1.0f;
 
@@ -567,6 +598,14 @@ void Renderer::PushPolygonShaded(const float* xy, const Color* colors, int verte
 		item.instance.colors[i] = colors[source];
 	}
 
+	QueueItem(item, vertexCount == 3 ? m_TriangleMesh : m_QuadMesh);
+}
+
+void Renderer::QueueItem(BatchItem& item, int mesh)
+{
+	const MeshRange& range = m_MeshCache.Get(mesh);
+	item.firstVertex = range.first;
+	item.triangleCount = range.count / 3;
 	m_SortOrder.push_back(static_cast<int>(m_Items.size()));
 	m_Items.push_back(item);
 }
@@ -676,6 +715,15 @@ void Renderer::PushText(const std::wstring& text, float x, float y, int pixelSiz
 	m_TextItems.push_back(item);
 }
 
+void Renderer::DiscardTextInRect(float x, float y, float width, float height)
+{
+	m_TextItems.erase(std::remove_if(m_TextItems.begin(), m_TextItems.end(), [=](const TextItem& item)
+	{
+		return item.x < x + width && item.x + item.texture->width > x
+			&& item.y < y + height && item.y + item.texture->height > y;
+	}), m_TextItems.end());
+}
+
 float Renderer::MeasureTextWidth(const std::wstring& text, int pixelSize, FontFace face, bool bold)
 {
 	const TextTexture* texture = m_Text.Get(text, pixelSize, face, bold);
@@ -698,10 +746,11 @@ void Renderer::FlushPolygons()
 	// Keep painter order, including ties. Commands reference resident triangles
 	// in that order; grouping by model would break translucent overlaps.
 	const double sortStart = AnalysisLog::NowMs();
-	std::stable_sort(m_SortOrder.begin(), m_SortOrder.end(),
-		[this](int a, int b)
+	const BatchItem* items = m_Items.data();
+	m_DepthOrder.Sort(m_SortOrder,
+		[items](int index)
 		{
-			return m_Items[a].depth < m_Items[b].depth;
+			return items[index].depth;
 		});
 	m_Stats.sortCpuMs = AnalysisLog::NowMs() - sortStart;
 
@@ -716,21 +765,29 @@ void Renderer::FlushPolygons()
 
 	for (size_t first = 0; first < m_SortOrder.size(); first += m_MaxInstanceCount)
 	{
-		m_Instances.clear();
-		m_Commands.clear();
 		const size_t end = (std::min)(m_SortOrder.size(), first + static_cast<size_t>(m_MaxInstanceCount));
+		const int* order = m_SortOrder.data();
+		size_t triangleCount = 0;
 
 		for (size_t i = first; i < end; ++i)
 		{
-			const BatchItem& item = m_Items[m_SortOrder[i]];
-			const MeshRange& mesh = m_MeshCache.Get(item.mesh);
-			const int instance = static_cast<int>(m_Instances.size());
-			m_Instances.push_back(item.instance);
+			triangleCount += items[order[i]].triangleCount;
+		}
 
-			for (int vertex = 0; vertex < mesh.count; vertex += 3)
+		m_Instances.resize(end - first);
+		m_Commands.resize(triangleCount);
+		PolygonInstance* instances = m_Instances.data();
+		TriangleCommand* command = m_Commands.data();
+
+		for (size_t i = first; i < end; ++i)
+		{
+			const BatchItem& item = items[order[i]];
+			const int instance = static_cast<int>(i - first);
+			instances[instance] = item.instance;
+
+			for (int triangle = 0; triangle < item.triangleCount; ++triangle)
 			{
-				const TriangleCommand command = { mesh.first + vertex, instance };
-				m_Commands.push_back(command);
+				*command++ = { item.firstVertex + triangle * 3, instance };
 			}
 		}
 
