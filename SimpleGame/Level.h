@@ -11,6 +11,7 @@
 #include "SceneGraph.h"
 #include "Stats.h"
 #include "World.h"
+#include "MapOverlay.h"
 #include "Bow.h"
 #include "Monitoring.h"
 
@@ -86,6 +87,7 @@ public:
 	void Render();
 	MonitoredWorld CaptureMonitoring(bool active) const;
 	void OnKey(unsigned char key, bool down, bool shift);
+	MapOverlay& GetMap() { return m_Map; }
 
 	// Gameplay retains borrowed Actor pointers; remove managed actors only
 	// through the scene lifecycle.
@@ -117,6 +119,7 @@ private:
 	void UpdateLights();
 
 	void Attack();
+	void ResolveAttack();
 	void DamageEnemy(int index, float amount, bool critical);
 	void DamagePlayer(float amount);
 	void KillEnemy(int index);
@@ -151,6 +154,7 @@ private:
 	DialogueDB* m_Dialogue;
 
 	World m_World;
+	MapOverlay m_Map;
 	Bow m_Bow;
 	WeaponKind m_Weapon = WEAPON_SWORD;
 	Lighting m_Lighting;
@@ -172,14 +176,14 @@ private:
 
 	float m_FacingX;
 	float m_FacingY;
-	float m_Stride;
+	PlayerMoveMotion m_MoveMotion;
 	bool m_MoveKey[MOVE_COUNT];
 	bool m_Running;
-	bool m_Moving;
 	bool m_AttackHeld;
 
 	float m_SwingCooldown;
-	float m_SwingAnim;
+	PlayerAttackMotion m_AttackMotion;
+	float m_AttackDamage = 0.0f;
 	float m_HurtFlash;
 	float m_DownedTimer;
 	float m_LevelUpFlash;

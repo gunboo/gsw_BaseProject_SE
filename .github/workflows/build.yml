@@ -1,0 +1,26 @@
+name: Build bundled GLFW game
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux system development headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb
+      - name: Configure
+        run: cmake --preset release
+      - name: Build
+        run: cmake --build --preset release --parallel 3
+      - name: Test
+        run: ctest --preset release
+      - name: Package
+        run: cmake --build build/cmake-release --config Release --target package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-${{ matrix.os }}
+          path: build/cmake-release/*.zip

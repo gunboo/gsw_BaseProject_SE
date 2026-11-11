@@ -1,0 +1,16 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    { "name": "release", "binaryDir": "${sourceDir}/build/cmake-release", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "BUILD_TESTING": true } },
+    { "name": "debug", "binaryDir": "${sourceDir}/build/cmake-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "BUILD_TESTING": true } }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "release", "configuration": "Release" },
+    { "name": "debug", "configurePreset": "debug", "configuration": "Debug" }
+  ],
+  "testPresets": [
+    { "name": "release", "configurePreset": "release", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "debug", "configurePreset": "debug", "configuration": "Debug", "output": { "outputOnFailure": true } }
+  ]
+}

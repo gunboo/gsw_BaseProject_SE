@@ -21,6 +21,15 @@ namespace VisualStyle
 	const float UI_BORDER = 1.0f;
 	const int HEALTH_SEGMENTS = 5;
 	const float HEALTH_GAP = 4.0f;
+	const float HUD_MARGIN = 20.0f;
+	const float HUD_WIDTH = 224.0f;
+	const float HUD_HEIGHT = 76.0f;
+	const float HUD_HEALTH_WIDTH = 148.0f;
+	const float HUD_HEALTH_HEIGHT = 8.0f;
+	const float HUD_WEAPON_SIZE = 28.0f;
+	const float HUD_WEAPON_GAP = 8.0f;
+	const int HUD_SMALL_FONT = 11;
+	const float HUD_STACK_WIDTH = 640.0f;
 	const float SHORE_WIDTH = 1.2f;
 	const Color COL_CLIFF = { 0.46f, 0.51f, 0.43f, 1.0f };
 	const float MASONRY_COURSE_HEIGHT = 0.65f;
@@ -57,6 +66,7 @@ namespace VisualStyle
 	{
 		Color base = RGBA(0.0f, 0.0f, 0.0f);
 		int samples = 0;
+		int grassSamples = 0;
 
 		// Land shares corner colors; water keeps a clear collision boundary.
 		for (int dy = -1; dy <= 0; ++dy)
@@ -73,6 +83,13 @@ namespace VisualStyle
 				}
 
 				const Color material = GroundColor(tile);
+
+				if (tile == TILE_GRASS || tile == TILE_TALLGRASS || tile == TILE_TREE
+					|| tile == TILE_BUSH || tile == TILE_ROCK)
+				{
+					++grassSamples;
+				}
+
 				base.r += material.r;
 				base.g += material.g;
 				base.b += material.b;
@@ -84,7 +101,11 @@ namespace VisualStyle
 		const float broadShade = 0.94f + 0.10f * sinf(x * 0.34f + y * 0.18f)
 			+ 0.06f * cosf(x * 0.19f - y * 0.43f);
 
-		return lighting.Apply(Scale(base, broadShade), (float)x, (float)y);
+		Color color = lighting.Apply(Scale(base, broadShade), (float)x, (float)y);
+		// The ground-only GPU effect interprets alpha as material coverage, not opacity.
+		color.a = samples > 0 ? (float)grassSamples / samples : 0.0f;
+
+		return color;
 	}
 
 	inline void DrawTerrainFace(Renderer* renderer, float ax, float ay, float bx, float by,
@@ -166,7 +187,19 @@ namespace VisualStyle
 						&treadPoints[corner * 2], &treadPoints[corner * 2 + 1]);
 				}
 
-				renderer->PushPolygonShaded(treadPoints, colors, 4, depth + tread * 0.1f);
+				Color treadColors[4];
+
+				for (int corner = 0; corner < 4; ++corner)
+				{
+					const float u = treadX[corner] - x;
+					const float v = treadY[corner] - y;
+					treadColors[corner] = Mix(Mix(colors[0], colors[1], u), Mix(colors[3], colors[2], u), v);
+				}
+
+				renderer->SetAnim(alongX ? ANIM_STAIR_X : ANIM_STAIR_Y,
+					x + (alongX ? start : 0.0f), y + (alongX ? 0.0f : start));
+				renderer->PushPolygonShaded(treadPoints, treadColors, 4, depth + tread * 0.1f);
+				renderer->ClearAnim();
 				const float edgeX = alongX ? x + end : x;
 				const float edgeY = alongX ? y : y + end;
 				const float nextZ = world.GetElevation(alongX ? x + end + 0.001f : x + 0.5f,
@@ -178,7 +211,13 @@ namespace VisualStyle
 		}
 		else
 		{
+			if (tile != TILE_WATER)
+			{
+				renderer->SetAnim(tile == TILE_STONE ? ANIM_STONE_GROUND : ANIM_GROUND, (float)x, (float)y);
+			}
+
 			renderer->PushPolygonShaded(points, colors, 4, depth);
+			renderer->ClearAnim();
 		}
 
 		const Color cliff = lighting.Apply(COL_CLIFF, x + 0.5f, y + 0.5f);
@@ -217,20 +256,23 @@ namespace VisualStyle
 
 		if (tile == TILE_STONE && !world.IsStairTile(x, y))
 		{
-			const float halfWidth = Renderer::TileHalfWidth() * 0.80f;
-			const float halfHeight = Renderer::TileHalfHeight() * 0.80f;
-			const float slab[8] =
+			const float inset = 0.04f + (hash % 9) * 0.01f;
+			const float slabX[4] = { x + inset, x + 1.0f - inset, x + 0.94f, x + 0.06f };
+			const float slabY[4] = { y + 0.06f, y + inset, y + 1.0f - inset, y + 0.94f };
+			float slab[8];
+
+			for (int corner = 0; corner < 4; ++corner)
 			{
-				screenX, screenY - halfHeight,
-				screenX + halfWidth, screenY,
-				screenX, screenY + halfHeight,
-				screenX - halfWidth, screenY
-			};
+				renderer->WorldToScreen(slabX[corner], slabY[corner],
+					world.GetTileElevation(x, y, slabX[corner] - x, slabY[corner] - y) + heightOffset,
+					&slab[corner * 2], &slab[corner * 2 + 1]);
+			}
+
 			const Color stone = lighting.Apply(GroundColor(tile), (float)x + 0.5f, (float)y + 0.5f);
-			const Color slabColors[4] = { Scale(stone, 1.15f), stone, Scale(stone, 0.88f), stone };
-			renderer->PushPolygonShaded(slab, slabColors, 4, depth + GROUND_DETAIL_DEPTH);
-			renderer->PushLine(slab[0], slab[1], slab[6], slab[7], UI_BORDER,
-				Scale(stone, 1.23f), depth + GROUND_DETAIL_DEPTH + 0.1f);
+			renderer->PushLine(slab[0], slab[1], slab[6], slab[7], 0.65f,
+				RGBA(stone.r * 1.08f, stone.g * 1.08f, stone.b * 1.08f, 0.46f), depth + GROUND_DETAIL_DEPTH);
+			renderer->PushLine(slab[6], slab[7], slab[4], slab[5], 0.70f,
+				RGBA(stone.r * 0.65f, stone.g * 0.65f, stone.b * 0.65f, 0.36f), depth + GROUND_DETAIL_DEPTH + 0.1f);
 		}
 		else if (tile == TILE_WATER && hash % 4 == 0)
 		{
@@ -310,6 +352,95 @@ namespace VisualStyle
 				RGBA(COL_IVORY.r, COL_IVORY.g, COL_IVORY.b, 0.65f), depth);
 			DrawMeter(renderer, segmentX, y, segmentWidth, height, fill * HEALTH_SEGMENTS - i,
 				health, RGBA(0.10f, 0.15f, 0.12f, 0.95f), depth + 0.1f);
+		}
+	}
+
+	inline void DrawWeaponSlots(Renderer* renderer, float x, float y, bool bowSelected, float depth)
+	{
+		const int slotCount = 2;
+		const float iconStroke = 1.4f;
+		const float iconDepth = depth + 0.3f;
+		const float blade[] = { -7.0f, 6.0f, 5.0f, -8.0f, 8.0f, -9.0f, 7.0f, -6.0f };
+		const float bow[] = { -4.0f, -9.0f, 2.0f, -5.0f, 5.0f, 0.0f, 2.0f, 5.0f, -4.0f, 9.0f };
+		const wchar_t* const keys[] = { L"1", L"2" };
+
+		for (int slot = 0; slot < slotCount; ++slot)
+		{
+			const bool selected = bowSelected == (slot == 1);
+			const float slotX = x + slot * (HUD_WEAPON_SIZE + HUD_WEAPON_GAP);
+			const float centerX = slotX + HUD_WEAPON_SIZE * 0.5f;
+			const float centerY = y + HUD_WEAPON_SIZE * 0.5f;
+			const Color ink = selected ? COL_IVORY : RGBA(0.55f, 0.62f, 0.55f, 0.8f);
+			DrawPanel(renderer, slotX, y, HUD_WEAPON_SIZE, HUD_WEAPON_SIZE, selected ? 0.78f : 0.42f, depth);
+
+			if (selected)
+			{
+				renderer->PushLine(slotX + UI_CORNER, y + HUD_WEAPON_SIZE,
+					slotX + HUD_WEAPON_SIZE - UI_CORNER, y + HUD_WEAPON_SIZE,
+					UI_BORDER, COL_MOSS, depth + 0.2f);
+			}
+
+			if (slot == 0)
+			{
+				float points[8];
+
+				for (int corner = 0; corner < 4; ++corner)
+				{
+					points[corner * 2] = centerX + blade[corner * 2];
+					points[corner * 2 + 1] = centerY + blade[corner * 2 + 1];
+				}
+
+				renderer->PushPolygon(points, 4, ink, iconDepth);
+				renderer->PushLine(centerX - 8.0f, centerY + 2.0f, centerX - 2.0f, centerY + 7.0f,
+					iconStroke, ink, iconDepth);
+				renderer->PushLine(centerX - 7.0f, centerY + 6.0f, centerX - 10.0f, centerY + 9.0f,
+					iconStroke, ink, iconDepth);
+			}
+			else
+			{
+				for (int segment = 0; segment < 4; ++segment)
+				{
+					renderer->PushLine(centerX + bow[segment * 2], centerY + bow[segment * 2 + 1],
+						centerX + bow[(segment + 1) * 2], centerY + bow[(segment + 1) * 2 + 1],
+						iconStroke, ink, iconDepth);
+				}
+
+				renderer->PushLine(centerX - 4.0f, centerY - 9.0f, centerX - 4.0f, centerY + 9.0f,
+					UI_BORDER, ink, iconDepth);
+				renderer->PushLine(centerX - 8.0f, centerY, centerX + 7.0f, centerY,
+					UI_BORDER, ink, iconDepth);
+			}
+
+			renderer->PushText(keys[slot], slotX + HUD_WEAPON_SIZE - 2.0f, y + HUD_WEAPON_SIZE - 10.0f,
+				9, FONT_UI, false, ink, ALIGN_RIGHT);
+		}
+	}
+
+	inline void DrawPlayerLocator(Renderer* renderer, float x, float y, float depth)
+	{
+		// Four broken arcs keep the feet readable without filling the contact shadow.
+		const float points[] =
+		{
+			-12.0f, -1.0f, -9.0f, -4.0f, -4.0f, -5.0f,
+			4.0f, -5.0f, 9.0f, -4.0f, 12.0f, -1.0f,
+			12.0f, 1.0f, 9.0f, 4.0f, 4.0f, 5.0f,
+			-4.0f, 5.0f, -9.0f, 4.0f, -12.0f, 1.0f
+		};
+		const int arcCount = 4;
+		const int pointsPerArc = 3;
+
+		for (int arc = 0; arc < arcCount; ++arc)
+		{
+			for (int segment = 0; segment < pointsPerArc - 1; ++segment)
+			{
+				const int point = (arc * pointsPerArc + segment) * 2;
+				renderer->PushLine(x + points[point], y + points[point + 1],
+					x + points[point + 2], y + points[point + 3], 2.4f,
+					RGBA(0.03f, 0.06f, 0.05f, 0.6f), depth);
+				renderer->PushLine(x + points[point], y + points[point + 1],
+					x + points[point + 2], y + points[point + 3], 0.9f,
+					RGBA(COL_IVORY.r, COL_IVORY.g, COL_IVORY.b, 0.56f), depth + 0.01f);
+			}
 		}
 	}
 }

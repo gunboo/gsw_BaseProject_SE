@@ -30,6 +30,16 @@ struct MonitoredVillage
 {
 	std::string id;
 	std::string name;
+	bool hasAtmosphere = false;
+	std::string mood = "calm";
+	float fear = 0.0f;
+	float trust = 0.0f;
+	float prosperity = 0.0f;
+	unsigned int homeNpcCount = 0;
+	unsigned int presentNpcCount = 0;
+	unsigned int travelers = 0;
+	unsigned int knownRumors = 0;
+	unsigned int nearbyMonsters = 0;
 };
 
 struct MonitoredWorld

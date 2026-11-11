@@ -10,8 +10,8 @@
 한국공학대(KPU) 게임소프트웨어공학 수업의 베이스 프로젝트(`gsw_BaseProject_SE`)를 출발점으로,
 **실시간 렌더링 기반의 게임**을 제작한다. 단순 OpenGL 예제 실습이 아니라 완성된 게임으로 확장하는 것이 전제다.
 
-- **플랫폼**: Windows / Visual Studio 2022 (v18) / x64
-- **기술 스택**: C++, OpenGL (GLEW), FreeGLUT
+- **플랫폼**: Windows 실행 검증, Linux/macOS 빌드 경로 / CMake 3.24+ / Visual Studio 2022·2026 / x64·Win32
+- **기술 스택**: C++14, OpenGL (소스 포함 GLEW), GLFW (소스 포함 정적 빌드)
 - **솔루션**: `SimpleGame.sln`
 
 ## 2. 게임 기획 기준선
@@ -101,21 +101,25 @@
 
 | 파일 | 역할 |
 |---|---|
-| `SimpleGame.cpp` | 진입점. GLUT 초기화, **Update/Render 분리 게임 루프**, 델타 타임, 씬 전환 |
+| `SimpleGame.cpp` | 진입점. GLFW 초기화, **Update/Render 분리 게임 루프**, 델타 타임, 씬 전환 |
 | `AnalysisLog.h/.cpp` | 실행별 프레임 CSV·구간 요약·이벤트·환경 기록, 분석 데이터 보관 제한 |
 | `Actor.h/.cpp` | 배치 객체. 부모 기준 위치, 갱신·표시 상태, 투영 경계, 객체별 콜백 |
 | `SceneGraph.h/.cpp` | Actor 소유권과 계층 순회, 하위 경계 캐싱, 화면 컬링, 가지 단위 갱신 제외 |
 | `Renderer.h/.cpp` | 카메라, 깊이 정렬, 상주 메시의 인스턴스 배치, 텍스트 배치와 실제 draw 통계 |
 | `MeshCache.h/.cpp` | 삼각분할된 기본 도형·모델 메시 파일 캐시와 초기 등록 |
-| `TextRenderer.h/.cpp` | GDI 한글을 공유 R8 텍스처 배열에 캐싱. 폰트 라이브러리 의존성 없음 |
+| `TextRenderer.h/.cpp` | GDI/배포 한글 폰트를 공유 R8 텍스처 배열에 캐싱. FontRasterizer와 연결 |
 | `Model.h/.cpp` | **모델 라이브러리.** 원·사각형·타원으로 도형을 굽고 `Data/models.cache`에 저장·로드 |
 | `Lighting.h/.cpp` | 야간 앰비언트·등불·안개. 씬 공통 |
 | `World.h/.cpp` | 타일맵·프롭·충돌. 파일 로드 + **랜덤 생성(연결성 보장)** |
 | `Dialogue.h/.cpp` | `Data/dialogue.txt` 파서 |
 | `Stats.h/.cpp` | 플레이어 레벨·경험치 곡선·능력치 파생값 |
+| `Platform.h/.cpp` | 플랫폼별 로그·메모리·자산 경로와 환경 변수 |
+| `FontRasterizer.h/.cpp` | Windows GDI 유지, 배포 나눔 폰트와 portable 래스터라이징 |
+| `WindowInput.h` | GLFW 물리 키 매핑·키 반복 무시·포커스 해제 |
 | `Input.h` | 이동 키 슬롯 enum (씬 공통) |
 | `Game.h/.cpp` | **튜토리얼 씬** — 마을, NPC, 단서 퀘스트 |
 | `VillageSimulation.h/.cpp` | 마을 확장 테스트. 데이터 기반 NPC 행동, 충돌 경로, 외곽 요괴 전투·재등장 |
+| `ResidentActivity.h` / `ResidentArt.h/.cpp` | 주민 직업별 작업 시계·보행과 팔·도구·횃불·낚시 연출 |
 | `Level.h/.cpp` | **제1레벨 씬** — 랜덤 숲, 전투, 드랍, 경험치, 능력치 배분 |
 
 씬은 `SimpleGame.cpp`가 소유한다. 튜토리얼 엔딩에서 `E`를 누르면 `Level`이 생성되고
@@ -288,7 +292,7 @@
 
 ## 7. 남은 정리 항목
 
-- `.gitignore`로 Visual Studio 작업 파일과 빌드 산출물을 제외한다. 런타임 DLL은 유지한다.
+- `.gitignore`로 Visual Studio 작업 파일과 빌드 산출물을 제외한다. 새 CMake 배포는 GLFW·GLEW를 정적 링크하고, 성능 유지를 위해 MSVC Release CRT DLL은 자동 복사·패키징한다. Debug CRT는 정적 링크한다. 기존 freeglut·GLEW DLL은 레거시 산출물이며 패키지에서 제외한다.
   `Data/models.cache`, `Data/render_meshes.cache`, `Data/Logs/`도 생성물이므로 커밋하지 않는다
 - `Shaders/SolidRect.vs/.fs`는 베이스 프로젝트의 잔재로, 현재 아무도 로드하지 않는다
 - SceneGraph의 변환은 위치 상속까지 지원한다. 회전·스케일 계층 합성과 UI 패널 내부 마스크는 미구현이다
@@ -296,10 +300,19 @@
 
 ## 8. 작업 방식
 
+- 2026-11-04 현재 마을 월드: 338×164, 5개 마을, 등불마을 NPC 12명·나머지 각 7명(총 40명).
+  광장 간 62칸으로 기본 걷기 3.1칸/초 기준 20초. 네 사냥 구간에 각 25개, 총 100개 몬스터 슬롯.
+  처치 후 1~2초 뒤 사망 위치에서 8칸·플레이어에서 11칸 이상 떨어져 재등장한다.
+  마을별 운반 NPC 2명이 실제 길을 이동하며 접촉으로 소문을 전달한다.
+  설정은 settlements.tsv / village_routes.tsv / rumors.tsv / 확장된 village_npcs.tsv에 둔다.
+  활성 주민 명단은 village_roster.tsv로 관리하며 월드 재생성 시에도 적용한다.
+  마을별 분위기·불안·신뢰·활기·인구·소문 수를 Monitoring과 AnalysisLog에 기록한다.
+  현재 범위와 확인 절차는 튜토리얼_레벨_설계서.md 11절을 따른다.
+
 - 통합 브랜치는 `main` 하나만 사용한다. 기존 `master`와 기능 브랜치의 변경은 main에 병합했다.
 
 - 2026-09-30 마을 테스트 확장: `village.map`은 88×72, NPC 28명이며
-  `Data/village_npcs.tsv`에서 행동·활동 반경·속도를 읽는다. 마을 Space는 공격, E는 대화다.
+  `Data/village_npcs.tsv`에서 행동·활동 반경·속도·직업·작업 방향을 읽는다. 마을 Space는 공격, E는 대화다.
   외곽 요괴 72개 슬롯을 유지한다. `스토리_구현_명세.md`의 본편 장 진행은 아직 구현하지 않았으며,
   현재 반영한 인물·행동과 테스트 범위는 `튜토리얼_레벨_설계서.md` 9절에 기록한다.
 

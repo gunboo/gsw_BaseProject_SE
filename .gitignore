@@ -1,5 +1,7 @@
 # Visual Studio local cache and workspace settings
 .vs/
+build/
+CMakeUserPresets.json
 
 # Generated build files (keep runtime DLL dependencies)
 SimpleGame/x64/

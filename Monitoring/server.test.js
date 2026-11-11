@@ -48,6 +48,28 @@ test("rejects unsupported schemas, duplicates, dangling village references, and 
   }
 });
 
+test("village atmosphere is optional and survives snapshot normalization", () => {
+  const raw = fixture();
+  const atmosphere = { mood: "tense", fear: 45, trust: 60, prosperity: 52,
+    homeNpcCount: 20, presentNpcCount: 18, travelers: 1, knownRumors: 3, nearbyMonsters: 7 };
+  raw.worlds[0].villages[0].atmosphere = atmosphere;
+  const normalized = validateSnapshot(raw);
+  assert.deepEqual(normalized.worlds[0].villages[0].atmosphere, atmosphere);
+  delete raw.worlds[0].villages[0].atmosphere;
+  assert.equal(validateSnapshot(raw).worlds[0].villages[0].atmosphere, undefined);
+});
+
+test("invalid atmosphere cannot replace the last valid snapshot", () => {
+  const store = new SnapshotStore(() => 10000);
+  store.accept(fixture());
+  const raw = fixture();
+  raw.sequence = 2;
+  raw.worlds[0].villages[0].atmosphere = { mood: "calm", fear: 101, trust: 60, prosperity: 52,
+    homeNpcCount: 20, presentNpcCount: 18, travelers: 1, knownRumors: 3, nearbyMonsters: 7 };
+  assert.throws(() => store.accept(raw));
+  assert.equal(store.state().sources[0].sequence, 1);
+});
+
 test("full snapshots remove departed entities and unloaded worlds", () => {
   const store = new SnapshotStore(() => 10000);
   store.accept(fixture());

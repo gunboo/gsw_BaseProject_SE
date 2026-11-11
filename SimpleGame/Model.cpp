@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Model.h"
+#include "Bow.h"
 
 #include <cmath>
 #include <fstream>
@@ -18,11 +19,12 @@ namespace
 
 	// Bump this whenever a builder below changes shape, so a stale cache from an
 	// earlier run is discarded instead of being drawn.
-	const int MODEL_CACHE_VERSION = 5;
+	const int MODEL_CACHE_VERSION = 13;
 	const char MODEL_CACHE_MAGIC[4] = { 'M', 'D', 'L', '1' };
 
 	// --- shared palette for the baked shapes -----------------------------
 	const Color COL_FOLIAGE = { 0.43f, 0.55f, 0.29f, 1.0f };
+	const Color COL_TREE_FOLIAGE = { 0.27f, 0.46f, 0.31f, 1.0f };
 	const Color COL_TRUNK = { 0.40f, 0.32f, 0.24f, 1.0f };
 	const Color COL_SKIN = { 0.77f, 0.66f, 0.50f, 1.0f };
 	const Color COL_HAIR = { 0.11f, 0.10f, 0.11f, 1.0f };
@@ -38,6 +40,16 @@ namespace
 	const float SURFACE_HIGHLIGHT = 1.18f;
 	const float SURFACE_SHADE_RANGE = 0.52f;
 	const float GROUND_SHADOW_DEPTH = -90000.0f;
+	const int CANOPY_SEGMENTS = 16;
+	const int CANOPY_EDGE_LOBES = 7;
+	const int TRUNK_SEGMENTS = 4;
+	const Color COL_FOX_ROBE = { 0.19f, 0.23f, 0.23f, 1.0f };
+	const Color COL_FOX_CAPE = { 0.63f, 0.25f, 0.19f, 1.0f };
+	const Color COL_FOX_MASK = { 0.94f, 0.91f, 0.79f, 1.0f };
+	const Color COL_FOX_MARK = { 0.65f, 0.17f, 0.13f, 1.0f };
+	const Color COL_FOX_LEATHER = { 0.31f, 0.26f, 0.22f, 1.0f };
+	const Color COL_FOX_GOLD = { 0.72f, 0.58f, 0.34f, 1.0f };
+	const unsigned int FOX_SURFACE = MODEL_FLAG_TINT | MODEL_FLAG_SHADED;
 
 	// --- builders --------------------------------------------------------
 
@@ -75,49 +87,107 @@ namespace
 		}
 	}
 
-	void BuildTreeTrunk(ModelBuilder* builder, float height, float width)
+	void BuildCanopyMass(ModelBuilder* builder, float cx, float cy, float rx, float ry,
+		const Color& material, float phase, float depth)
 	{
-		const float left[8] = { -width, 0.0f, 0.0f, 4.0f, 0.0f, -height * 0.70f, -width * 0.52f, -height * 0.74f };
-		const float right[8] = { 0.0f, 4.0f, width, 0.0f, width * 0.48f, -height * 0.71f, 0.0f, -height * 0.70f };
-		builder->AddPolygon(left, 4, Scale(COL_TRUNK, 1.20f), -0.01f);
-		builder->AddPolygon(right, 4, Scale(COL_TRUNK, 0.61f), -0.009f);
-		builder->AddLine(-1.0f, -height * 0.42f, -22.0f, -height * 0.70f,
-			width * 0.60f, Scale(COL_TRUNK, 0.95f), -0.007f);
-		builder->AddLine(2.0f, -height * 0.52f, 23.0f, -height * 0.80f,
-			width * 0.55f, Scale(COL_TRUNK, 0.68f), -0.006f);
-		builder->AddTriangle(-width, -8.0f, -width * 1.9f, 5.0f, 0.0f, 2.0f,
-			Scale(COL_TRUNK, 1.05f), -0.005f);
-		builder->AddTriangle(0.0f, 2.0f, width * 1.6f, 5.0f, width, -8.0f,
-			Scale(COL_TRUNK, 0.65f), -0.004f);
+		float outline[CANOPY_SEGMENTS * 2];
+
+		for (int i = 0; i < CANOPY_SEGMENTS; ++i)
+		{
+			const float angle = TWO_PI * i / CANOPY_SEGMENTS;
+			const float radius = 0.96f + 0.03f * cosf(angle * 3.0f + phase)
+				+ 0.015f * sinf(angle * 5.0f - phase);
+			outline[i * 2] = cx + cosf(angle) * rx * radius;
+			outline[i * 2 + 1] = cy + sinf(angle) * ry * radius;
+		}
+
+		// A broad shaded mass carries the volume; a few edge lobes carry the leaf silhouette.
+		builder->AddEllipse(cx + 3.0f, cy + ry * 0.22f, rx * 0.95f, ry * 0.94f,
+			CANOPY_SEGMENTS, Scale(material, 0.50f), depth, MODEL_FLAG_SHADED);
+
+		for (int i = 0; i < CANOPY_EDGE_LOBES; ++i)
+		{
+			const float angle = TWO_PI * i / CANOPY_EDGE_LOBES + phase * 0.15f;
+			const float leafX = cx + cosf(angle) * rx * 0.91f;
+			const float leafY = cy + sinf(angle) * ry * 0.89f;
+			const float shade = 0.95f - sinf(angle) * 0.10f - cosf(angle) * 0.06f;
+			builder->AddEllipse(leafX, leafY, rx * 0.16f, ry * 0.20f, 8,
+				Scale(material, shade), depth + 0.001f, MODEL_FLAG_SHADED);
+		}
+
+		// Cover the interior of each lobe so small leaves do not read as bumps on the canopy.
+		builder->AddPolygon(outline, CANOPY_SEGMENTS, material, depth + 0.002f, MODEL_FLAG_SHADED);
+
+		Color highlight = Scale(material, 1.8f);
+		highlight.a = 0.19f;
+		builder->AddSoftEllipse(cx - rx * 0.28f, cy - ry * 0.26f, rx * 0.64f, ry * 0.62f,
+			highlight, depth + 0.003f, MODEL_FLAG_NONE);
+	}
+
+	void BuildTreeTrunk(ModelBuilder* builder, float height, float width, float bend)
+	{
+		const float centerX[5] = { 0.0f, bend * 0.16f, bend * 0.72f, bend, bend * 0.68f };
+		const float centerY[5] = { 2.0f, -height * 0.20f, -height * 0.40f, -height * 0.59f, -height * 0.78f };
+		const float radius[5] = { width, width * 0.77f, width * 0.65f, width * 0.49f, width * 0.25f };
+
+		for (int segment = 0; segment < TRUNK_SEGMENTS; ++segment)
+		{
+			const int next = segment + 1;
+			const float left[8] = { centerX[segment] - radius[segment], centerY[segment],
+				centerX[segment], centerY[segment] + 1.0f, centerX[next], centerY[next],
+				centerX[next] - radius[next], centerY[next] };
+			const float right[8] = { centerX[segment], centerY[segment] + 1.0f,
+				centerX[segment] + radius[segment], centerY[segment],
+				centerX[next] + radius[next], centerY[next], centerX[next], centerY[next] };
+			// Continuous face tones avoid a repeated gradient seam at every bend.
+			builder->AddPolygon(left, 4, Scale(COL_TRUNK, 1.06f), -0.01f);
+			builder->AddPolygon(right, 4, Scale(COL_TRUNK, 0.64f), -0.009f);
+		}
+
+		builder->AddLine(centerX[2], centerY[2], bend - 18.0f, -height * 0.63f,
+			width * 0.69f, Scale(COL_TRUNK, 0.91f), -0.007f);
+		builder->AddLine(bend - 18.0f, -height * 0.63f, bend - 31.0f, -height * 0.72f,
+			width * 0.38f, Scale(COL_TRUNK, 0.87f), -0.006f);
+		builder->AddLine(centerX[2], centerY[2], bend + 21.0f, -height * 0.65f,
+			width * 0.60f, Scale(COL_TRUNK, 0.67f), -0.005f);
+		builder->AddTriangle(-width, -8.0f, -width * 1.6f, 5.0f, width * 0.30f, 1.0f,
+			Scale(COL_TRUNK, 1.02f), -0.004f);
+		builder->AddTriangle(0.0f, 2.0f, width * 1.4f, 5.0f, width, -8.0f,
+			Scale(COL_TRUNK, 0.63f), -0.003f);
 	}
 
 	void BuildCedar(ModelBuilder* builder, float height, int tier)
 	{
-		builder->AddSoftEllipse(18.0f, 8.0f, 48.0f, 19.0f, COL_SHADOW, -0.02f,
+		builder->AddSoftEllipse(2.0f, 1.0f, 21.0f, 8.0f, RGBA(0.02f, 0.04f, 0.03f, 0.38f), -0.02f,
 			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
-		BuildTreeTrunk(builder, height, 6.5f + tier * 0.6f);
+		builder->AddSoftEllipse(0.0f, 1.0f, 10.0f, 4.0f, RGBA(0.01f, 0.02f, 0.015f, 0.68f), -0.019f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		const float bend = tier == 1 ? -10.0f : 9.0f + tier * 2.0f;
+		BuildTreeTrunk(builder, height, 7.5f + tier * 0.6f, bend);
 		builder->SetAnim(ANIM_SWAY, tier * 1.7f, 0.45f);
-		BuildCrownVolume(builder, 17.0f, -height * 0.80f, 28.0f, 20.0f, 10.0f,
-			Scale(COL_FOLIAGE, 0.98f), 0.002f);
+		BuildCanopyMass(builder, bend + 12.0f, -height * 0.84f, 33.0f + tier * 2.0f, 24.0f,
+			Scale(COL_TREE_FOLIAGE, 0.88f), tier * 1.7f, 0.002f);
 		builder->SetAnim(ANIM_SWAY, tier * 1.7f, 0.60f);
-		BuildCrownVolume(builder, -17.0f, -height * 0.66f, 31.0f, 22.0f, 12.0f,
-			Scale(COL_FOLIAGE, 1.12f), 0.004f);
+		BuildCanopyMass(builder, bend - 12.0f, -height * 0.64f, 39.0f + tier, 29.0f,
+			Scale(COL_TREE_FOLIAGE, 1.10f), tier * 1.7f + 0.5f, 0.008f);
 		builder->ClearAnim();
 	}
 
 	void BuildBroadleaf(ModelBuilder* builder, float height)
 	{
-		builder->AddSoftEllipse(20.0f, 8.0f, 62.0f, 22.0f, COL_SHADOW, -0.02f,
+		builder->AddSoftEllipse(2.0f, 1.0f, 25.0f, 10.0f, RGBA(0.02f, 0.04f, 0.03f, 0.38f), -0.02f,
 			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
-		BuildTreeTrunk(builder, height, 10.0f);
+		builder->AddSoftEllipse(0.0f, 1.0f, 13.0f, 5.0f, RGBA(0.01f, 0.02f, 0.015f, 0.68f), -0.019f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		BuildTreeTrunk(builder, height, 11.5f, -14.0f);
 		builder->SetAnim(ANIM_SWAY, 0.7f, 0.45f);
-		BuildCrownVolume(builder, 0.0f, -height * 0.91f, 31.0f, 22.0f, 12.0f,
-			Scale(COL_FOLIAGE, 1.03f), 0.002f);
-		BuildCrownVolume(builder, 25.0f, -height * 0.70f, 34.0f, 24.0f, 13.0f,
-			Scale(COL_FOLIAGE, 0.91f), 0.004f);
+		BuildCanopyMass(builder, -12.0f, -height * 0.86f, 39.0f, 28.0f,
+			Scale(COL_TREE_FOLIAGE, 0.93f), 0.7f, 0.002f);
+		BuildCanopyMass(builder, 24.0f, -height * 0.66f, 34.0f, 29.0f,
+			Scale(COL_TREE_FOLIAGE, 0.82f), 1.4f, 0.008f);
 		builder->SetAnim(ANIM_SWAY, 0.7f, 0.65f);
-		BuildCrownVolume(builder, -25.0f, -height * 0.63f, 35.0f, 24.0f, 13.0f,
-			Scale(COL_FOLIAGE, 1.13f), 0.006f);
+		BuildCanopyMass(builder, -30.0f, -height * 0.56f, 37.0f, 31.0f,
+			Scale(COL_TREE_FOLIAGE, 1.11f), 2.2f, 0.014f);
 		builder->ClearAnim();
 	}
 
@@ -160,7 +230,7 @@ namespace
 	}
 
 	// The robe is tintable so that one baked person serves every villager.
-	void BuildPerson(ModelBuilder* builder, float height)
+	void BuildPerson(ModelBuilder* builder, float height, bool articulated = false)
 	{
 		const float shoulderY = -height * 0.62f;
 		const float hipY = -height * 0.34f;
@@ -170,10 +240,13 @@ namespace
 
 		builder->AddSoftEllipse(3.0f, 1.0f, 14.0f, 6.0f, COL_SHADOW, -0.02f,
 			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		builder->SetFlags(articulated ? MODEL_FLAG_PLAYER_LEFT_LEG : MODEL_FLAG_NONE);
 		builder->AddRect(-halfHip * 0.80f, -height * 0.10f, height * 0.10f, height * 0.12f,
 			COL_HAIR, -0.005f, MODEL_FLAG_SHADED);
+		builder->SetFlags(articulated ? MODEL_FLAG_PLAYER_RIGHT_LEG : MODEL_FLAG_NONE);
 		builder->AddRect(halfHip * 0.28f, -height * 0.10f, height * 0.11f, height * 0.12f,
 			COL_HAIR, -0.005f, MODEL_FLAG_SHADED);
+		builder->SetFlags(articulated ? MODEL_FLAG_PLAYER_UPPER : MODEL_FLAG_NONE);
 
 		const float body[8] =
 		{
@@ -185,7 +258,8 @@ namespace
 
 		builder->AddPolygon(body, 4, RGBA(1.0f, 1.0f, 1.0f), 0.0f, MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
 		builder->AddEllipse(-halfShoulder, shoulderY + 5.0f, height * 0.10f, height * 0.15f,
-			8, RGBA(0.86f, 0.86f, 0.86f), 0.0005f, MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
+			8, RGBA(0.86f, 0.86f, 0.86f), 0.0005f, MODEL_FLAG_TINT | MODEL_FLAG_SHADED
+			| (articulated ? MODEL_FLAG_PLAYER_LEFT_ARM : MODEL_FLAG_NONE));
 		const float lapel[6] = { -halfShoulder, shoulderY, 2.0f, hipY, -3.0f, hipY };
 		builder->AddPolygon(lapel, 3, RGBA(0.65f, 0.65f, 0.65f), 0.0007f, MODEL_FLAG_TINT);
 		builder->AddRect(-halfHip * 0.92f, hipY, halfHip * 1.84f, height * 0.07f, COL_SASH, 0.001f);
@@ -194,6 +268,7 @@ namespace
 			9, COL_HAIR, 0.003f, MODEL_FLAG_SHADED);
 		builder->AddEllipse(-1.0f, headY - height * 0.18f, height * 0.065f, height * 0.075f,
 			8, COL_HAIR, 0.0035f, MODEL_FLAG_SHADED);
+		builder->SetFlags(MODEL_FLAG_NONE);
 	}
 
 	void BuildPlayerCloak(ModelBuilder* builder, float height)
@@ -208,6 +283,136 @@ namespace
 		builder->AddPolygon(cloak, 5, RGBA(1.0f, 1.0f, 1.0f), -0.002f,
 			MODEL_FLAG_TINT | MODEL_FLAG_SHADED);
 		builder->ClearAnim();
+	}
+
+	void BuildFoxPlayer(ModelBuilder* builder)
+	{
+		// This silhouette is player-only; the tintable village person stays unchanged.
+		const float cape[] = { -18.0f, -10.0f, -7.0f, -7.0f, 6.0f, -29.0f, -7.0f, -35.0f };
+		const float capeFold[] = { -18.0f, -10.0f, -12.0f, -11.0f, -3.0f, -33.0f, -7.0f, -35.0f };
+		const float farLeg[] = { -8.0f, -3.0f, -2.0f, -2.0f, -1.0f, -14.0f, -9.0f, -15.0f };
+		const float nearLeg[] = { 1.0f, -2.0f, 7.0f, -2.0f, 9.0f, -14.0f, 0.0f, -15.0f };
+		const float robe[] = { -9.0f, -12.0f, 10.0f, -12.0f, 8.0f, -29.0f, -5.0f, -32.0f };
+		const float robeSide[] = { 5.0f, -12.0f, 10.0f, -12.0f, 8.0f, -29.0f, 4.0f, -29.0f };
+		const float lapel[] = { -5.0f, -31.0f, 5.0f, -25.0f, 0.0f, -18.0f, -2.0f, -22.0f };
+		const float sleeve[] = { -12.0f, -23.0f, -6.0f, -21.0f, -4.0f, -30.0f, -9.0f, -29.0f };
+		const float shoulder[] = { -10.0f, -29.0f, 5.0f, -25.0f, 10.0f, -30.0f, -3.0f, -35.0f };
+		const float collar[] = { -6.0f, -33.0f, 4.0f, -30.0f, 6.0f, -32.0f, -2.0f, -36.0f };
+		const float mask[] =
+		{
+			-4.0f, -40.0f, 1.0f, -44.0f, 8.0f, -42.0f,
+			11.0f, -36.0f, 6.0f, -31.0f, -2.0f, -34.0f
+		};
+		const float maskSide[] = { 7.0f, -42.0f, 8.0f, -42.0f, 11.0f, -36.0f, 6.0f, -31.0f };
+
+		builder->AddSoftEllipse(1.0f, 1.0f, 14.0f, 6.0f, COL_SHADOW, -0.02f,
+			MODEL_FLAG_UNLIT | MODEL_FLAG_GROUND);
+		builder->SetFlags(MODEL_FLAG_PLAYER_UPPER);
+		builder->SetAnim(ANIM_SWAY, 0.3f, 0.55f);
+		builder->AddPolygon(cape, 4, COL_FOX_CAPE, -0.012f, FOX_SURFACE);
+		builder->AddPolygon(capeFold, 4, Scale(COL_FOX_CAPE, 0.63f), -0.011f, MODEL_FLAG_TINT);
+		builder->AddTriangle(-18.0f, -10.0f, -12.0f, -12.0f, -17.0f, -6.0f,
+			Scale(COL_FOX_CAPE, 0.85f), -0.01f, FOX_SURFACE);
+		builder->AddTriangle(-12.0f, -9.0f, -7.0f, -7.0f, -10.0f, -4.0f,
+			COL_FOX_CAPE, -0.01f, FOX_SURFACE);
+		builder->ClearAnim();
+		builder->SetFlags(MODEL_FLAG_NONE);
+
+		builder->SetFlags(MODEL_FLAG_PLAYER_LEFT_LEG);
+		builder->AddPolygon(farLeg, 4, Scale(COL_FOX_ROBE, 0.72f), -0.008f, FOX_SURFACE);
+		builder->AddEllipse(-5.0f, -0.5f, 4.0f, 2.0f, 8, COL_FOX_LEATHER, -0.006f, FOX_SURFACE);
+		builder->AddRect(-7.0f, -6.0f, 4.5f, 4.0f, COL_FOX_LEATHER, -0.005f, FOX_SURFACE);
+		builder->AddLine(-6.5f, -4.5f, -2.7f, -3.8f, 0.8f, Scale(COL_FOX_MASK, 0.60f), -0.004f);
+		builder->SetFlags(MODEL_FLAG_PLAYER_RIGHT_LEG);
+		builder->AddPolygon(nearLeg, 4, COL_FOX_ROBE, -0.007f, FOX_SURFACE);
+		builder->AddEllipse(5.0f, 0.0f, 4.5f, 2.2f, 8, COL_FOX_LEATHER, -0.006f, FOX_SURFACE);
+		builder->AddRect(2.0f, -6.0f, 5.0f, 4.5f, COL_FOX_LEATHER, -0.005f, FOX_SURFACE);
+		builder->AddLine(2.5f, -4.5f, 6.8f, -3.7f, 0.8f, Scale(COL_FOX_MASK, 0.60f), -0.004f);
+		builder->SetFlags(MODEL_FLAG_PLAYER_UPPER);
+		builder->AddPolygon(robe, 4, COL_FOX_ROBE, 0.0f, FOX_SURFACE);
+		builder->AddPolygon(robeSide, 4, Scale(COL_FOX_ROBE, 0.60f), 0.001f, MODEL_FLAG_TINT);
+		builder->AddPolygon(lapel, 4, Scale(COL_FOX_ROBE, 1.42f), 0.002f, FOX_SURFACE);
+		builder->AddPolygon(sleeve, 4, Scale(COL_FOX_ROBE, 0.82f), 0.003f, FOX_SURFACE | MODEL_FLAG_PLAYER_LEFT_ARM);
+		builder->AddLine(-11.5f, -24.0f, -9.0f, -23.0f, 2.0f, Scale(COL_FOX_MASK, 0.65f), 0.004f, MODEL_FLAG_PLAYER_LEFT_ARM);
+		builder->AddEllipse(-11.0f, -21.0f, 2.0f, 2.5f, 8, COL_SKIN, 0.005f, FOX_SURFACE | MODEL_FLAG_PLAYER_LEFT_ARM);
+		builder->AddEllipse(10.0f, -24.0f, 3.5f, 5.0f, 10, COL_FOX_ROBE, 0.004f, FOX_SURFACE | MODEL_FLAG_PLAYER_RIGHT_ARM);
+		builder->AddEllipse(11.0f, -20.0f, 2.0f, 2.5f, 8, COL_SKIN, 0.005f, FOX_SURFACE | MODEL_FLAG_PLAYER_RIGHT_ARM);
+		builder->AddLine(-8.0f, -18.0f, 9.0f, -17.0f, 3.0f, COL_FOX_CAPE, 0.006f, FOX_SURFACE);
+		builder->AddLine(2.0f, -17.0f, 0.0f, -11.0f, 1.6f, Scale(COL_FOX_CAPE, 1.15f), 0.007f);
+		builder->AddLine(2.0f, -17.0f, 4.0f, -12.0f, 1.4f, COL_FOX_CAPE, 0.007f);
+		builder->AddPolygon(shoulder, 4, COL_FOX_CAPE, 0.008f, FOX_SURFACE);
+		builder->AddPolygon(collar, 4, Scale(COL_FOX_CAPE, 1.22f), 0.009f, FOX_SURFACE);
+		builder->AddEllipse(4.5f, -29.0f, 2.2f, 2.0f, 10, COL_FOX_GOLD, 0.01f, FOX_SURFACE);
+		builder->AddEllipse(4.5f, -29.0f, 1.1f, 1.0f, 8, COL_FOX_LEATHER, 0.011f);
+
+		builder->AddEllipse(-1.5f, -38.0f, 7.5f, 7.0f, 12, COL_HAIR, 0.012f, FOX_SURFACE);
+		builder->AddEllipse(-5.0f, -46.0f, 3.5f, 3.0f, 10, Scale(COL_HAIR, 1.7f), 0.013f, FOX_SURFACE);
+		builder->AddTriangle(-7.0f, -45.0f, -10.0f, -41.0f, -2.0f, -43.0f,
+			COL_HAIR, 0.014f, FOX_SURFACE);
+		builder->AddPolygon(mask, 6, COL_FOX_MASK, 0.015f, FOX_SURFACE);
+		builder->AddPolygon(maskSide, 4, Scale(COL_FOX_MASK, 0.73f), 0.016f, MODEL_FLAG_TINT);
+		builder->AddTriangle(-4.0f, -40.0f, -5.0f, -48.0f, 1.0f, -44.0f,
+			COL_FOX_MASK, 0.017f, FOX_SURFACE);
+		builder->AddTriangle(5.0f, -43.0f, 8.0f, -50.0f, 10.0f, -41.0f,
+			COL_FOX_MASK, 0.017f, FOX_SURFACE);
+		builder->AddTriangle(-2.8f, -42.0f, -3.7f, -45.8f, -0.3f, -43.4f,
+			COL_FOX_MARK, 0.018f);
+		builder->AddTriangle(6.4f, -43.4f, 8.0f, -47.0f, 8.8f, -42.5f,
+			COL_FOX_MARK, 0.018f);
+		builder->AddLine(-1.2f, -38.5f, 2.0f, -37.5f, 1.1f, COL_HAIR, 0.019f);
+		builder->AddLine(5.0f, -37.5f, 8.5f, -38.5f, 1.1f, COL_HAIR, 0.019f);
+		builder->AddTriangle(3.5f, -36.0f, 6.5f, -34.5f, 4.0f, -33.8f,
+			Scale(COL_FOX_MASK, 0.63f), 0.019f, MODEL_FLAG_TINT);
+		builder->AddTriangle(4.2f, -35.4f, 6.4f, -34.7f, 5.3f, -33.8f,
+			COL_HAIR, 0.02f);
+		builder->AddLine(-1.8f, -35.0f, 0.2f, -33.8f, 1.2f, COL_FOX_MARK, 0.02f);
+		builder->AddLine(7.1f, -35.0f, 7.8f, -33.5f, 1.0f, COL_FOX_MARK, 0.02f);
+		builder->SetFlags(MODEL_FLAG_NONE);
+	}
+
+	void BuildFoxSword(ModelBuilder* builder)
+	{
+		const float blade[] = { 7.0f, -18.0f, 10.0f, -18.0f, 26.0f, -3.0f, 22.0f, -4.0f };
+
+		builder->AddPolygon(blade, 4, COL_STEEL, 0.025f, FOX_SURFACE);
+		builder->AddLine(9.0f, -18.0f, 25.0f, -3.5f, 0.9f,
+			RGBA(0.88f, 0.90f, 0.83f), 0.026f, MODEL_FLAG_TINT);
+		builder->AddLine(4.0f, -22.0f, 8.0f, -18.0f, 2.8f,
+			COL_FOX_LEATHER, 0.027f, FOX_SURFACE);
+		builder->AddLine(6.0f, -17.0f, 10.0f, -21.0f, 1.5f, COL_FOX_GOLD, 0.028f, MODEL_FLAG_TINT);
+	}
+
+	void BuildFoxLantern(ModelBuilder* builder)
+	{
+		const float lanternX = -17.0f;
+		const float lanternY = -15.0f;
+		const float glowWidth = 25.0f;
+		const float glowHeight = 21.0f;
+		const float cageWidth = 7.0f;
+		const float cageHeight = 9.0f;
+		const Color wood = Scale(COL_FOX_LEATHER, 0.80f);
+
+		builder->SetAnim(ANIM_FLAME, 0.0f, 0.25f);
+		builder->AddSoftEllipse(lanternX, lanternY, glowWidth, glowHeight,
+			RGBA(1.0f, 0.68f, 0.32f, 0.16f), -0.03f);
+		builder->ClearAnim();
+		builder->AddLine(-11.0f, -21.0f, lanternX, lanternY - cageHeight * 0.5f - 3.0f,
+			1.0f, COL_FOX_GOLD, 0.021f, FOX_SURFACE);
+		builder->AddLine(lanternX, lanternY - cageHeight * 0.5f - 3.0f,
+			lanternX, lanternY - cageHeight * 0.5f, 1.0f, COL_FOX_GOLD, 0.021f, FOX_SURFACE);
+		builder->AddRect(lanternX - cageWidth * 0.5f - 1.0f, lanternY - cageHeight * 0.5f - 1.0f,
+			cageWidth + 2.0f, cageHeight + 2.0f, wood, 0.022f, FOX_SURFACE);
+		builder->SetAnim(ANIM_FLAME, 1.1f, 0.15f);
+		builder->AddRect(lanternX - cageWidth * 0.5f, lanternY - cageHeight * 0.5f,
+			cageWidth, cageHeight, RGBA(1.0f, 0.72f, 0.32f), 0.023f, MODEL_FLAG_UNLIT);
+		builder->ClearAnim();
+		builder->AddLine(lanternX, lanternY - cageHeight * 0.5f,
+			lanternX, lanternY + cageHeight * 0.5f, 0.9f, wood, 0.024f, FOX_SURFACE);
+		builder->AddLine(lanternX - cageWidth * 0.5f, lanternY,
+			lanternX + cageWidth * 0.5f, lanternY, 0.8f, wood, 0.024f, FOX_SURFACE);
+		builder->AddLine(lanternX - cageWidth * 0.5f - 1.0f, lanternY - cageHeight * 0.5f - 1.0f,
+			lanternX + cageWidth * 0.5f + 1.0f, lanternY - cageHeight * 0.5f - 1.0f,
+			1.2f, COL_FOX_GOLD, 0.025f, FOX_SURFACE);
 	}
 
 	void BuildKasa(ModelBuilder* builder, float height)
@@ -435,12 +640,18 @@ namespace
 // ---------------------------------------------------------------- drawing
 
 void DrawModel(Renderer* renderer, const Model& model, float screenX, float screenY,
-	float scale, float depth, const ShadeParams& shade)
+	float scale, float depth, const ShadeParams& shade, float bodyTilt, unsigned int hiddenFlags,
+	const PlayerMovePose* movePose)
 {
 	const float cornerShade[4] = { 0.0f, 0.35f, 1.0f, 0.65f };
 
 	for (const ModelPoly& poly : model.polys)
 	{
+		if ((poly.flags & hiddenFlags) != 0)
+		{
+			continue;
+		}
+
 		Color color = poly.color;
 		const float alpha = poly.color.a * shade.tint.a;
 
@@ -464,14 +675,244 @@ void DrawModel(Renderer* renderer, const Model& model, float screenX, float scre
 			colors[corner].a = alpha;
 		}
 
-		const float polyDepth = (poly.flags & MODEL_FLAG_GROUND) != 0
+		float polyDepth = (poly.flags & MODEL_FLAG_GROUND) != 0
 			? GROUND_SHADOW_DEPTH + depth * 0.01f : depth + poly.depthBias;
+		float originX = screenX;
+		float originY = screenY;
 		renderer->SetAnim((AnimKind)poly.anim, poly.animPhase, poly.animStrength * scale);
-		renderer->PushMeshShaded(poly.mesh, screenX, screenY, scale, scale,
+
+		if ((poly.flags & MODEL_FLAG_PLAYER_UPPER) != 0)
+		{
+			if (movePose != NULL)
+			{
+				originX += movePose->bodyX * scale;
+				originY += movePose->bodyY * scale;
+			}
+
+			if (bodyTilt != 0.0f)
+			{
+				renderer->SetAnim(ANIM_PLAYER_POSE, bodyTilt, poly.anim == ANIM_SWAY ? poly.animStrength * scale : 0.0f);
+			}
+
+			if (movePose != NULL && movePose->cape != 0.0f && poly.anim == ANIM_SWAY)
+			{
+				renderer->SetAnim(ANIM_PLAYER_CAPE, bodyTilt, movePose->cape * scale);
+			}
+		}
+		else if (movePose != NULL
+			&& (poly.flags & (MODEL_FLAG_PLAYER_LEFT_LEG | MODEL_FLAG_PLAYER_RIGHT_LEG)) != 0)
+		{
+			const int side = (poly.flags & MODEL_FLAG_PLAYER_LEFT_LEG) != 0 ? 0 : 1;
+			const PlayerLimbOffset& foot = movePose->feet[side];
+			originX += movePose->bodyX * scale;
+			originY += movePose->bodyY * scale;
+			renderer->SetAnim(ANIM_PLAYER_LEG, (foot.x - movePose->bodyX) * scale,
+				(foot.y - movePose->bodyY) * scale);
+			polyDepth += foot.y * 0.0004f;
+		}
+
+		renderer->PushMeshShaded(poly.mesh, originX, originY, scale, scale,
 			colors, poly.shadeBounds, (poly.flags & MODEL_FLAG_RADIAL) != 0, polyDepth);
 	}
 
 	renderer->ClearAnim();
+}
+
+namespace
+{
+	const float SWORD_HAND_RADIUS = 8.0f;
+	const float SWORD_LENGTH = 32.0f;
+	const float SWORD_FLATTEN = 0.55f;
+
+	float SwordAngle(const PlayerAttackMotion& motion)
+	{
+		const float halfSweep = motion.fullCircle ? PlayerMotion::PI : acosf(PlayerMotion::FORWARD_DOT);
+
+		return motion.Angle() + motion.side * halfSweep * (motion.SwordSweep() * 2.0f - 1.0f);
+	}
+
+	Color PlayerMaterial(const Color& color, const ShadeParams& shade)
+	{
+		return Mix(Modulate(Modulate(color, shade.tint), shade.light), shade.fogColor, shade.fog);
+	}
+
+	void PosePoint(float x, float y, float tilt, float& resultX, float& resultY)
+	{
+		resultX = x * cosf(tilt) - (y - PlayerMotion::HIP_Y) * sinf(tilt);
+		resultY = PlayerMotion::HIP_Y + x * sinf(tilt) + (y - PlayerMotion::HIP_Y) * cosf(tilt);
+	}
+
+	void DrawPlayerArm(Renderer* renderer, float x, float y, float shoulderX, float shoulderY,
+		float handX, float handY, const ShadeParams& shade, float depth)
+	{
+		const float elbowX = (shoulderX + handX) * 0.5f;
+		const float elbowY = (shoulderY + handY) * 0.5f + 2.0f;
+		const Color cloth = PlayerMaterial(COL_FOX_ROBE, shade);
+		const Color wrap = PlayerMaterial(Scale(COL_FOX_MASK, 0.65f), shade);
+		const Color skin = PlayerMaterial(COL_SKIN, shade);
+
+		renderer->PushLine(x + shoulderX, y + shoulderY, x + elbowX, y + elbowY, 5.0f, cloth, depth);
+		renderer->PushLine(x + elbowX, y + elbowY, x + handX, y + handY, 3.0f, wrap, depth + 0.001f);
+		renderer->PushEllipse(x + handX, y + handY, 2.0f, 2.2f, skin, depth + 0.002f, 8);
+	}
+}
+
+void DrawFoxPlayer(Renderer* renderer, const ModelLibrary& models, float screenX, float screenY,
+	float depth, const ShadeParams& shade, bool swordEquipped, const PlayerAttackMotion* motion,
+	const PlayerMoveMotion* movement)
+{
+	const char* const parts[] = { "player_fox", "player_fox_lantern", "player_fox_sword" };
+	const int partCount = 3;
+	const int swordPart = 2;
+	const bool attacking = motion != NULL && motion->active;
+	const float attackWeight = attacking ? PlayerMotion::Ease(motion->Progress() / 0.12f)
+		* (1.0f - PlayerMotion::Ease((motion->Progress() - 0.80f) / 0.20f)) : 0.0f;
+	const PlayerMovePose movePose = movement != NULL ? movement->Sample(1.0f - attackWeight * 0.85f) : PlayerMovePose();
+	const float tilt = movePose.tilt + (attacking ? motion->Tilt() : 0.0f);
+	const unsigned int hidden = MODEL_FLAG_PLAYER_RIGHT_ARM | MODEL_FLAG_PLAYER_LEFT_ARM;
+	const float bodyX = screenX + movePose.bodyX;
+	const float bodyY = screenY + movePose.bodyY;
+
+	for (int part = 0; part < partCount; ++part)
+	{
+		if (part == swordPart && (!swordEquipped || attacking))
+		{
+			continue;
+		}
+
+		const Model* model = models.Find(parts[part]);
+
+		if (model != NULL)
+		{
+			float offsetX = 0.0f;
+			float offsetY = 0.0f;
+
+			if (part == 1)
+			{
+				PosePoint(-11.0f, -21.0f, tilt, offsetX, offsetY);
+				offsetX += 11.0f + movePose.bodyX + movePose.hands[0].x;
+				offsetY += 21.0f + movePose.bodyY + movePose.hands[0].y;
+
+				if (attacking && motion->bow)
+				{
+					offsetX += 8.0f * motion->BowPull();
+					offsetY += 3.0f * motion->BowPull();
+				}
+			}
+			else if (part == swordPart)
+			{
+				PosePoint(8.0f, -20.0f, tilt, offsetX, offsetY);
+				offsetX += -8.0f + movePose.bodyX + movePose.hands[1].x;
+				offsetY += 20.0f + movePose.bodyY + movePose.hands[1].y;
+			}
+
+			DrawModel(renderer, *model, screenX + offsetX, screenY + offsetY, 1.0f, depth, shade,
+				part == 0 ? tilt : 0.0f, part == 0 ? hidden : 0, part == 0 ? &movePose : NULL);
+		}
+	}
+
+	if (!(attacking && motion->bow))
+	{
+		float shoulderX, shoulderY, handX, handY;
+		PosePoint(-8.0f, -27.0f, tilt, shoulderX, shoulderY);
+		PosePoint(-11.0f, -21.0f, tilt, handX, handY);
+		DrawPlayerArm(renderer, bodyX, bodyY, shoulderX, shoulderY,
+			handX + movePose.hands[0].x, handY + movePose.hands[0].y, shade, depth + 0.006f);
+	}
+
+	if (!attacking)
+	{
+		float shoulderX, shoulderY, handX, handY;
+		PosePoint(7.0f, -28.0f, tilt, shoulderX, shoulderY);
+		PosePoint(swordEquipped ? 8.0f : 14.0f, swordEquipped ? -20.0f : -24.0f, tilt, handX, handY);
+		DrawPlayerArm(renderer, bodyX, bodyY, shoulderX, shoulderY,
+			handX + movePose.hands[1].x, handY + movePose.hands[1].y, shade, depth + 0.012f);
+	}
+
+	if (!swordEquipped)
+	{
+		const float pull = attacking ? motion->BowPull() : 0.0f;
+		const float angle = attacking ? motion->Angle() : 0.0f;
+		const float recoil = attacking && motion->Progress() > PlayerMotion::BOW_RELEASE
+			? sinf((motion->Progress() - PlayerMotion::BOW_RELEASE) / (1.0f - PlayerMotion::BOW_RELEASE) * PlayerMotion::PI) * 2.0f : 0.0f;
+		float gripX, gripY;
+		PosePoint(14.0f, -24.0f, attacking ? 0.0f : tilt, gripX, gripY);
+		const float bowX = bodyX + (attacking ? 0.0f : gripX - 14.0f + movePose.hands[1].x);
+		const float bowY = bodyY + (attacking ? 0.0f : gripY + 24.0f + movePose.hands[1].y);
+		Bow::DrawEquippedAt(*renderer, bowX, bowY, depth + 0.04f, pull, angle, recoil,
+			attacking && motion->Progress() < PlayerMotion::BOW_RELEASE);
+
+		if (attacking)
+		{
+			float shoulderX, shoulderY;
+			PosePoint(7.0f, -28.0f, tilt, shoulderX, shoulderY);
+			DrawPlayerArm(renderer, bodyX, bodyY, shoulderX, shoulderY,
+				14.0f + recoil * cosf(angle), -24.0f + recoil * sinf(angle), shade, depth + 0.05f);
+			PosePoint(-8.0f, -27.0f, tilt, shoulderX, shoulderY);
+			DrawPlayerArm(renderer, bodyX, bodyY, shoulderX, shoulderY,
+				14.0f - pull * 8.0f * cosf(angle), -24.0f - pull * 8.0f * sinf(angle), shade, depth + 0.052f);
+		}
+	}
+	else if (attacking)
+	{
+		const float angle = SwordAngle(*motion);
+		const float cosine = cosf(angle);
+		const float sine = sinf(angle) * SWORD_FLATTEN;
+		const float handX = cosine * SWORD_HAND_RADIUS;
+		const float handY = PlayerMotion::HIP_Y + sine * SWORD_HAND_RADIUS;
+		const float swordDepth = depth + (sinf(angle) < 0.0f ? -0.03f : 0.04f);
+		float shoulderX, shoulderY;
+		PosePoint(7.0f, -28.0f, tilt, shoulderX, shoulderY);
+		DrawPlayerArm(renderer, bodyX, bodyY, shoulderX, shoulderY, handX, handY, shade, swordDepth);
+		renderer->PushLine(bodyX + handX, bodyY + handY,
+			bodyX + handX + cosine * SWORD_LENGTH, bodyY + handY + sine * SWORD_LENGTH,
+			3.0f, PlayerMaterial(COL_STEEL, shade), swordDepth + 0.004f);
+		renderer->PushLine(bodyX + handX, bodyY + handY - 0.7f,
+			bodyX + handX + cosine * SWORD_LENGTH, bodyY + handY + sine * SWORD_LENGTH - 0.7f,
+			0.9f, PlayerMaterial(RGBA(0.88f, 0.90f, 0.83f), shade), swordDepth + 0.005f);
+		renderer->PushLine(bodyX + handX - sinf(angle) * 3.0f, bodyY + handY + cosine * 2.0f,
+			bodyX + handX + sinf(angle) * 3.0f, bodyY + handY - cosine * 2.0f,
+			1.5f, PlayerMaterial(COL_FOX_GOLD, shade), swordDepth + 0.006f);
+	}
+}
+
+void DrawFoxSlash(Renderer* renderer, float screenX, float screenY, float depth,
+	const PlayerAttackMotion& motion)
+{
+	const float progress = motion.Progress();
+
+	if (!motion.active || motion.bow || progress < 0.24f || progress > 0.82f)
+	{
+		return;
+	}
+
+	const int segments = 8;
+	const float radius = motion.fullCircle ? 80.0f : 48.0f;
+	const float angle = SwordAngle(motion);
+	const float tail = motion.side * (motion.fullCircle ? 1.9f : 1.2f) * fminf(motion.SwordSweep() * 4.0f, 1.0f);
+	const float alpha = sinf((progress - 0.24f) / 0.58f * PlayerMotion::PI) * 0.65f;
+
+	for (int segment = 0; segment < segments; ++segment)
+	{
+		const float a0 = angle - tail * (float)segment / segments;
+		const float a1 = angle - tail * (float)(segment + 1) / segments;
+		const float outer0 = radius * (1.0f - (float)segment / segments * 0.12f);
+		const float outer1 = radius * (1.0f - (float)(segment + 1) / segments * 0.12f);
+		const float inner = radius * 0.72f;
+		const float points[] =
+		{
+			screenX + cosf(a0) * inner, screenY + PlayerMotion::HIP_Y + sinf(a0) * inner * SWORD_FLATTEN,
+			screenX + cosf(a1) * inner, screenY + PlayerMotion::HIP_Y + sinf(a1) * inner * SWORD_FLATTEN,
+			screenX + cosf(a1) * outer1, screenY + PlayerMotion::HIP_Y + sinf(a1) * outer1 * SWORD_FLATTEN,
+			screenX + cosf(a0) * outer0, screenY + PlayerMotion::HIP_Y + sinf(a0) * outer0 * SWORD_FLATTEN
+		};
+		const float fade = 1.0f - (float)segment / segments;
+		const Color clear = RGBA(0.91f, 0.93f, 0.81f, 0.0f);
+		const Color edge = RGBA(0.91f, 0.93f, 0.81f, alpha * fade);
+		const Color colors[] = { clear, clear, edge, edge };
+		renderer->PushPolygonShaded(points, colors, 4,
+			depth + (sinf((a0 + a1) * 0.5f) < 0.0f ? -0.04f : 0.06f));
+	}
 }
 
 // ---------------------------------------------------------------- builder
@@ -480,6 +921,7 @@ ModelBuilder::ModelBuilder()
 	: m_Anim(ANIM_NONE)
 	, m_AnimPhase(0.0f)
 	, m_AnimStrength(0.0f)
+	, m_Flags(MODEL_FLAG_NONE)
 {
 }
 
@@ -497,6 +939,11 @@ void ModelBuilder::ClearAnim()
 	m_AnimStrength = 0.0f;
 }
 
+void ModelBuilder::SetFlags(unsigned int flags)
+{
+	m_Flags = flags;
+}
+
 void ModelBuilder::AddPolygon(const float* xy, int vertexCount, const Color& color, float depthBias,
 	unsigned int flags)
 {
@@ -510,7 +957,7 @@ void ModelBuilder::AddPolygon(const float* xy, int vertexCount, const Color& col
 	poly.vertexCount = vertexCount;
 	poly.color = color;
 	poly.depthBias = depthBias;
-	poly.flags = flags;
+	poly.flags = flags | m_Flags;
 	poly.anim = m_Anim;
 	poly.animPhase = m_AnimPhase;
 	poly.animStrength = m_AnimStrength;
@@ -675,6 +1122,8 @@ bool ModelLibrary::RegisterMeshes(Renderer* renderer)
 	for (auto& entry : m_Models)
 	{
 		Model& model = entry.second;
+		model.bounds[0] = model.bounds[1] = 1e9f;
+		model.bounds[2] = model.bounds[3] = -1e9f;
 
 		for (size_t i = 0; i < model.polys.size(); ++i)
 		{
@@ -692,6 +1141,15 @@ bool ModelLibrary::RegisterMeshes(Renderer* renderer)
 			poly.shadeBounds[1] = minY;
 			poly.shadeBounds[2] = fmaxf(maxX - minX, 1.0f);
 			poly.shadeBounds[3] = fmaxf(maxY - minY, 1.0f);
+
+			if ((poly.flags & MODEL_FLAG_GROUND) == 0)
+			{
+				model.bounds[0] = fminf(model.bounds[0], minX);
+				model.bounds[1] = fminf(model.bounds[1], minY);
+				model.bounds[2] = fmaxf(model.bounds[2], maxX);
+				model.bounds[3] = fmaxf(model.bounds[3], maxY);
+			}
+
 			poly.mesh = renderer->RegisterMesh("model/" + entry.first + "/" + std::to_string(i),
 				&model.vertices[poly.firstVertex * 2], poly.vertexCount);
 
@@ -738,6 +1196,13 @@ void ModelLibrary::BuildAll()
 	ModelBuilder person;
 	BuildPerson(&person, PERSON_HEIGHT);
 	m_Models["person"] = person.Get();
+	ModelBuilder resident;
+	BuildPerson(&resident, PERSON_HEIGHT, true);
+	m_Models["resident_active"] = resident.Get();
+	ModelBuilder residentHat;
+	residentHat.SetFlags(MODEL_FLAG_PLAYER_UPPER);
+	BuildKasa(&residentHat, PERSON_HEIGHT);
+	m_Models["resident_kasa"] = residentHat.Get();
 
 	ModelBuilder kasa;
 	BuildKasa(&kasa, PERSON_HEIGHT);
@@ -746,6 +1211,18 @@ void ModelLibrary::BuildAll()
 	ModelBuilder cloak;
 	BuildPlayerCloak(&cloak, PERSON_HEIGHT);
 	m_Models["player_cloak"] = cloak.Get();
+
+	ModelBuilder fox;
+	BuildFoxPlayer(&fox);
+	m_Models["player_fox"] = fox.Get();
+
+	ModelBuilder foxSword;
+	BuildFoxSword(&foxSword);
+	m_Models["player_fox_sword"] = foxSword.Get();
+
+	ModelBuilder foxLantern;
+	BuildFoxLantern(&foxLantern);
+	m_Models["player_fox_lantern"] = foxLantern.Get();
 
 	ModelBuilder sword;
 	BuildSword(&sword, PERSON_HEIGHT);
@@ -940,7 +1417,9 @@ bool ModelLibrary::LoadCache(const char* path)
 				|| poly.firstVertex > vertexFloats / 2 - poly.vertexCount
 				|| poly.anim < ANIM_NONE || poly.anim > ANIM_SWAY
 				|| (poly.flags & ~(MODEL_FLAG_UNLIT | MODEL_FLAG_TINT | MODEL_FLAG_SHADED
-					| MODEL_FLAG_RADIAL | MODEL_FLAG_GROUND)) != 0
+					| MODEL_FLAG_RADIAL | MODEL_FLAG_GROUND | MODEL_FLAG_PLAYER_UPPER
+					| MODEL_FLAG_PLAYER_LEFT_ARM | MODEL_FLAG_PLAYER_RIGHT_ARM
+					| MODEL_FLAG_PLAYER_LEFT_LEG | MODEL_FLAG_PLAYER_RIGHT_LEG)) != 0
 				|| !std::isfinite(poly.depthBias) || !std::isfinite(poly.animPhase)
 				|| !std::isfinite(poly.animStrength) || !std::isfinite(poly.color.r)
 				|| !std::isfinite(poly.color.g) || !std::isfinite(poly.color.b)

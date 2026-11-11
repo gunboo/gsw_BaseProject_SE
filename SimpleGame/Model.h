@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Renderer.h"
+#include "PlayerMotion.h"
 
 // A model is a flat soup of convex polygons in SCREEN-SPACE pixels, measured
 // from the anchor at the object feet (+y down, same as the renderer).
@@ -21,7 +22,12 @@ enum ModelPolyFlags
 	MODEL_FLAG_TINT = 1 << 1,		// multiply by the per-instance tint
 	MODEL_FLAG_SHADED = 1 << 2,	// baked surface receives a top-left gradient
 	MODEL_FLAG_RADIAL = 1 << 3,	// center-first fan with a transparent perimeter
-	MODEL_FLAG_GROUND = 1 << 4	// contact shadows stay beneath every actor
+	MODEL_FLAG_GROUND = 1 << 4,	// contact shadows stay beneath every actor
+	MODEL_FLAG_PLAYER_UPPER = 1 << 5,
+	MODEL_FLAG_PLAYER_LEFT_ARM = 1 << 6,
+	MODEL_FLAG_PLAYER_RIGHT_ARM = 1 << 7,
+	MODEL_FLAG_PLAYER_LEFT_LEG = 1 << 8,
+	MODEL_FLAG_PLAYER_RIGHT_LEG = 1 << 9
 };
 
 struct ModelPoly
@@ -42,11 +48,13 @@ struct Model
 {
 	std::vector<float> vertices;	// x, y pairs
 	std::vector<ModelPoly> polys;
+	float bounds[4] = {}; // runtime body bounds: minX, minY, maxX, maxY; excludes ground shadows
 };
 
 // Draws one instance. Lighting is evaluated by the caller once per object.
 void DrawModel(Renderer* renderer, const Model& model, float screenX, float screenY,
-	float scale, float depth, const ShadeParams& shade);
+	float scale, float depth, const ShadeParams& shade, float bodyTilt = 0.0f, unsigned int hiddenFlags = 0,
+	const PlayerMovePose* movePose = NULL);
 
 class ModelBuilder
 {
@@ -56,6 +64,7 @@ public:
 	// Applies to every shape added until ClearAnim.
 	void SetAnim(AnimKind kind, float phase, float strength);
 	void ClearAnim();
+	void SetFlags(unsigned int flags);
 
 	void AddPolygon(const float* xy, int vertexCount, const Color& color, float depthBias,
 		unsigned int flags = MODEL_FLAG_NONE);
@@ -80,6 +89,7 @@ private:
 	int m_Anim;
 	float m_AnimPhase;
 	float m_AnimStrength;
+	unsigned int m_Flags;
 };
 
 // Owns every baked shape in the game. Builds them on the first run and writes
@@ -111,3 +121,11 @@ private:
 	std::map<std::string, Model> m_Models;
 	bool m_LoadedFromCache;
 };
+
+// Both scenes use the same player composition and equipment depth ordering.
+void DrawFoxPlayer(Renderer* renderer, const ModelLibrary& models, float screenX, float screenY,
+	float depth, const ShadeParams& shade, bool swordEquipped, const PlayerAttackMotion* motion = NULL,
+	const PlayerMoveMotion* movement = NULL);
+
+void DrawFoxSlash(Renderer* renderer, float screenX, float screenY, float depth,
+	const PlayerAttackMotion& motion);

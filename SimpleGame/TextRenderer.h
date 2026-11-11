@@ -1,21 +1,14 @@
 #pragma once
 
-// Renders Korean/Japanese text by rasterizing it with GDI and uploading the
-// result into shared R8 texture arrays. Keeping rasterization in GDI means the
-// project needs no font library; the trade-off is that it is Windows-only,
-// which the project already is.
+// Cached text coverage is shared by the GDI and bundled-font backends.
 
 #include <string>
 #include <map>
 #include <vector>
 
-#include "Dependencies\glew.h"
+#include <GL/glew.h>
 
-enum FontFace
-{
-	FONT_UI = 0,		// Malgun Gothic - readable at small sizes, used for HUD
-	FONT_SERIF = 1		// Batang - period feel, used for dialogue and titles
-};
+#include "FontRasterizer.h"
 
 struct TextTexture
 {
@@ -52,6 +45,7 @@ public:
 	void BeginFrame();
 	void Shutdown();
 	TextCacheStats GetStats() const;
+	const char* FontBackend() const { return m_Fonts.Backend(); }
 
 private:
 	struct Atlas
@@ -66,16 +60,11 @@ private:
 
 	bool StoreCoverage(const std::vector<unsigned char>& pixels, int width, int height, TextTexture& entry);
 	void ClearTextures();
-	void* AcquireFont(int pixelSize, FontFace face, bool bold);	// returns HFONT
 	const TextTexture* Rasterize(const std::wstring& cacheKey, const std::wstring& text,
 		int pixelSize, FontFace face, bool bold);
 
 	std::map<std::wstring, TextTexture> m_Cache;
 	TextCacheStats m_Stats;
 	std::vector<Atlas> m_Atlases;
-	std::map<std::wstring, void*> m_Fonts;		// HFONT by size/face/bold
+	FontRasterizer m_Fonts;
 };
-
-// Data files are authored in UTF-8 so that no Korean text has to live in the
-// source (which MSVC would otherwise read in the system codepage).
-std::wstring Utf8ToWide(const std::string& utf8);

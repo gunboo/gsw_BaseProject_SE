@@ -8,8 +8,19 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#include "Platform.h"
+#ifdef _WIN32
 #include <Windows.h>
 #include <winhttp.h>
+#else
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <cerrno>
+#endif
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
@@ -18,7 +29,9 @@
 #include <locale>
 #include <sstream>
 
+#ifdef _MSC_VER
 #pragma comment(lib, "winhttp.lib")
+#endif
 
 namespace
 {
@@ -28,14 +41,90 @@ namespace
 
 	std::string Environment(const char* name)
 	{
-		char* value = NULL;
-		size_t length = 0;
-		_dupenv_s(&value, &length, name);
-		const std::string result = value != NULL ? value : "";
-		free(value);
-
-		return result;
+		return Platform::Environment(name);
 	}
+
+#ifndef _WIN32
+	bool PostSnapshot(unsigned short port, const std::string& message)
+	{
+		const int connection = socket(AF_INET, SOCK_STREAM, 0);
+
+		if (connection < 0)
+		{
+			return false;
+		}
+
+		timeval timeout = { 0, HTTP_TIMEOUT_MS * 1000 };
+		setsockopt(connection, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+		setsockopt(connection, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+#ifdef __APPLE__
+		const int noSignal = 1;
+		setsockopt(connection, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, sizeof(noSignal));
+#endif
+		const int flags = fcntl(connection, F_GETFL, 0);
+		fcntl(connection, F_SETFL, flags | O_NONBLOCK);
+		sockaddr_in address = {};
+		address.sin_family = AF_INET;
+		address.sin_port = htons(port);
+		address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		bool connected = connect(connection, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0;
+
+		if (!connected && errno == EINPROGRESS)
+		{
+			pollfd pending = { connection, POLLOUT, 0 };
+			int error = 0;
+			socklen_t length = sizeof(error);
+			connected = poll(&pending, 1, HTTP_TIMEOUT_MS) > 0
+				&& getsockopt(connection, SOL_SOCKET, SO_ERROR, &error, &length) == 0 && error == 0;
+		}
+
+		fcntl(connection, F_SETFL, flags);
+		const std::string request = "POST /api/snapshot HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n"
+			"Content-Type: application/json; charset=utf-8\r\nContent-Length: " + std::to_string(message.size()) + "\r\n\r\n" + message;
+		size_t sent = 0;
+
+		while (connected && sent < request.size())
+		{
+#ifdef MSG_NOSIGNAL
+			const int sendFlags = MSG_NOSIGNAL;
+#else
+			const int sendFlags = 0;
+#endif
+			const ssize_t bytes = send(connection, request.data() + sent, request.size() - sent, sendFlags);
+
+			if (bytes <= 0)
+			{
+				connected = false;
+				break;
+			}
+
+			sent += static_cast<size_t>(bytes);
+		}
+
+		std::string response;
+		char buffer[256];
+
+		while (connected && response.find("\r\n") == std::string::npos && response.size() < 1024)
+		{
+			const ssize_t bytes = recv(connection, buffer, sizeof(buffer), 0);
+
+			if (bytes <= 0)
+			{
+				break;
+			}
+
+			response.append(buffer, static_cast<size_t>(bytes));
+		}
+
+		close(connection);
+		int status = 0;
+		std::istringstream line(response);
+		std::string protocol;
+		line >> protocol >> status;
+
+		return connected && protocol.compare(0, 5, "HTTP/") == 0 && status >= 200 && status < 300;
+	}
+#endif
 
 	bool IsIdentifier(const std::string& value)
 	{
@@ -185,6 +274,18 @@ namespace
 				String(out, world.villages[j].id);
 				out << ",\"name\":";
 				String(out, world.villages[j].name);
+				const MonitoredVillage& village = world.villages[j];
+
+				if (village.hasAtmosphere)
+				{
+					out << ",\"atmosphere\":{\"mood\":";
+					String(out, village.mood);
+					out << ",\"fear\":" << village.fear << ",\"trust\":" << village.trust
+						<< ",\"prosperity\":" << village.prosperity << ",\"homeNpcCount\":" << village.homeNpcCount
+						<< ",\"presentNpcCount\":" << village.presentNpcCount << ",\"travelers\":" << village.travelers
+						<< ",\"knownRumors\":" << village.knownRumors << ",\"nearbyMonsters\":" << village.nearbyMonsters << '}';
+				}
+
 				out << '}';
 			}
 
@@ -234,7 +335,7 @@ void MonitoringPublisher::Start()
 	m_Port = static_cast<unsigned short>(port);
 	const auto timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
 		std::chrono::system_clock::now().time_since_epoch()).count();
-	m_InstanceId = std::to_string(timestamp) + "-" + std::to_string(GetCurrentProcessId());
+	m_InstanceId = std::to_string(timestamp) + "-" + std::to_string(Platform::ProcessId());
 	m_Stopping = false;
 	m_Sequence = 0;
 	m_NextPublishMs = 0.0;
@@ -306,6 +407,26 @@ void MonitoringPublisher::Publish(const std::vector<MonitoredWorld>& worlds)
 
 void MonitoringPublisher::Run()
 {
+#ifndef _WIN32
+	while (true)
+	{
+		std::string message;
+
+		{
+			std::unique_lock<std::mutex> lock(m_Mutex);
+			m_Wake.wait(lock, [this] { return m_Stopping || !m_Pending.empty(); });
+
+			if (m_Stopping)
+			{
+				break;
+			}
+
+			message.swap(m_Pending);
+		}
+
+		m_Connection.store(PostSnapshot(m_Port, message) ? 1 : -1);
+	}
+#else
 	HINTERNET session = WinHttpOpen(L"GSW-Monitor/1", WINHTTP_ACCESS_TYPE_NO_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 
@@ -364,4 +485,5 @@ void MonitoringPublisher::Run()
 	}
 
 	WinHttpCloseHandle(session);
+#endif
 }

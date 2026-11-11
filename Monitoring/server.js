@@ -94,6 +94,20 @@ function counts(npcs, monsters) {
   };
 }
 
+function atmosphere(value) {
+  object(value, "atmosphere");
+  check(["calm", "hopeful", "tense", "threatened"].includes(value.mood), "invalid village mood");
+  const result = { mood: value.mood };
+  for (const key of ["fear", "trust", "prosperity"]) {
+    result[key] = number(value[key], `atmosphere.${key}`, 0);
+    check(result[key] <= 100, `atmosphere.${key}: maximum 100`);
+  }
+  for (const key of ["homeNpcCount", "presentNpcCount", "travelers", "knownRumors", "nearbyMonsters"]) {
+    result[key] = integer(value[key], `atmosphere.${key}`);
+  }
+  return result;
+}
+
 function validateSnapshot(value) {
   object(value, "snapshot");
   check(value.schemaVersion === 1, "unsupported schemaVersion (expected 1)");
@@ -102,7 +116,8 @@ function validateSnapshot(value) {
     object(raw, "world");
     const villages = array(raw.villages, "villages", 128).map(village => {
       object(village, "village");
-      return { id: identifier(village.id, "village.id"), name: text(village.name, "village.name") };
+      return { id: identifier(village.id, "village.id"), name: text(village.name, "village.name"),
+        ...(village.atmosphere === undefined ? {} : { atmosphere: atmosphere(village.atmosphere) }) };
     });
     unique(villages, "villages");
     const villageIds = new Set(villages.map(village => village.id));

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Level.h"
 #include "VisualStyle.h"
+#include "GroundShadow.h"
 #include "AnalysisLog.h"
 
 #include <cmath>
@@ -16,7 +17,7 @@ MonitoredWorld Level::CaptureMonitoring(bool active) const
 	snapshot.id = "level1";
 	snapshot.name = "Forest level 1";
 	snapshot.active = active;
-	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.state = active ? (m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
 	snapshot.width = m_World.GetWidth();
 	snapshot.height = m_World.GetHeight();
 	snapshot.kills = static_cast<unsigned int>(m_Kills);
@@ -79,10 +80,9 @@ namespace
 	const float PLAYER_RADIUS = 0.28f;
 	const float ENEMY_RADIUS = 0.25f;
 	const float ATTACK_RANGE = 1.7f;
-	const float ATTACK_ARC = 0.20f;			// dot product threshold, not an angle
+	const float ATTACK_ARC = PlayerMotion::FORWARD_DOT;
 	const float CRIT_CHANCE = 0.12f;
 	const float CRIT_MULTIPLIER = 1.8f;
-	const float SWING_DURATION = 0.18f;
 	const float INVULNERABLE_TIME = 0.45f;
 
 	const float ORB_MAGNET_RANGE = 2.6f;
@@ -105,7 +105,6 @@ namespace
 	const Color COL_FLAME = { 1.0f, 0.70f, 0.36f, 1.0f };
 	const Color COL_WISP_LIGHT = { 0.50f, 1.0f, 0.85f, 1.0f };
 
-	const Color COL_PLAYER_ROBE = VisualStyle::COL_PLAYER;
 	const Color COL_DAMAGE_DEALT = { 0.93f, 0.91f, 0.86f, 1.0f };
 	const Color COL_DAMAGE_CRIT = { 0.98f, 0.80f, 0.36f, 1.0f };
 	const Color COL_DAMAGE_TAKEN = { 0.92f, 0.38f, 0.30f, 1.0f };
@@ -209,12 +208,9 @@ Level::Level()
 	, m_Fade(1.0f)
 	, m_FacingX(0.7071f)
 	, m_FacingY(0.7071f)
-	, m_Stride(0.0f)
 	, m_Running(false)
-	, m_Moving(false)
 	, m_AttackHeld(false)
 	, m_SwingCooldown(0.0f)
-	, m_SwingAnim(0.0f)
 	, m_HurtFlash(0.0f)
 	, m_DownedTimer(0.0f)
 	, m_LevelUpFlash(0.0f)
@@ -256,6 +252,13 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 	for (int i = 0; i < ENEMY_POPULATION; ++i)
 	{
 		SpawnEnemy(i, true);
+	}
+
+	m_Map.Initialize(m_World, *m_Dialogue, "ui_lv_name");
+
+	for (const Enemy& enemy : m_Enemies)
+	{
+		m_Map.AddMarker(enemy.actor, Text("ui_map_enemy"), true);
 	}
 
 	m_State = LEVEL_PLAY;
@@ -453,6 +456,11 @@ void Level::BuildEnvironment(Actor* environment)
 					{
 						DrawScenery(actor, model);
 					});
+
+					if (tile == TILE_TREE && model != NULL)
+					{
+						GroundShadow::CreateTree(m_SceneGraph, scenery, m_World, m_Lighting, *model);
+					}
 				}
 			}
 		}
@@ -674,14 +682,33 @@ void Level::Attack()
 
 	const ActorPosition player = PlayerPosition();
 	m_SwingCooldown = m_Stats.AttackInterval();
+	m_AttackDamage = m_Stats.AttackPower();
+	float facingX = m_FacingX;
+	float facingY = m_FacingY;
 
 	if (m_Weapon == WEAPON_BOW)
 	{
-		m_Bow.Shoot(player, m_Stats.AttackPower());
-		return;
+		m_Bow.AimDirection(player, facingX, facingY);
 	}
 
-	m_SwingAnim = SWING_DURATION;
+	m_AttackMotion.Begin(m_Weapon == WEAPON_BOW, m_SwingCooldown, facingX, facingY);
+	AnalysisLog::Get().Event("combat.attack_start", m_Weapon == WEAPON_BOW ? "level1;bow" : "level1;sword");
+}
+
+void Level::ResolveAttack()
+{
+	const ActorPosition player = PlayerPosition();
+	AnalysisLog::Get().Event("combat.attack_impact", m_AttackMotion.bow ? "level1;bow" : "level1;sword");
+
+	if (m_AttackMotion.bow)
+	{
+		float x = m_AttackMotion.directionX;
+		float y = m_AttackMotion.directionY;
+		m_Bow.AimDirection(player, x, y);
+		m_AttackMotion.SetDirection(x, y);
+		m_Bow.Shoot(player, m_AttackDamage);
+		return;
+	}
 
 	for (size_t i = 0; i < m_Enemies.size(); ++i)
 	{
@@ -703,7 +730,7 @@ void Level::Attack()
 		}
 
 		// A forward arc, not a circle: facing has to mean something.
-		const float dot = (dx / distance) * m_FacingX + (dy / distance) * m_FacingY;
+		const float dot = (dx / distance) * m_AttackMotion.directionX + (dy / distance) * m_AttackMotion.directionY;
 
 		if (dot < ATTACK_ARC)
 		{
@@ -711,7 +738,7 @@ void Level::Attack()
 		}
 
 		const bool critical = m_Rng.NextFloat() < CRIT_CHANCE;
-		float damage = m_Stats.AttackPower() * m_Rng.Range(0.88f, 1.12f);
+		float damage = m_AttackDamage * m_Rng.Range(0.88f, 1.12f);
 
 		if (critical)
 		{
@@ -730,7 +757,7 @@ void Level::DamageEnemy(int index, float amount, bool critical)
 	enemy.hitFlash = 0.16f;
 
 	wchar_t buffer[32];
-	swprintf_s(buffer, 32, L"%d", (int)(amount + 0.5f));
+	std::swprintf(buffer, 32, L"%d", (int)(amount + 0.5f));
 
 	AddFloatingText(buffer, enemy.actor->GetWorldPosition(), critical ? COL_DAMAGE_CRIT : COL_DAMAGE_DEALT,
 		critical ? 22 : 18);
@@ -801,7 +828,7 @@ void Level::DamagePlayer(float amount)
 	m_HurtFlash = INVULNERABLE_TIME;
 
 	wchar_t buffer[32];
-	swprintf_s(buffer, 32, L"-%d", (int)(reduced + 0.5f));
+	std::swprintf(buffer, 32, L"-%d", (int)(reduced + 0.5f));
 
 	AddFloatingText(buffer, PlayerPosition(), COL_DAMAGE_TAKEN, 20);
 
@@ -812,6 +839,8 @@ void Level::DamagePlayer(float amount)
 		m_StateTime = 0.0f;
 		m_DownedTimer = DOWNED_DURATION;
 		m_Bow.Clear();
+		m_AttackMotion.Clear();
+		m_MoveMotion.Clear();
 		m_AttackHeld = false;
 	}
 }
@@ -825,14 +854,14 @@ void Level::GrantExperience(int amount)
 		m_LevelUpFlash = 1.4f;
 
 		wchar_t buffer[64];
-		swprintf_s(buffer, 64, L"%s  %d", Text("ui_lv_levelup").c_str(), m_Stats.level);
+		std::swprintf(buffer, 64, L"%s  %d", Text("ui_lv_levelup").c_str(), m_Stats.level);
 
 		AddFloatingText(buffer, PlayerPosition(), COL_DAMAGE_CRIT, 24);
 	}
 	else if (beforeLevel == m_Stats.level)
 	{
 		wchar_t buffer[32];
-		swprintf_s(buffer, 32, L"+%d", amount);
+		std::swprintf(buffer, 32, L"+%d", amount);
 
 		AddFloatingText(buffer, PlayerPosition(), COL_EXPERIENCE, 16);
 	}
@@ -857,7 +886,7 @@ void Level::CollectPickup(int index)
 		m_Stats.health = Clamp(m_Stats.health + (float)pickup.value, 0.0f, m_Stats.MaxHealth());
 
 		wchar_t buffer[32];
-		swprintf_s(buffer, 32, L"+%d", (int)(m_Stats.health - before + 0.5f));
+		std::swprintf(buffer, 32, L"+%d", (int)(m_Stats.health - before + 0.5f));
 
 		AddFloatingText(buffer, PlayerPosition(), COL_HEAL, 18);
 
@@ -873,6 +902,11 @@ void Level::CollectPickup(int index)
 
 void Level::Update(float deltaSeconds)
 {
+	if (m_Map.IsOpen())
+	{
+		return;
+	}
+
 	SyncSceneState();
 	m_SceneGraph.Update(deltaSeconds);
 	SyncSceneState();
@@ -889,9 +923,9 @@ void Level::UpdateSimulation(float deltaSeconds)
 		m_SwingCooldown -= deltaSeconds;
 	}
 
-	if (m_SwingAnim > 0.0f)
+	if (m_AttackMotion.Advance(deltaSeconds) && m_State == LEVEL_PLAY)
 	{
-		m_SwingAnim -= deltaSeconds;
+		ResolveAttack();
 	}
 
 	if (m_HurtFlash > 0.0f)
@@ -959,11 +993,9 @@ void Level::UpdatePlayer(float deltaSeconds)
 	}
 
 	const float lengthSq = dx * dx + dy * dy;
-	m_Moving = lengthSq > 0.0001f;
-
-	if (!m_Moving)
+	if (lengthSq <= 0.0001f)
 	{
-		m_Stride *= 0.85f;
+		m_MoveMotion.Advance(deltaSeconds, 0.0f, 0.0f, false);
 		return;
 	}
 
@@ -977,6 +1009,7 @@ void Level::UpdatePlayer(float deltaSeconds)
 	const float speed = m_Stats.MoveSpeed() * (m_Running ? 1.45f : 1.0f);
 	const float stepX = dx * speed * deltaSeconds;
 	const float stepY = dy * speed * deltaSeconds;
+	const ActorPosition before = PlayerPosition();
 
 	if (!m_World.IsBlocked(PlayerPosition().x + stepX, PlayerPosition().y, PLAYER_RADIUS))
 	{
@@ -988,7 +1021,8 @@ void Level::UpdatePlayer(float deltaSeconds)
 		SetWorldPosition(*m_PlayerActor, PlayerPosition().x, PlayerPosition().y + stepY);
 	}
 
-	m_Stride += deltaSeconds * (m_Running ? 13.0f : 9.0f);
+	const ActorPosition after = PlayerPosition();
+	m_MoveMotion.Advance(deltaSeconds, after.x - before.x, after.y - before.y, m_Running);
 }
 
 void Level::UpdateEnemy(int index, float deltaSeconds)
@@ -1179,6 +1213,18 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 		key = (unsigned char)(key - 'A' + 'a');
 	}
 
+	if (m_Map.OnKey(key, down, m_State == LEVEL_PLAY, PlayerPosition()))
+	{
+		for (bool& moving : m_MoveKey)
+		{
+			moving = false;
+		}
+
+		m_Running = false;
+		m_AttackHeld = false;
+		return;
+	}
+
 	if (key == 27)
 	{
 		if (down)
@@ -1218,7 +1264,6 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 	{
 		m_State = (m_State == LEVEL_STATS) ? LEVEL_PLAY : LEVEL_STATS;
 		m_AttackHeld = false;
-		m_Moving = false;
 		SyncSceneState();
 		return;
 	}
@@ -1247,13 +1292,18 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 	{
 		const WeaponKind weapon = key == '1' ? WEAPON_SWORD : WEAPON_BOW;
 
+		if (m_AttackMotion.active && !m_AttackMotion.impactApplied)
+		{
+			AnalysisLog::Get().Event("combat.attack_cancel", "level1;weapon_switch");
+		}
+
 		if (m_Weapon != weapon)
 		{
 			m_Weapon = weapon;
 			AnalysisLog::Get().Event("combat.weapon", weapon == WEAPON_BOW ? "level1;bow" : "level1;sword");
 		}
 
-		m_SwingAnim = 0.0f;
+		m_AttackMotion.Clear();
 	}
 }
 
@@ -1372,100 +1422,39 @@ void Level::DrawPickup(int index)
 void Level::DrawPlayer()
 {
 	const ActorPosition position = PlayerPosition();
-	const Model* person = m_Models->Find("person");
-	const Model* sword = m_Models->Find("person_sword");
-	const Model* lantern = m_Models->Find("person_lantern");
-	const Model* cloak = m_Models->Find("player_cloak");
 
 	float screenX = 0.0f;
 	float screenY = 0.0f;
 	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
 
-	const float stride = m_Moving ? fabsf(sinf(m_Stride)) * 2.6f : 0.0f;
 	const float depth = position.x + position.y;
+	VisualStyle::DrawPlayerLocator(m_Renderer, screenX, screenY, depth - 0.02f);
 
-	Color tint = COL_PLAYER_ROBE;
+	const Color neutral = RGBA(1.0f, 1.0f, 1.0f);
+	Color tint = neutral;
 
 	if (m_HurtFlash > 0.0f)
 	{
-		tint = Mix(COL_PLAYER_ROBE, RGBA(1.0f, 0.35f, 0.30f), Clamp(m_HurtFlash / INVULNERABLE_TIME, 0.0f, 1.0f));
+		tint = Mix(neutral, RGBA(1.8f, 0.65f, 0.55f), Clamp(m_HurtFlash / INVULNERABLE_TIME, 0.0f, 1.0f));
 	}
 
 	const ShadeParams shade = m_Lighting.Shade(position.x, position.y, tint);
 
-	if (cloak != NULL)
-	{
-		DrawModel(m_Renderer, *cloak, screenX, screenY - stride, 1.0f, depth, shade);
-	}
-
-	if (person != NULL)
-	{
-		DrawModel(m_Renderer, *person, screenX, screenY - stride, 1.0f, depth, shade);
-	}
-
-	if (sword != NULL && m_Weapon == WEAPON_SWORD)
-	{
-		DrawModel(m_Renderer, *sword, screenX, screenY - stride, 1.0f, depth, shade);
-	}
-
-	if (m_Weapon == WEAPON_BOW)
-	{
-		Bow::DrawEquipped(*m_Renderer, position);
-	}
-
-	if (lantern != NULL)
-	{
-		DrawModel(m_Renderer, *lantern, screenX, screenY - stride, 1.0f, depth, shade);
-	}
+	DrawFoxPlayer(m_Renderer, *m_Models, screenX, screenY, depth, shade,
+		m_Weapon == WEAPON_SWORD, &m_AttackMotion, &m_MoveMotion);
 }
 
 void Level::DrawSwing(const Actor& actor)
 {
-	if (m_SwingAnim <= 0.0f)
+	if (!m_AttackMotion.active || m_AttackMotion.bow)
 	{
 		return;
 	}
 
-	const float progress = 1.0f - m_SwingAnim / SWING_DURATION;
-	const float alpha = (1.0f - progress) * 0.55f;
 	const ActorPosition position = actor.GetWorldPosition();
-
-	float originX = 0.0f;
-	float originY = 0.0f;
-	m_Renderer->WorldToScreen(position.x, position.y, position.z, &originX, &originY);
-
-	// The arc is drawn in screen space, swept through the facing direction.
-	const float facingAngle = atan2f((m_FacingX + m_FacingY) * Renderer::TileHalfHeight(),
-		(m_FacingX - m_FacingY) * Renderer::TileHalfWidth());
-
-	const float sweep = 2.1f;
-	const float start = facingAngle - sweep * 0.5f + sweep * progress * 0.6f;
-	const int segments = 9;
-	const float innerRadius = 22.0f;
-	const float outerRadius = 58.0f;
-
-	for (int i = 0; i < segments; ++i)
-	{
-		const float a0 = start + sweep * (float)i / (float)segments;
-		const float a1 = start + sweep * (float)(i + 1) / (float)segments;
-
-		const float taper = 1.0f - (float)i / (float)segments * 0.55f;
-
-		const float xy[8] =
-		{
-			originX + cosf(a0) * innerRadius, originY + sinf(a0) * innerRadius * 0.55f,
-			originX + cosf(a1) * innerRadius, originY + sinf(a1) * innerRadius * 0.55f,
-			originX + cosf(a1) * outerRadius * taper, originY + sinf(a1) * outerRadius * taper * 0.55f,
-			originX + cosf(a0) * outerRadius * taper, originY + sinf(a0) * outerRadius * taper * 0.55f
-		};
-
-		const Color colors[4] = {
-			RGBA(0.92f, 0.94f, 0.82f, 0.0f), RGBA(0.92f, 0.94f, 0.82f, 0.0f),
-			RGBA(0.92f, 0.94f, 0.82f, alpha * taper), RGBA(0.92f, 0.94f, 0.82f, alpha * taper)
-		};
-		m_Renderer->PushPolygonShaded(xy, colors, 4,
-			position.x + position.y + 0.6f);
-	}
+	float x, y;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &x, &y);
+	DrawFoxSlash(m_Renderer, x, y, position.x + position.y, m_AttackMotion);
 }
 
 void Level::DrawFloatingText(int index)
@@ -1554,72 +1543,74 @@ void Level::DrawBar(float x, float y, float width, float height, float fill,
 
 void Level::DrawHud()
 {
-	m_Renderer->PushText(Text(m_Weapon == WEAPON_BOW ? "ui_weapon_bow" : "ui_weapon_sword"),
-		m_Renderer->GetWidth() * 0.5f - 22.0f, m_Renderer->GetHeight() * 0.5f - 62.0f,
-		14, FONT_UI, true, VisualStyle::COL_IVORY, ALIGN_RIGHT);
-
 	Renderer* r = m_Renderer;
 
 	const float left = -r->GetWidth() * 0.5f;
 	const float top = -r->GetHeight() * 0.5f;
 	const float right = r->GetWidth() * 0.5f;
 	const float bottom = r->GetHeight() * 0.5f;
-	const float inset = 26.0f;
-	const float hudWidth = 238.0f;
+	const float inset = VisualStyle::HUD_MARGIN;
+	const float hudWidth = VisualStyle::HUD_WIDTH;
 	const float hudX = left + inset;
 	const float hudY = top + inset;
+	const float labelX = hudX + (VisualStyle::HUD_WEAPON_SIZE + VisualStyle::HUD_WEAPON_GAP) * 2.0f + 6.0f;
 	const float healthFill = m_Stats.health / m_Stats.MaxHealth();
+	const bool bow = m_Weapon == WEAPON_BOW;
 
-	DrawPanel(hudX - 12.0f, hudY - 10.0f, hudWidth + 24.0f, 112.0f, 0.55f, DEPTH_PANEL);
-
-	r->PushText(Text("ui_lv_name"), hudX, hudY, 14, FONT_UI, false,
-		VisualStyle::COL_IVORY, ALIGN_LEFT);
+	DrawPanel(hudX - 8.0f, hudY - 8.0f, hudWidth + 16.0f,
+		VisualStyle::HUD_HEIGHT + 18.0f, 0.38f, DEPTH_PANEL);
 
 	wchar_t buffer[96];
-	swprintf_s(buffer, 96, L"%s %d", Text("ui_lv_level").c_str(), m_Stats.level);
-	r->PushText(buffer, hudX + hudWidth, hudY, 14, FONT_UI, true,
+	std::swprintf(buffer, 96, L"%d / %d", (int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
+	r->PushText(buffer, hudX + hudWidth, hudY, VisualStyle::HUD_SMALL_FONT, FONT_UI, true,
 		VisualStyle::COL_IVORY, ALIGN_RIGHT);
 
-	VisualStyle::DrawHealth(r, hudX, hudY + 29.0f, hudWidth, 11.0f,
-		healthFill, DEPTH_PANEL_TOP);
+	VisualStyle::DrawHealth(r, hudX, hudY + 4.0f, VisualStyle::HUD_HEALTH_WIDTH,
+		VisualStyle::HUD_HEALTH_HEIGHT, healthFill, DEPTH_PANEL_TOP);
+	VisualStyle::DrawWeaponSlots(r, hudX, hudY + 24.0f, bow, DEPTH_PANEL_TOP);
+	r->PushText(Text(bow ? "ui_hud_bow" : "ui_hud_sword"), labelX, hudY + 25.0f,
+		VisualStyle::HUD_SMALL_FONT, FONT_UI, true, VisualStyle::COL_IVORY, ALIGN_LEFT);
 
-	swprintf_s(buffer, 96, L"%s  %d / %d", Text("ui_lv_hp").c_str(),
-		(int)(m_Stats.health + 0.5f), (int)(m_Stats.MaxHealth() + 0.5f));
-	r->PushText(buffer, hudX, hudY + 46.0f, 13, FONT_UI, false,
-		VisualStyle::COL_IVORY, ALIGN_LEFT);
+	std::swprintf(buffer, 96, L"%s %d / %s %d", Text("ui_lv_level").c_str(), m_Stats.level,
+		Text("ui_lv_kills").c_str(), m_Kills);
+	r->PushText(buffer, labelX, hudY + 44.0f, VisualStyle::HUD_SMALL_FONT, FONT_UI, false,
+		VisualStyle::COL_MOSS, ALIGN_LEFT);
 
 	const float experienceFill = m_Stats.IsMaxLevel() ? 1.0f
 		: (float)m_Stats.experience / (float)m_Stats.ExperienceToNext();
-	DrawBar(hudX, hudY + 68.0f, hudWidth, 3.0f, experienceFill,
+	DrawBar(hudX, hudY + 62.0f, hudWidth, 2.0f, experienceFill,
 		VisualStyle::COL_SPIRIT, RGBA(0.14f, 0.20f, 0.17f, 0.85f), DEPTH_PANEL_TOP);
-
-	swprintf_s(buffer, 96, L"%s %d", Text("ui_lv_kills").c_str(), m_Kills);
-	r->PushText(buffer, hudX, hudY + 76.0f, 13, FONT_UI, false,
-		RGBA(0.73f, 0.78f, 0.65f), ALIGN_LEFT);
 
 	std::wstring experienceText = Text("ui_lv_max_level");
 
 	if (!m_Stats.IsMaxLevel())
 	{
-		swprintf_s(buffer, 96, L"%d / %d", m_Stats.experience, m_Stats.ExperienceToNext());
+		std::swprintf(buffer, 96, L"%d / %d", m_Stats.experience, m_Stats.ExperienceToNext());
 		experienceText = buffer;
 	}
 
-	r->PushText(experienceText, hudX + hudWidth, hudY + 76.0f, 13, FONT_UI, false,
+	r->PushText(Text("ui_hud_experience"), hudX, hudY + 68.0f, VisualStyle::HUD_SMALL_FONT, FONT_UI, false,
+		RGBA(0.73f, 0.78f, 0.65f), ALIGN_LEFT);
+	r->PushText(experienceText, hudX + hudWidth, hudY + 68.0f, VisualStyle::HUD_SMALL_FONT, FONT_UI, false,
 		RGBA(0.68f, 0.83f, 0.74f), ALIGN_RIGHT);
+
+	const float mapBottom = hudY + MapOverlay::MiniHeight(*r) + 12.0f;
+	r->PushText(Text("ui_lv_name"), right - inset, mapBottom,
+		12, FONT_UI, true, VisualStyle::COL_IVORY, ALIGN_RIGHT);
 
 	if (m_Stats.unspentPoints > 0)
 	{
-		swprintf_s(buffer, 96, L"%s  %d   [C]", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
+		std::swprintf(buffer, 96, L"%s  %d   [C]", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
 		const float textWidth = r->MeasureTextWidth(buffer, 15, FONT_UI, true);
 
-		DrawPanel(right - textWidth - inset - 24.0f, hudY - 5.0f,
+		DrawPanel(right - textWidth - inset - 24.0f, mapBottom + 25.0f,
 			textWidth + 24.0f, 32.0f, 0.76f, DEPTH_PANEL);
-		r->PushText(buffer, right - inset - 12.0f, hudY + 2.0f, 15, FONT_UI, true,
+		r->PushText(buffer, right - inset - 12.0f, mapBottom + 32.0f, 15, FONT_UI, true,
 			VisualStyle::COL_MOSS, ALIGN_RIGHT);
 	}
 
-	r->PushText(Text("ui_lv_controls"), left + inset, bottom - 30.0f, 13, FONT_UI, false,
+	r->PushText(Text("ui_hud_lv_controls"), left + inset, bottom - 24.0f,
+		VisualStyle::HUD_SMALL_FONT, FONT_UI, false,
 		RGBA(0.78f, 0.81f, 0.70f, 0.76f), ALIGN_LEFT);
 }
 
@@ -1646,7 +1637,7 @@ void Level::DrawStatsScreen()
 		VisualStyle::COL_IVORY, ALIGN_LEFT);
 
 	wchar_t buffer[96];
-	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
+	std::swprintf(buffer, 96, L"%s  %d", Text("ui_lv_points").c_str(), m_Stats.unspentPoints);
 	r->PushText(buffer, boxX + boxWidth - 28.0f, boxY + 26.0f, 16, FONT_UI, true,
 		m_Stats.unspentPoints > 0 ? VisualStyle::COL_MOSS : RGBA(0.55f, 0.60f, 0.52f, 0.85f),
 		ALIGN_RIGHT);
@@ -1667,7 +1658,7 @@ void Level::DrawStatsScreen()
 		r->PushRect(boxX + 24.0f, rowY + 44.0f, boxWidth - 48.0f, 1.0f,
 			RGBA(0.35f, 0.36f, 0.34f, 0.35f), DEPTH_PANEL_TOP);
 
-		swprintf_s(buffer, 96, L"%d", i + 1);
+		std::swprintf(buffer, 96, L"%d", i + 1);
 		r->PushRect(boxX + 28.0f, rowY + 3.0f, 24.0f, 25.0f,
 			RGBA(0.24f, 0.31f, 0.23f, 0.85f), DEPTH_PANEL_TOP);
 		r->PushText(buffer, boxX + 40.0f, rowY + 6.0f, 15, FONT_UI, true,
@@ -1679,32 +1670,32 @@ void Level::DrawStatsScreen()
 		r->PushText(Text(STAT_DESC_KEYS[i]), boxX + 60.0f, rowY + 25.0f, 13, FONT_UI, false,
 			RGBA(0.62f, 0.64f, 0.62f, 0.80f), ALIGN_LEFT);
 
-		swprintf_s(buffer, 96, L"%d", m_Stats.GetPoints((StatKind)i));
+		std::swprintf(buffer, 96, L"%d", m_Stats.GetPoints((StatKind)i));
 		r->PushText(buffer, boxX + boxWidth - 118.0f, rowY + 2.0f, 19, FONT_UI, true,
 			RGBA(0.90f, 0.89f, 0.85f, 0.95f), ALIGN_RIGHT);
 
 		if (i == STAT_GUARD)
 		{
-			swprintf_s(buffer, 96, L"%.0f%%", derived[i]);
+			std::swprintf(buffer, 96, L"%.0f%%", derived[i]);
 		}
 		else if (i == STAT_AGILITY)
 		{
-			swprintf_s(buffer, 96, L"%.1f", derived[i]);
+			std::swprintf(buffer, 96, L"%.1f", derived[i]);
 		}
 		else
 		{
-			swprintf_s(buffer, 96, L"%.0f", derived[i]);
+			std::swprintf(buffer, 96, L"%.0f", derived[i]);
 		}
 
 		r->PushText(buffer, boxX + boxWidth - 28.0f, rowY + 4.0f, 16, FONT_UI, false,
 			VisualStyle::COL_SPIRIT, ALIGN_RIGHT);
 	}
 
-	swprintf_s(buffer, 96, L"%s  %d", Text("ui_lv_total_experience").c_str(), m_Stats.totalExperience);
+	std::swprintf(buffer, 96, L"%s  %d", Text("ui_lv_total_experience").c_str(), m_Stats.totalExperience);
 	r->PushText(buffer, boxX + 28.0f, boxY + boxHeight - 82.0f, 14, FONT_UI, false,
 		COL_EXPERIENCE, ALIGN_LEFT);
 
-	swprintf_s(buffer, 96, L"%s  %.2f s", Text("ui_lv_attack_interval").c_str(), m_Stats.AttackInterval());
+	std::swprintf(buffer, 96, L"%s  %.2f s", Text("ui_lv_attack_interval").c_str(), m_Stats.AttackInterval());
 	r->PushText(buffer, boxX + 28.0f, boxY + boxHeight - 58.0f, 14, FONT_UI, false,
 		COL_EXPERIENCE, ALIGN_LEFT);
 
@@ -1728,8 +1719,22 @@ void Level::DrawDownedScreen()
 
 void Level::Render()
 {
+	if (m_Map.IsOpen())
+	{
+		m_Renderer->BeginFrame(COL_SKY, m_Time);
+		m_Map.Draw(*m_Renderer, PlayerPosition());
+		m_Renderer->EndFrame();
+		return;
+	}
+
 	m_Renderer->SetCamera(m_CameraX, m_CameraY);
 	m_Renderer->BeginFrame(COL_SKY, m_Time);
 	m_SceneGraph.Render(*m_Renderer);
+
+	if (m_State == LEVEL_PLAY)
+	{
+		m_Map.Draw(*m_Renderer, PlayerPosition());
+	}
+
 	m_Renderer->EndFrame();
 }

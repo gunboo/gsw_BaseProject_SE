@@ -8,6 +8,7 @@ const LABELS = {
   alive:"생존", respawning:"재생성 대기", stay:"고정", wander:"배회", patrol:"순찰",
   merchant:"상인", healer:"치료사", guard:"경비", bandit:"산적", flee:"회피", follow:"추종",
   hostile:"적대", resident:"주민", wisp:"도깨비불", shade:"원령", oni:"오니",
+  traveling:"마을 간 이동", sharing_news:"소문 전달", calm:"평온", hopeful:"희망", tense:"긴장", threatened:"위협",
 };
 let current = null;
 let unavailable = false;
@@ -76,6 +77,11 @@ function render() {
         const c = village.counts;
         row.append(element("strong", village.name),
           element("p", `${village.id} · NPC ${c.npcCount} · 생존 몹 ${c.monsterAlive} / ${c.monsterSlots} · 재생성 대기 ${c.monsterRespawning} · ${source.online ? label(world.state) : "오프라인"}`));
+        if (village.atmosphere) {
+          const a = village.atmosphere;
+          row.append(element("p", `분위기 ${label(a.mood)} · 불안 ${a.fear.toFixed(1)} · 신뢰 ${a.trust.toFixed(1)} · 활기 ${a.prosperity.toFixed(1)}`),
+            element("p", `소속 ${a.homeNpcCount}명 / 체류 ${a.presentNpcCount}명 · 체류 운반자 ${a.travelers}명 · 소문 ${a.knownRumors}종 · 주변 위협 ${a.nearbyMonsters}마리`));
+        }
         card.append(row);
       }
       if (!world.villages.length) card.append(element("p", "등록된 마을 없음 · 월드 단위 집계"));

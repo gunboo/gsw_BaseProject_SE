@@ -18,8 +18,11 @@ public:
 	void Initialize(SceneGraph& graph, Actor* parent, World& world, size_t targetCount,
 		std::function<Actor*(size_t)> target, std::function<void(size_t, float)> hit);
 	bool Shoot(const ActorPosition& origin, float damage);
+	bool AimDirection(const ActorPosition& origin, float& x, float& y) const;
 	void Clear();
 	static void DrawEquipped(Renderer& renderer, const ActorPosition& position);
+	static void DrawEquippedAt(Renderer& renderer, float x, float y, float depth,
+		float pull = 0.0f, float angle = 0.0f, float recoil = 0.0f, bool nocked = false);
 
 private:
 	static const size_t ARROW_COUNT = 16;
@@ -34,6 +37,7 @@ private:
 	};
 
 	bool ClearShot(const ActorPosition& origin, const ActorPosition& target) const;
+	Actor* FindTarget(const ActorPosition& origin) const;
 	void Update(size_t index, float deltaSeconds);
 	void Draw(size_t index, Renderer& renderer);
 	void Stop(Arrow& arrow);

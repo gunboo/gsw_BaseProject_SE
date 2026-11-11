@@ -1,0 +1,2 @@
+// Application manifest for Windows toolchains that do not merge .manifest files.
+1 24 "Windows.manifest"

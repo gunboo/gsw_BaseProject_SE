@@ -12,6 +12,9 @@ namespace
 	const Color COL_RECESS = { 0.095f, 0.14f, 0.12f, 1.0f };
 	const Color COL_WOOD = { 0.32f, 0.28f, 0.21f, 1.0f };
 	const Color COL_MOSS = { 0.38f, 0.49f, 0.25f, 1.0f };
+	const Color COL_FORT_STONE = { 0.55f, 0.59f, 0.50f, 1.0f };
+	const Color COL_FORT_CAP = { 0.68f, 0.71f, 0.60f, 1.0f };
+	const Color COL_MORTAR = { 0.29f, 0.33f, 0.28f, 1.0f };
 	const float FOUNDATION_HEIGHT = 0.45f;
 	const float HOUSE_WALL_HEIGHT = 2.65f;
 	const float HOUSE_ROOF_HEIGHT = 4.65f;
@@ -32,6 +35,14 @@ namespace
 	const float WINDOW_HEIGHT = 1.15f;
 	const float ROOF_OVERHANG = 0.45f;
 	const float CUTAWAY_ALPHA = 0.36f;
+	const float FORT_RECESS = 0.22f;
+	const float FORT_COURSE_HEIGHT = 0.82f;
+	const float FORT_BLOCK_WIDTH = 1.28f;
+	const float FORT_JOINT = 0.035f;
+	const float FORT_BUTTRESS_SPACING = 2.6f;
+	const float FORT_PROJECTION = 0.12f;
+	const float FORT_BAND_SPACING = 2.0f;
+	const int GATE_ARCH_SEGMENTS = 8;
 	const int ARCH_SEGMENTS = 6;
 	const float PI = 3.14159265f;
 
@@ -97,6 +108,23 @@ namespace
 			renderer->PushLine(ax, ay, bx, by, width, lit, depth);
 		}
 
+		void ContactBand(float x0, float y0, float x1, float y1, float height, float depth) const
+		{
+			const Point face[4] = { { x0, y0, 0.0f }, { x1, y1, 0.0f },
+				{ x1, y1, height }, { x0, y0, height } };
+			float points[8];
+			Color colors[4];
+
+			for (int i = 0; i < 4; ++i)
+			{
+				renderer->WorldToScreen(face[i].x, face[i].y, face[i].z + groundZ,
+					&points[i * 2], &points[i * 2 + 1]);
+				colors[i] = RGBA(0.025f, 0.04f, 0.035f, (i < 2 ? 0.52f : 0.0f) * opacity);
+			}
+
+			renderer->PushPolygonShaded(points, colors, 4, depth);
+		}
+
 		void Arch(float center, float y, float width, float bottom, float spring,
 			const Color& material, float depth, bool emissive = false) const
 		{
@@ -116,6 +144,183 @@ namespace
 			}
 		}
 	};
+
+	bool IsFortification(const Prop& prop)
+	{
+		return prop.type == PROP_KEEP || prop.type == PROP_TOWER
+			|| prop.type == PROP_WALL || prop.type == PROP_GATE;
+	}
+
+	Point WallPoint(bool east, float along, float outward, float height)
+	{
+		return east ? Point{ outward, along, height } : Point{ along, outward, height };
+	}
+
+	void StoneBlock(const Painter& painter, bool east, float start, float end, float plane,
+		float bottom, float top, float extrusion, float chip, const Color& material, float depth)
+	{
+		const float front = plane + extrusion;
+		const Color face = east ? Scale(material, 0.65f) : material;
+		const Point main[4] = { WallPoint(east, start, front, bottom), WallPoint(east, end, front, bottom),
+			WallPoint(east, end, front, top - chip), WallPoint(east, start, front, top) };
+		const Point corner[3] = { main[3], main[2], WallPoint(east, end - chip, front, top) };
+		painter.Face(main, 4, face, depth);
+		painter.Face(corner, 3, face, depth);
+		const Point side[4] = { WallPoint(east, end, plane, bottom), main[1], main[2],
+			WallPoint(east, end, plane, top - chip) };
+		const Point cap[4] = { WallPoint(east, start, plane, top), WallPoint(east, end - chip, plane, top),
+			corner[2], main[3] };
+		const Point broken[4] = { cap[1], side[3], main[2], corner[2] };
+		painter.Face(side, 4, Scale(material, east ? 0.82f : 0.55f), depth + 0.001f);
+		painter.Face(cap, 4, Scale(material, 1.15f), depth + 0.002f);
+		painter.Face(broken, 4, Scale(material, 0.89f), depth + 0.003f);
+	}
+
+	void CastleCourses(const Painter& painter, const Prop& prop, float top, float depth)
+	{
+		for (int face = 0; face < 2; ++face)
+		{
+			const bool east = face == 1;
+			const float start = east ? prop.y : prop.x;
+			const float end = start + (east ? prop.sizeY : prop.sizeX);
+			const float plane = (east ? prop.x + prop.sizeX : prop.y + prop.sizeY) - FORT_RECESS;
+			int row = 0;
+
+			for (float bottom = FOUNDATION_HEIGHT; bottom < top - 0.12f; bottom += FORT_COURSE_HEIGHT, ++row)
+			{
+				const float cap = fminf(bottom + FORT_COURSE_HEIGHT, top - 0.06f);
+				float along = start - (row % 2) * FORT_BLOCK_WIDTH * 0.5f;
+				int column = 0;
+
+				while (along < end - FORT_JOINT)
+				{
+					const unsigned int seed = VisualStyle::Hash((int)(prop.x * 17.0f) + column + face * 11,
+						(int)(prop.y * 23.0f) + row * 7);
+					const float width = FORT_BLOCK_WIDTH * (0.87f + (seed % 31) * 0.01f);
+					const float left = fmaxf(start + FORT_JOINT, along + FORT_JOINT);
+					const float right = fminf(end - FORT_JOINT, along + width - FORT_JOINT);
+
+					if (right - left > 0.13f && cap - bottom > 0.14f)
+					{
+						const float chip = fminf(0.055f + ((seed >> 7) % 12) * 0.01f,
+							fminf((right - left) * 0.22f, (cap - bottom - FORT_JOINT * 2.0f) * 0.35f));
+						const float extrusion = 0.08f + ((seed >> 12) % 7) * 0.01f;
+						const Color stone = Scale(COL_FORT_STONE, 0.88f + ((seed >> 18) % 24) * 0.01f);
+						StoneBlock(painter, east, left, right, plane, bottom + FORT_JOINT,
+							cap - FORT_JOINT, extrusion, chip, stone, depth + face * 0.004f);
+					}
+
+					along += width;
+					++column;
+				}
+			}
+		}
+	}
+
+	void ChippedBox(const Painter& painter, float x0, float y0, float x1, float y1,
+		float bottom, float top, float chip, const Color& material, float depth)
+	{
+		const Point south[4] = { { x0, y1, bottom }, { x1, y1, bottom },
+			{ x1, y1, top - chip }, { x0, y1, top } };
+		const Point southCorner[3] = { south[3], south[2], { x1 - chip, y1, top } };
+		painter.Face(south, 4, material, depth);
+		painter.Face(southCorner, 3, material, depth);
+		const Point east[4] = { { x1, y0, bottom }, { x1, y1, bottom },
+			{ x1, y1, top - chip }, { x1, y0, top } };
+		const Point eastCorner[3] = { east[3], east[2], { x1, y1 - chip, top } };
+		painter.Face(east, 4, Scale(material, 0.62f), depth + 0.001f);
+		painter.Face(eastCorner, 3, Scale(material, 0.62f), depth + 0.001f);
+		const Point cap[4] = { { x0, y0, top }, { x1, y0, top }, { x1, y1 - chip, top }, { x0, y1, top } };
+		const Point capCorner[3] = { cap[3], cap[2], { x1 - chip, y1, top } };
+		const Point broken[3] = { cap[2], capCorner[2], south[2] };
+		painter.Face(cap, 4, Scale(material, 1.17f), depth + 0.002f);
+		painter.Face(capCorner, 3, Scale(material, 1.17f), depth + 0.002f);
+		painter.Face(broken, 3, Scale(material, 0.85f), depth + 0.003f);
+	}
+
+	void CastleSupports(const Painter& painter, const Prop& prop, float top, float depth)
+	{
+		const float x1 = prop.x + prop.sizeX;
+		const float y1 = prop.y + prop.sizeY;
+
+		for (float z = FOUNDATION_HEIGHT; z < top - 0.20f; z += FORT_COURSE_HEIGHT)
+		{
+			const float cap = fminf(z + FORT_COURSE_HEIGHT - FORT_JOINT, top - 0.16f);
+			ChippedBox(painter, x1 - 0.32f, y1 - 0.32f, x1 + 0.04f, y1 + 0.04f,
+				z, cap, 0.07f, Scale(COL_FORT_CAP, 0.94f), depth);
+		}
+
+		if (prop.type == PROP_WALL)
+		{
+			for (int face = 0; face < 2; ++face)
+			{
+				const bool east = face == 1;
+				const float start = east ? prop.y : prop.x;
+				const float length = east ? prop.sizeY : prop.sizeX;
+				const float edge = east ? x1 : y1;
+
+				for (float along = start + 0.45f; along < start + length - 0.3f; along += FORT_BUTTRESS_SPACING)
+				{
+					const float left = fmaxf(start, along - 0.28f);
+					const float right = fminf(start + length, along + 0.28f);
+					const float low = top * 0.40f;
+					const float high = top - 0.38f;
+					const float faceX0 = east ? edge - 0.28f : left;
+					const float faceY0 = east ? left : edge - 0.28f;
+					const float faceX1 = east ? edge + FORT_PROJECTION : right;
+					const float faceY1 = east ? right : edge + FORT_PROJECTION;
+					painter.Box(faceX0, faceY0, faceX1, faceY1, FOUNDATION_HEIGHT, low, COL_FORT_CAP, depth + 0.01f);
+					const Point a = WallPoint(east, left, edge + FORT_PROJECTION, low);
+					const Point b = WallPoint(east, right, edge + FORT_PROJECTION, low);
+					const Point c = WallPoint(east, right - 0.05f, edge - 0.02f, high);
+					const Point d = WallPoint(east, left + 0.05f, edge - 0.02f, high);
+					const Point slope[4] = { a, b, c, d };
+					painter.Face(slope, 4, Scale(COL_FORT_CAP, east ? 0.70f : 0.96f), depth + 0.04f);
+					const Point side[4] = { b, WallPoint(east, right, edge - 0.28f, low),
+						WallPoint(east, right - 0.05f, edge - 0.28f, high), c };
+					painter.Face(side, 4, Scale(COL_FORT_CAP, 0.57f), depth + 0.05f);
+				}
+			}
+		}
+		else
+		{
+			for (float z = 2.7f; z < top - 0.45f; z += FORT_BAND_SPACING)
+			{
+				painter.South(prop.x, x1, y1 + 0.015f, z - 0.15f, z, Scale(COL_RECESS, 1.3f), depth + 0.02f);
+				painter.East(x1 + 0.015f, prop.y, y1, z - 0.15f, z, COL_RECESS, depth + 0.03f);
+				// Only the exposed rim is visible; a full top plane would cover upper walls without a Z buffer.
+				painter.Box(prop.x - 0.10f, y1 - 0.06f, x1 + 0.10f, y1 + 0.10f,
+					z, z + 0.20f, COL_FORT_CAP, depth + 0.04f);
+				painter.Box(x1 - 0.06f, prop.y - 0.10f, x1 + 0.10f, y1 - 0.06f,
+					z, z + 0.20f, COL_FORT_CAP, depth + 0.05f);
+			}
+		}
+	}
+
+	void GateArch(const Painter& painter, const Prop& prop, float depth)
+	{
+		const float center = prop.x + prop.sizeX * 0.5f;
+		const float y1 = prop.y + prop.sizeY;
+		const float radius = prop.sizeX * 0.5f - StructureDimensions::GATE_PIER_WIDTH;
+		const float spring = 2.9f;
+		const float rise = 0.60f;
+		const float rim = 0.42f;
+
+		for (int i = 0; i < GATE_ARCH_SEGMENTS; ++i)
+		{
+			const float a = PI * i / GATE_ARCH_SEGMENTS;
+			const float b = PI * (i + 1) / GATE_ARCH_SEGMENTS;
+			const Point innerA = { center + cosf(a) * radius, y1 + 0.08f, spring + sinf(a) * rise };
+			const Point innerB = { center + cosf(b) * radius, y1 + 0.08f, spring + sinf(b) * rise };
+			const Point stone[4] = { innerA, innerB,
+				{ center + cosf(b) * (radius + rim), y1 + 0.08f, spring + sinf(b) * (rise + rim) },
+				{ center + cosf(a) * (radius + rim), y1 + 0.08f, spring + sinf(a) * (rise + rim) } };
+			const Point reveal[4] = { innerA, { innerA.x, prop.y + 0.12f, innerA.z },
+				{ innerB.x, prop.y + 0.12f, innerB.z }, innerB };
+			painter.Face(reveal, 4, Scale(COL_RECESS, 1.5f), depth);
+			painter.Face(stone, 4, Scale(COL_FORT_CAP, 0.89f + (i % 3) * 0.06f), depth + 0.01f);
+		}
+	}
 
 	void Masonry(const Painter& painter, const Prop& prop, float top, float depth)
 	{
@@ -163,20 +368,27 @@ namespace
 	{
 		const float x1 = prop.x + prop.sizeX;
 		const float y1 = prop.y + prop.sizeY;
-		painter.Box(prop.x - 0.12f, prop.y - 0.12f, x1 + 0.12f, y1 + 0.12f,
-			z - 0.22f, z, COL_CAP, depth);
+		ChippedBox(painter, prop.x - 0.16f, prop.y - 0.16f, x1 + 0.16f, y1 + 0.16f,
+			z - 0.28f, z, 0.12f, COL_FORT_CAP, depth);
 
 		for (float x = prop.x; x < x1; x += BATTLEMENT_SPACING)
 		{
 			const float end = fminf(x + 0.62f, x1);
-			painter.Box(x, prop.y, end, prop.y + 0.42f, z, z + BATTLEMENT_HEIGHT, COL_STONE, depth + 0.04f);
-			painter.Box(x, y1 - 0.42f, end, y1, z, z + BATTLEMENT_HEIGHT, COL_STONE, depth + 0.06f);
+			const unsigned int seed = VisualStyle::Hash((int)(x * 13.0f), (int)(prop.y * 19.0f));
+			const float height = BATTLEMENT_HEIGHT * (0.76f + (seed % 25) * 0.01f);
+			const float chip = fminf(0.08f + ((seed >> 8) % 15) * 0.01f, (end - x) * 0.35f);
+			ChippedBox(painter, x, prop.y, end, prop.y + 0.42f, z, z + height,
+				chip, COL_FORT_STONE, depth + 0.04f);
+			ChippedBox(painter, x, y1 - 0.42f, end, y1, z, z + height,
+				chip, Scale(COL_FORT_STONE, 1.04f), depth + 0.06f);
 		}
 
 		for (float y = prop.y + BATTLEMENT_SPACING; y < y1 - 0.5f; y += BATTLEMENT_SPACING)
 		{
-			painter.Box(x1 - 0.42f, y, x1, y + 0.62f, z, z + BATTLEMENT_HEIGHT,
-				COL_STONE, depth + 0.07f);
+			const unsigned int seed = VisualStyle::Hash((int)(x1 * 13.0f), (int)(y * 19.0f));
+			const float height = BATTLEMENT_HEIGHT * (0.76f + (seed % 25) * 0.01f);
+			ChippedBox(painter, x1 - 0.42f, y, x1, y + 0.62f, z, z + height,
+				0.10f + ((seed >> 8) % 10) * 0.01f, COL_FORT_STONE, depth + 0.07f);
 		}
 	}
 
@@ -252,9 +464,6 @@ void EnvironmentArt::DrawStructure(Renderer* renderer, const Lighting& lighting,
 	const float cy = (y0 + y1) * 0.5f;
 	float sx, sy;
 	renderer->WorldToScreen(cx, cy, groundZ, &sx, &sy);
-	renderer->PushSoftEllipse(sx + 24.0f, sy + 10.0f, (prop.sizeX + prop.sizeY) * 20.0f,
-		(prop.sizeX + prop.sizeY) * 7.5f, RGBA(0.01f, 0.025f, 0.015f, 0.40f),
-		VisualStyle::SHADOW_DEPTH + depth * 0.01f);
 
 	if (prop.type == PROP_TORII)
 	{
@@ -313,10 +522,22 @@ void EnvironmentArt::DrawStructure(Renderer* renderer, const Lighting& lighting,
 	if (prop.type == PROP_GATE)
 	{
 		painter.Box(x0, y0, x0 + StructureDimensions::GATE_PIER_WIDTH, y1,
-			0.0f, GATE_HEIGHT, COL_STONE, depth - 0.10f);
+			0.0f, GATE_HEIGHT, COL_MORTAR, depth - 0.10f);
 		painter.Box(x1 - StructureDimensions::GATE_PIER_WIDTH, y0, x1, y1,
-			0.0f, GATE_HEIGHT, COL_STONE, depth - 0.09f);
-		painter.Box(x0, y0, x1, y1, GATE_HEIGHT - 1.2f, GATE_HEIGHT, COL_STONE, depth);
+			0.0f, GATE_HEIGHT, COL_MORTAR, depth - 0.09f);
+
+		for (int i = 0; i < 2; ++i)
+		{
+			Prop pier = prop;
+			pier.x = i == 0 ? x0 : x1 - StructureDimensions::GATE_PIER_WIDTH;
+			pier.sizeX = StructureDimensions::GATE_PIER_WIDTH;
+			CastleCourses(painter, pier, GATE_HEIGHT, depth - 0.06f + i * 0.01f);
+			painter.ContactBand(pier.x, y1, pier.x + pier.sizeX, y1, FOUNDATION_HEIGHT, depth - 0.04f);
+		}
+
+		ChippedBox(painter, x0, y0, x1, y1, GATE_HEIGHT - 1.2f, GATE_HEIGHT,
+			0.15f, COL_FORT_STONE, depth);
+		GateArch(painter, prop, depth + 0.03f);
 		Crenellations(painter, prop, GATE_HEIGHT, depth + 0.05f);
 		Vines(painter, prop, GATE_HEIGHT - 0.5f, depth + 0.15f);
 		return;
@@ -337,12 +558,32 @@ void EnvironmentArt::DrawStructure(Renderer* renderer, const Lighting& lighting,
 
 	painter.Box(x0 - 0.18f, y0 - 0.18f, x1 + 0.18f, y1 + 0.18f,
 		0.0f, FOUNDATION_HEIGHT, Scale(COL_STONE, 0.72f), depth - 0.3f);
-	painter.Box(x0, y0, x1, y1, FOUNDATION_HEIGHT, wallTop, COL_STONE, depth - 0.2f);
-	Masonry(painter, prop, wallTop, depth - 0.15f);
+	const bool fortress = IsFortification(prop);
+	const float recess = fortress ? FORT_RECESS : 0.0f;
+	painter.Box(x0 + recess, y0 + recess, x1 - recess, y1 - recess, FOUNDATION_HEIGHT, wallTop,
+		fortress ? COL_MORTAR : COL_STONE, depth - 0.2f);
+	painter.ContactBand(x0 - 0.18f, y1 + 0.18f, x1 + 0.18f, y1 + 0.18f,
+		FOUNDATION_HEIGHT, depth - 0.18f);
+	painter.ContactBand(x1 + 0.18f, y0 - 0.18f, x1 + 0.18f, y1 + 0.18f,
+		FOUNDATION_HEIGHT, depth - 0.17f);
+
+	if (fortress)
+	{
+		CastleCourses(painter, prop, wallTop, depth - 0.16f);
+		CastleSupports(painter, prop, wallTop, depth - 0.14f);
+	}
+	else
+	{
+		Masonry(painter, prop, wallTop, depth - 0.15f);
+	}
 
 	// Quoins, a projecting cornice and a dark reveal separate the visible planes.
-	painter.Box(x1 - 0.22f, y1 - 0.22f, x1 + 0.04f, y1 + 0.04f,
-		FOUNDATION_HEIGHT, wallTop, COL_CAP, depth - 0.13f);
+	if (!fortress)
+	{
+		painter.Box(x1 - 0.22f, y1 - 0.22f, x1 + 0.04f, y1 + 0.04f,
+			FOUNDATION_HEIGHT, wallTop, COL_CAP, depth - 0.13f);
+	}
+
 	painter.Box(x0 - 0.12f, y0 - 0.12f, x1 + 0.12f, y1 + 0.12f,
 		wallTop - 0.18f, wallTop, COL_CAP, depth - 0.12f);
 	Vines(painter, prop, wallTop - 0.3f, depth - 0.09f);

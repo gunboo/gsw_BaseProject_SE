@@ -151,3 +151,22 @@ HTML에서 예제 NPC 1명, 몹 2개 슬롯 중 생존 1개와 재생성 대기 
 | `Monitoring/example-snapshot.json` | 외부 프로젝트 어댑터 작성용 요청 예제 |
 | `Monitoring/server.test.js` | 수신 규격, 집계, 순서, 연결 상태, HTTP 처리 테스트 |
 | `Monitoring/start-monitor.cmd` | Windows 수신 서버 실행 도우미 |
+
+
+## 마을 분위기와 운반 NPC (2026-10-21)
+
+마을 월드는 5개 마을과 소속 주민 40명, 도로 몬스터 100개 슬롯을 전송한다. 등불마을 소속은 12명, 다른 마을은 각 7명이며 현재 체류 인원은 운반자 이동 때문에 달라진다. 마을 밖의 이동 NPC·도로 몬스터는 villageId가 빈 문자열이다. 게임이 정지하면 갱신된 시뮬레이션 수치도 정지하며 오프라인에서는 마지막 수신값이다.
+
+마을 객체에 선택 필드 atmosphere를 추가했다. schemaVersion=1을 유지하는 하위 호환 확장이며 기존 송신자가 이 필드를 생략해도 수신한다. 수신 서버와 dashboard.js를 함께 갱신해야 새 수치가 표시된다.
+
+| 필드 | 의미 |
+|---|---|
+| mood | calm / hopeful / tense / threatened |
+| fear / trust / prosperity | 불안 / 신뢰 / 활기. 유한수, 0~100 |
+| homeNpcCount | 고정 소속 인원. 현재 등불마을 12, 나머지 각 7 |
+| presentNpcCount | 안전 구역 안에 현재 있는 NPC 수. 방문자 포함 |
+| travelers | 현재 체류 중인 운반자 수. 고향 운반자도 포함 |
+| knownRumors | 해당 마을 소속 주민에게 전달된 서로 다른 소문 수 |
+| nearbyMonsters | 광장에서 안전 반경+10칸 안의 생존 몬스터 수 |
+
+수치는 약 2초마다 게임 안에서 갱신하고 기존 1초 스냅샷으로 전송한다. NPC 상태 traveling은 실제 마을 간 이동, sharing_news는 광장 체류를 뜻한다. 소문 판정은 가까운 NPC 접촉 때만 이루어지므로 sharing_news 표시는 매 순간 전달에 성공했다는 의미가 아니다. 수신 서버는 mood 값·수치 범위·카운터 정수를 검사한 뒤 전체 스냅샷을 교체한다.

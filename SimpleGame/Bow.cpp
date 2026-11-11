@@ -74,7 +74,7 @@ bool Bow::ClearShot(const ActorPosition& origin, const ActorPosition& target) co
 	return true;
 }
 
-bool Bow::Shoot(const ActorPosition& origin, float damage)
+Actor* Bow::FindTarget(const ActorPosition& origin) const
 {
 	Actor* nearest = NULL;
 	float best = RANGE * RANGE;
@@ -100,6 +100,32 @@ bool Bow::Shoot(const ActorPosition& origin, float damage)
 		}
 	}
 
+	return nearest;
+}
+
+bool Bow::AimDirection(const ActorPosition& origin, float& x, float& y) const
+{
+	Actor* target = FindTarget(origin);
+
+	if (target == NULL)
+	{
+		return false;
+	}
+
+	const ActorPosition position = target->GetWorldPosition();
+	const float dx = position.x - origin.x;
+	const float dy = position.y - origin.y;
+	const float length = sqrtf(dx * dx + dy * dy);
+	x = dx / length;
+	y = dy / length;
+
+	return true;
+}
+
+bool Bow::Shoot(const ActorPosition& origin, float damage)
+{
+	Actor* nearest = FindTarget(origin);
+
 	if (nearest == NULL)
 	{
 		return false;
@@ -113,7 +139,9 @@ bool Bow::Shoot(const ActorPosition& origin, float damage)
 		}
 
 		const ActorPosition target = nearest->GetWorldPosition();
-		const float distance = sqrtf(best);
+		const float dx = target.x - origin.x;
+		const float dy = target.y - origin.y;
+		const float distance = sqrtf(dx * dx + dy * dy);
 		arrow.dx = (target.x - origin.x) / distance;
 		arrow.dy = (target.y - origin.y) / distance;
 		arrow.dz = (target.z - origin.z) / distance;
@@ -221,9 +249,43 @@ void Bow::DrawEquipped(Renderer& renderer, const ActorPosition& position)
 	float x, y;
 	renderer.WorldToScreen(position.x, position.y, position.z, &x, &y);
 	const float depth = position.x + position.y + 0.3f;
+	DrawEquippedAt(renderer, x, y, depth);
+}
+
+void Bow::DrawEquippedAt(Renderer& renderer, float x, float y, float depth, float pull, float angle, float recoil, bool nocked)
+{
 	const Color wood = RGBA(0.64f, 0.43f, 0.24f);
-	renderer.PushLine(x + 10.0f, y - 42.0f, x + 21.0f, y - 28.0f, 3.0f, wood, depth);
-	renderer.PushLine(x + 21.0f, y - 28.0f, x + 10.0f, y - 14.0f, 3.0f, wood, depth);
-	renderer.PushLine(x + 10.0f, y - 42.0f, x + 10.0f, y - 14.0f, 1.0f,
+	const float gripX = 14.0f;
+	const float gripY = -24.0f;
+	const float halfHeight = 13.0f;
+	const float width = 11.0f + pull * 2.5f;
+	const float limbWidth = 2.6f;
+	const float cosine = cosf(angle);
+	const float sine = sinf(angle);
+	const float local[] = { 0.0f, -halfHeight, width, 0.0f, 0.0f, halfHeight, -pull * 8.0f, 0.0f };
+	float points[8];
+
+	for (int point = 0; point < 4; ++point)
+	{
+		points[point * 2] = x + gripX + local[point * 2] * cosine - local[point * 2 + 1] * sine + recoil * cosine;
+		points[point * 2 + 1] = y + gripY + local[point * 2] * sine + local[point * 2 + 1] * cosine + recoil * sine;
+	}
+
+	// Keep the bowstring clear of the fox mask while the grip stays near the hand.
+	renderer.PushLine(points[0], points[1], points[2], points[3], limbWidth, wood, depth);
+	renderer.PushLine(points[2], points[3], points[4], points[5], limbWidth, wood, depth);
+	renderer.PushLine(points[0], points[1], points[6], points[7], 1.0f,
 		RGBA(0.85f, 0.84f, 0.7f), depth);
+	renderer.PushLine(points[6], points[7], points[4], points[5], 1.0f,
+		RGBA(0.85f, 0.84f, 0.7f), depth);
+
+	if (nocked)
+	{
+		const float arrowLength = 16.0f;
+		const float tipX = x + gripX + arrowLength * cosine;
+		const float tipY = y + gripY + arrowLength * sine;
+		renderer.PushLine(points[6], points[7], tipX, tipY, 1.0f,
+			RGBA(0.90f, 0.81f, 0.57f), depth + 0.001f);
+		renderer.PushDiamond(tipX, tipY, 2.0f, 2.0f, RGBA(0.91f, 0.92f, 0.84f), depth + 0.002f);
+	}
 }

@@ -157,7 +157,8 @@ def main():
 			a = (x - .5, y + height * .5) if axis == "x" else (x + width * .5, y - .5)
 			b = (x + width + .5, y + height * .5) if axis == "x" else (x + width * .5, y + height + .5)
 			assert village.can_move(a, b) and village.can_move(b, a), f"Stairs at {x},{y} do not connect both landings"
-	for a, b in (((39.5, 18.5), (39.5, 17.5)), ((37.5, 41.5), (37.5, 42.5))):
+	core_y = 70 if village.width > 88 else 0
+	for a, b in (((39.5, 18.5 + core_y), (39.5, 17.5 + core_y)), ((37.5, 41.5 + core_y), (37.5, 42.5 + core_y))):
 		assert not village.blocked(*a) and not village.blocked(*b), "Cliff test must not rely on another blocker"
 		assert not village.can_move(a, b) and not village.can_move(b, a), "A terrace cliff can be crossed without stairs"
 	for kind, x, y, width, height, variant in village.props:
@@ -165,8 +166,37 @@ def main():
 			heights = [village.elevation(px, py) for px in (x + .01, x + width - .01)
 					   for py in (y + .01, y + height - .01)]
 			assert all(isclose(value, heights[0], abs_tol=.01) for value in heights), f"{kind} at {x},{y} straddles a height seam"
+	profiles = {}
+	occupations = {"none", "garden", "torch", "sentry", "fish", "hunt", "forge", "pray", "read", "carry"}
+	for line in (ROOT / "SimpleGame/Data/village_npcs.tsv").read_text(encoding="utf-8").splitlines():
+		if not line or line.startswith("#"):
+			continue
+		fields = line.split()
+		assert len(fields) in (7, 9), "NPC profiles require occupation/facing and optional settlement/courier"
+		name, behavior, radius, speed, occupation, fx, fy = fields[:7]
+		assert name in village.npcs and name not in profiles
+		assert occupation in occupations
+		fx, fy = float(fx), float(fy)
+		length = hypot(fx, fy)
+		assert isfinite(length) and length > .0001
+		profiles[name] = occupation
+		x, y = village.npcs[name]
+		if occupation == "garden":
+			target = x + fx / length * .65, y + fy / length * .65
+			assert not village.blocked(*target)
+			assert isclose(village.elevation(*target), village.elevation(x, y), abs_tol=.1)
+			assert all(not village.blocked(target[0] + dx, target[1] + dy, .04)
+				for dx in (-.375, .375) for dy in (-.375, .375)), f"{name}'s garden overlaps an obstacle"
+		if occupation == "fish":
+			water = [(tx + .5, ty + .5) for ty, row in enumerate(village.tiles) for tx, tile in enumerate(row)
+				if tile == "~" and hypot(tx + .5 - x, ty + .5 - y) < 4.5
+				and abs(village.elevation(tx + .5, ty + .5) - village.elevation(x, y)) < .6]
+			assert water, f"{name} has no nearby water at the fishing station"
+	assert profiles.keys() == village.npcs.keys()
+	assert {"garden", "torch", "sentry", "fish", "hunt"} <= set(profiles.values())
 	print(f"PASS: {village.width}x{village.height}; {len(village.props)} props; {len(village.npcs)} reachable NPCs; {len(reached)} reachable navigation cells")
 	print("PASS: stair landings connect in both directions; cliffs block movement; structure foundations are level")
+	print("PASS: resident occupations; garden footprints; fishing water; complete NPC profiles")
 
 
 if __name__ == "__main__":

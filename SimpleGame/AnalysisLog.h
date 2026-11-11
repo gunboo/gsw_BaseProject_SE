@@ -21,7 +21,7 @@ struct FrameSample
 	unsigned int clampedUpdates = 0;
 };
 
-// Single GLUT thread only. Files are buffered and flushed at summary boundaries.
+// Single GLFW main thread only. Files are buffered and flushed at summary boundaries.
 class AnalysisLog
 {
 public:

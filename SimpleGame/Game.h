@@ -5,6 +5,7 @@
 
 #include "Renderer.h"
 #include "World.h"
+#include "MapOverlay.h"
 #include "Dialogue.h"
 #include "Input.h"
 #include "Lighting.h"
@@ -74,6 +75,7 @@ public:
 	const SceneGraph& GetSceneGraph() const;
 
 	void OnKey(unsigned char key, bool down, bool shift);
+	MapOverlay& GetMap() { return m_Map; }
 	bool WantsExit() const { return m_WantsExit; }
 	bool ConsumeNextLevelRequest();
 	GameState GetState() const
@@ -144,6 +146,7 @@ private:
 	ModelLibrary* m_Models;
 	DialogueDB* m_Dialogue;
 	World m_World;
+	MapOverlay m_Map;
 	SceneGraph m_SceneGraph;
 	VillageSimulation m_Village;
 	bool m_Attacking = false;
@@ -167,10 +170,9 @@ private:
 
 	// player
 	Actor* m_PlayerActor;
-	float m_PlayerStride;	// drives the walk bob
+	PlayerMoveMotion m_MoveMotion;
 	bool m_MoveKey[MOVE_COUNT];
 	bool m_Running;
-	bool m_Moving;
 
 	// the camera trails the player instead of snapping to it
 	float m_CameraX;

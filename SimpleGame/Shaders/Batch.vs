@@ -8,6 +8,9 @@ uniform vec2 u_HalfViewport;
 uniform float u_Time;
 
 out vec4 v_Color;
+out vec2 v_GroundCoord;
+out float v_GrassCoverage;
+flat out float v_GroundKind;
 
 void main()
 {
@@ -70,7 +73,44 @@ void main()
 		position.x += sin(u_Time * 1.3 + phase) * strength;
 		position.y += sin(u_Time * 0.9 + phase * 1.7) * strength * 0.25;
 	}
+	else if ((kind > 7.5 && kind < 8.5) || (kind > 9.5 && kind < 10.5))
+	{
+		// Player upper-body meshes turn around the hip; feet and contact shadows stay anchored.
+		vec2 pivot = vec2(0.0, -18.0);
+		vec2 offset = (local - pivot) * transform.zw;
+		float cosine = cos(phase);
+		float sine = sin(phase);
+		position = transform.xy + pivot * transform.zw
+			+ vec2(offset.x * cosine - offset.y * sine, offset.x * sine + offset.y * cosine);
+		if (kind > 9.5)
+		{
+			// The shoulder stays attached while the hem trails the measured gait.
+			float hem = clamp((local.y + 35.0) / 29.0, 0.0, 1.0);
+			position.x += strength * hem * hem;
+			position.y -= abs(strength) * hem * 0.18;
+		}
+		else
+		{
+			position.x += sin(u_Time * 1.3 + 0.3) * strength;
+		}
+	}
+	else if (kind > 8.5 && kind < 9.5)
+	{
+		// The thigh follows the hip; the wrapped boot follows its own foot target.
+		float footWeight = smoothstep(-15.0, -6.0, local.y);
+		position += vec2(phase, strength) * footWeight;
+	}
 
 	gl_Position = vec4(position.x / u_HalfViewport.x, -position.y / u_HalfViewport.y, 0.0, 1.0);
 	v_Color = vec4(color.rgb * glow, color.a);
+	v_GroundKind = kind > 3.5 && kind < 7.5 ? kind : 0.0;
+	v_GroundCoord = vec2(phase, strength) + local
+		* vec2(kind > 5.5 && kind < 6.5 ? 0.5 : 1.0, kind > 6.5 ? 0.5 : 1.0);
+	v_GrassCoverage = color.a;
+
+	if (v_GroundKind > 0.5)
+	{
+		// Terrain corner alpha carries the grass mask; the actual ground stays opaque.
+		v_Color.a = 1.0;
+	}
 }

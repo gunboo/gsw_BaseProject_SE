@@ -1,0 +1,6 @@
+# id dialogueKey fearDelta trustDelta prosperityDelta; one initial local rumor per village.
+road_watch rumor_road_watch 8 2 -2
+rice_convoy rumor_rice_convoy -2 4 8
+memorial rumor_memorial -5 8 1
+ferry_open rumor_ferry_open -3 3 6
+bandit_warning rumor_bandit_warning 12 -4 -6

@@ -2,6 +2,7 @@
 #include "Game.h"
 #include "VisualStyle.h"
 #include "EnvironmentArt.h"
+#include "GroundShadow.h"
 #include "AnalysisLog.h"
 
 #include <cmath>
@@ -14,9 +15,9 @@ MonitoredWorld Game::CaptureMonitoring(bool active) const
 	const char* const states[] = { "intro", "play", "dialogue", "clues", "ending" };
 	MonitoredWorld snapshot;
 	snapshot.id = "tutorial";
-	snapshot.name = "Tutorial village";
+	snapshot.name = "Five settlement region";
 	snapshot.active = active;
-	snapshot.state = active ? states[m_State] : "inactive";
+	snapshot.state = active ? (m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
 	snapshot.width = m_World.GetWidth();
 	snapshot.height = m_World.GetHeight();
 	m_Village.CaptureMonitoring(snapshot);
@@ -47,6 +48,7 @@ namespace
 	const Color COL_SHU = { 0.69f, 0.34f, 0.24f, 1.0f };		// vermilion
 
 	const Color COL_TIMBER = { 0.35f, 0.29f, 0.22f, 1.0f };
+	const Color COL_THATCH = { 0.39f, 0.44f, 0.34f, 1.0f };
 
 	const Color COL_FOG = VisualStyle::COL_FOG;
 	const Color COL_SKY = VisualStyle::COL_SKY;
@@ -74,19 +76,26 @@ namespace
 	const float WALK_SPEED = 3.1f;
 	const float RUN_SPEED = 5.2f;
 	const unsigned char TUTORIAL_SKIP_KEY = 'k';
-	const int SKIP_HINT_FONT_SIZE = 14;
-	const float SKIP_HINT_SIDE_MARGIN = 22.0f;
-	const float SKIP_HINT_BOTTOM_MARGIN = 34.0f;
+	const int SKIP_HINT_FONT_SIZE = 11;
+	const float SKIP_HINT_SIDE_MARGIN = VisualStyle::HUD_MARGIN;
+	const float SKIP_HINT_BOTTOM_MARGIN = 24.0f;
 	const float GUIDE_EDGE_MARGIN = 46.0f;
 	const float GUIDE_VERTICAL_MARGIN = 120.0f;
-	const float GUIDE_PANEL_WIDTH = 252.0f;
-	const float GUIDE_PANEL_HEIGHT = 60.0f;
+	const float GUIDE_PANEL_WIDTH = 244.0f;
+	const float GUIDE_PANEL_HEIGHT = 76.0f;
+	const float GUIDE_TEXT_INSET = 14.0f;
+	const int GUIDE_OBJECTIVE_FONT = 13;
+	const int GUIDE_DETAIL_FONT = 11;
+	const float GUIDE_MARKER_HEIGHT = 2.1f;
+	const float HUD_FOOTER_GAP = 20.0f;
+	const float HUD_FOOTER_LINE_HEIGHT = 18.0f;
 	const int SCENE_CHUNK_SIZE = 8;
 	const int EMBER_COUNT = 44;
 	const int MIST_COUNT = 16;
 	const float SCENERY_BOUND_WIDTH = 100.0f;
 	const float SCENERY_BOUND_TOP = 200.0f;
 	const float SCENERY_BOUND_BOTTOM = 40.0f;
+	const float TREE_OCCLUSION_MARGIN = 8.0f;
 	const float CHARACTER_BOUND_WIDTH = 64.0f;
 	const float CHARACTER_BOUND_TOP = 84.0f;
 	const float CHARACTER_BOUND_BOTTOM = 32.0f;
@@ -224,9 +233,7 @@ Game::Game()
 	, m_StateTime(0.0f)
 	, m_Fade(1.0f)
 	, m_PlayerActor(NULL)
-	, m_PlayerStride(0.0f)
 	, m_Running(false)
-	, m_Moving(false)
 	, m_CameraX(1.0f)
 	, m_CameraY(1.0f)
 	, m_CameraZ(0.0f)
@@ -284,6 +291,16 @@ bool Game::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dial
 		*m_Models, m_Lighting, *m_Dialogue))
 	{
 		return false;
+	}
+
+	m_Map.Initialize(m_World, *m_Dialogue, "ui_map_village");
+
+	for (const Npc& npc : m_Npcs)
+	{
+		const DialogueBlock* block = m_Dialogue->Find(DialogueKeyForNpc(npc));
+		const std::wstring name = block != NULL && !block->lines.empty() && !block->lines.front().speaker.empty()
+			? block->lines.front().speaker : m_Dialogue->Line("ui_map_npc");
+		m_Map.AddMarker(npc.actor, name);
 	}
 
 	UpdateSceneState();
@@ -366,6 +383,18 @@ void Game::CreateEnvironmentActors()
 			{
 				DrawScenery(actor, tile, (int)((variation >> 16) % 5));
 			});
+
+			if (tile == TILE_TREE)
+			{
+				const char* const names[] = { "tree_cedar_small", "tree_cedar_mid", "tree_cedar_tall",
+					"tree_cedar_small", "tree_broadleaf" };
+				const Model* model = m_Models->Find(names[(variation >> 16) % 5]);
+
+				if (model != NULL)
+				{
+					GroundShadow::CreateTree(m_SceneGraph, scenery, m_World, m_Lighting, *model);
+				}
+			}
 		}
 	}
 
@@ -389,6 +418,7 @@ void Game::CreateEnvironmentActors()
 		{
 			DrawProp(actor, definition);
 		});
+		GroundShadow::CreateStructure(m_SceneGraph, prop, m_World, m_Lighting, definition);
 
 		m_PropActors.push_back(prop);
 	}
@@ -568,6 +598,11 @@ void Game::UpdateSceneState()
 
 void Game::Update(float deltaSeconds)
 {
+	if (m_Map.IsOpen())
+	{
+		return;
+	}
+
 	m_Time += deltaSeconds;
 	m_StateTime += deltaSeconds;
 
@@ -584,11 +619,6 @@ void Game::Update(float deltaSeconds)
 	else if (m_State == STATE_ENDING)
 	{
 		m_Fade = Clamp(m_StateTime / 1.6f, 0.0f, 1.0f);
-	}
-
-	if (m_State != STATE_PLAY)
-	{
-		m_Moving = false;
 	}
 
 	UpdateSceneState();
@@ -650,6 +680,8 @@ void Game::UpdateLighting()
 		m_Lighting.AddLight(position.x + 0.6f, position.y + 0.3f, 3.4f, 1.6f,
 			RGBA(1.0f, 0.45f, 0.20f), true);
 	}
+
+	m_Village.AddResidentLights(m_Lighting);
 }
 
 void Game::UpdatePlayer(float deltaSeconds)
@@ -684,17 +716,16 @@ void Game::UpdatePlayer(float deltaSeconds)
 	}
 
 	const float lengthSq = dx * dx + dy * dy;
-	m_Moving = lengthSq > 0.0001f;
-
-	if (!m_Moving)
+	if (lengthSq <= 0.0001f)
 	{
-		m_PlayerStride *= 0.85f;
+		m_MoveMotion.Advance(deltaSeconds, 0.0f, 0.0f, false);
 		return;
 	}
 
 	const float length = sqrtf(lengthSq);
 	dx /= length;
 	dy /= length;
+	m_Village.SetFacing(dx, dy);
 
 	const float speed = m_Running ? RUN_SPEED : WALK_SPEED;
 	const float stepX = dx * speed * deltaSeconds;
@@ -719,7 +750,7 @@ void Game::UpdatePlayer(float deltaSeconds)
 
 	const float groundZ = m_World.GetElevation(worldX, worldY);
 	m_PlayerActor->SetPosition(position.x, position.y, position.z + groundZ - worldPosition.z);
-	m_PlayerStride += deltaSeconds * (m_Running ? 13.0f : 9.0f);
+	m_MoveMotion.Advance(deltaSeconds, worldX - worldPosition.x, worldY - worldPosition.y, m_Running);
 }
 
 void Game::UpdateInteractionTarget()
@@ -935,7 +966,9 @@ std::string Game::DialogueKeyForNpc(const Npc& npc) const
 		return npc.id + "_after";
 	}
 
-	return npc.id;
+	const std::string rumor = m_Village.RumorDialogue(npc.id);
+
+	return rumor.empty() ? npc.id : rumor;
 }
 
 std::string Game::DialogueKeyForProp(const Prop& prop) const
@@ -1092,6 +1125,18 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		key = (unsigned char)(key - 'A' + 'a');
 	}
 
+	if (m_Map.OnKey(key, down, m_State == STATE_PLAY, m_PlayerActor->GetWorldPosition()))
+	{
+		for (bool& moving : m_MoveKey)
+		{
+			moving = false;
+		}
+
+		m_Running = false;
+		m_Attacking = false;
+		return;
+	}
+
 	if (key == 27)			// Esc
 	{
 		if (down)
@@ -1114,6 +1159,13 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 	if (!down)
 	{
+		return;
+	}
+
+	if (key == ' ' && m_State == STATE_PLAY)
+	{
+		// Trigger on the press edge too, so a short tap cannot fall between updates.
+		m_Village.Attack();
 		return;
 	}
 
@@ -1288,6 +1340,13 @@ void Game::DrawNpc(const Npc& npc)
 	const bool hat = npc.id == "farmer" || npc.id == "fisher" || npc.id == "hunter"
 		|| npc.id.find("merchant_") == 0;
 	const bool small = npc.id == "child" || npc.id == "refugee_child";
+	const float scale = (small ? 0.92f : 1.32f) * Renderer::HeightScale() / PERSON_MODEL_HEIGHT;
+
+	if (m_Village.DrawResident(npc.id, *m_Renderer, ROBES[npc.look], scale, hat))
+	{
+		return;
+	}
+
 	DrawPerson(position.x, position.y, small ? 0.92f : 1.32f, ROBES[npc.look],
 		Mix(ROBES[npc.look], COL_SHIRO, 0.35f), hat, m_Village.IsArmed(npc.id), false, bob, position.z);
 }
@@ -1295,15 +1354,13 @@ void Game::DrawNpc(const Npc& npc)
 void Game::DrawPlayer(const Actor& actor)
 {
 	const ActorPosition position = actor.GetWorldPosition();
-	const float stride = m_Moving ? fabsf(sinf(m_PlayerStride)) * 2.6f : 0.0f;
+	float screenX, screenY;
+	m_Renderer->WorldToScreen(position.x, position.y, position.z, &screenX, &screenY);
+	VisualStyle::DrawPlayerLocator(m_Renderer, screenX, screenY, position.x + position.y - 0.02f);
 
-	DrawPerson(position.x, position.y, 1.38f, VisualStyle::COL_PLAYER,
-		COL_SHU, false, !m_Village.HasBow(), true, -stride, position.z);
-
-	if (m_Village.HasBow())
-	{
-		Bow::DrawEquipped(*m_Renderer, position);
-	}
+	const ShadeParams shade = m_Lighting.Shade(position.x, position.y, RGBA(1.0f, 1.0f, 1.0f));
+	DrawFoxPlayer(m_Renderer, *m_Models, screenX, screenY,
+		position.x + position.y, shade, !m_Village.HasBow(), &m_Village.AttackMotion(), &m_MoveMotion);
 }
 
 // Vegetation and boulders come from the cached library. The shapes used to be
@@ -1335,8 +1392,11 @@ void Game::DrawTree(float worldX, float worldY, int variant, float worldZ)
 	float viewerX, viewerY;
 	m_Renderer->WorldToScreen(viewer.x, viewer.y, viewer.z + 0.7f, &viewerX, &viewerY);
 
-	if (worldX + worldY > viewer.x + viewer.y && fabsf(viewerX - screenX) < 58.0f
-		&& viewerY < screenY - 12.0f && viewerY > screenY - 150.0f)
+	if (worldX + worldY > viewer.x + viewer.y
+		&& viewerX > screenX + model->bounds[0] - TREE_OCCLUSION_MARGIN
+		&& viewerX < screenX + model->bounds[2] + TREE_OCCLUSION_MARGIN
+		&& viewerY < screenY - 12.0f
+		&& viewerY > screenY + model->bounds[1] - TREE_OCCLUSION_MARGIN)
 	{
 		shade.tint.a = 0.38f;
 	}
@@ -1725,41 +1785,64 @@ void Game::DrawQuestGuide()
 		}
 	}
 
-	if (target == NULL)
-	{
-		return;
-	}
-
 	Renderer* r = m_Renderer;
 	const float halfWidth = r->GetWidth() * 0.5f;
 	const float halfHeight = r->GetHeight() * 0.5f;
 	const Color gold = VisualStyle::COL_IVORY;
-	float screenX = 0.0f;
-	float screenY = 0.0f;
-	const ActorPosition position = target->actor->GetWorldPosition();
-	r->WorldToScreen(position.x, position.y, position.z + 2.4f, &screenX, &screenY);
 
-	// Keep the destination visible even when its villager is off screen.
-	const float limitX = fmaxf(1.0f, halfWidth - GUIDE_EDGE_MARGIN);
-	const float limitY = fmaxf(1.0f, halfHeight - GUIDE_VERTICAL_MARGIN);
-	const float extent = fmaxf(fabsf(screenX) / limitX, fabsf(screenY) / limitY);
-
-	if (extent > 1.0f)
+	if (target != NULL)
 	{
-		screenX /= extent;
-		screenY /= extent;
+		float screenX = 0.0f;
+		float screenY = 0.0f;
+		const ActorPosition position = target->actor->GetWorldPosition();
+		r->WorldToScreen(position.x, position.y, position.z + GUIDE_MARKER_HEIGHT, &screenX, &screenY);
+
+		// Keep the destination visible even when its villager is off screen.
+		const float limitX = fmaxf(1.0f, halfWidth - GUIDE_EDGE_MARGIN);
+		const float limitY = fmaxf(1.0f, halfHeight - GUIDE_VERTICAL_MARGIN);
+		const float extent = fmaxf(fabsf(screenX) / limitX, fabsf(screenY) / limitY);
+
+		if (extent > 1.0f)
+		{
+			screenX /= extent;
+			screenY /= extent;
+		}
+
+		r->PushDiamond(screenX, screenY, 5.0f, 7.0f, gold, DEPTH_PANEL_TOP);
+		r->PushDiamond(screenX, screenY, 2.0f, 3.0f, COL_INK, DEPTH_PANEL_TOP + 0.1f);
 	}
 
-	r->PushDiamond(screenX, screenY, 8.0f, 11.0f, gold, DEPTH_PANEL_TOP);
-	r->PushDiamond(screenX, screenY, 3.0f, 5.0f, COL_INK, DEPTH_PANEL_TOP + 0.1f);
+	const std::wstring objective = m_Dialogue->Line(!m_MetElder ? "ui_hud_obj_elder"
+		: m_ClueMask != CLUE_ALL ? "ui_hud_obj_collect" : "ui_hud_obj_return");
+	const std::wstring destination = target != NULL ? m_Dialogue->Line("ui_guide_" + target->id) : L"";
+	const float textWidth = fmaxf(r->MeasureTextWidth(objective, GUIDE_OBJECTIVE_FONT, FONT_UI, true),
+		r->MeasureTextWidth(destination, GUIDE_DETAIL_FONT, FONT_UI, false));
+	const float panelWidth = fmaxf(GUIDE_PANEL_WIDTH, textWidth + GUIDE_TEXT_INSET * 2.0f);
+	const bool stack = r->GetWidth() < VisualStyle::HUD_STACK_WIDTH;
+	const float panelX = stack ? -halfWidth + VisualStyle::HUD_MARGIN : halfWidth - panelWidth - VisualStyle::HUD_MARGIN;
+	const float panelY = -halfHeight + VisualStyle::HUD_MARGIN
+		+ (stack ? VisualStyle::HUD_HEIGHT + 12.0f : MapOverlay::MiniHeight(*r) + 12.0f);
 
-	const float panelX = halfWidth - GUIDE_PANEL_WIDTH - 22.0f;
-	const float panelY = -halfHeight + 20.0f;
-	DrawAccentPanel(panelX, panelY, GUIDE_PANEL_WIDTH, GUIDE_PANEL_HEIGHT, gold, DEPTH_PANEL);
-	r->PushText(m_Dialogue->Line("ui_guide_title"), panelX + 14.0f, panelY + 10.0f,
-		13, FONT_UI, false, RGBA(0.72f, 0.72f, 0.68f), ALIGN_LEFT);
-	r->PushText(m_Dialogue->Line("ui_guide_" + target->id), panelX + 14.0f, panelY + 31.0f,
-		16, FONT_UI, false, gold, ALIGN_LEFT);
+	DrawAccentPanel(panelX, panelY, panelWidth, GUIDE_PANEL_HEIGHT, VisualStyle::COL_MOSS, DEPTH_PANEL);
+	r->PushText(m_Dialogue->Line("ui_hud_quest"), panelX + GUIDE_TEXT_INSET, panelY + 9.0f,
+		GUIDE_DETAIL_FONT, FONT_UI, false, VisualStyle::COL_MOSS, ALIGN_LEFT);
+	r->PushText(objective, panelX + GUIDE_TEXT_INSET, panelY + 27.0f,
+		GUIDE_OBJECTIVE_FONT, FONT_UI, true, gold, ALIGN_LEFT);
+	r->PushText(destination, panelX + GUIDE_TEXT_INSET, panelY + 51.0f,
+		GUIDE_DETAIL_FONT, FONT_UI, false, RGBA(0.74f, 0.77f, 0.67f), ALIGN_LEFT);
+
+	if (m_MetElder)
+	{
+		const float pipY = panelY + 15.0f;
+
+		for (int i = 0; i < CLUE_TOTAL; ++i)
+		{
+			const bool have = (m_ClueMask & CLUE_BITS[i]) != 0;
+			const float pipX = panelX + panelWidth - GUIDE_TEXT_INSET - (CLUE_TOTAL - 1 - i) * 14.0f;
+			r->PushDiamond(pipX, pipY, 3.5f, 3.5f,
+				have ? VisualStyle::COL_SPIRIT : RGBA(0.32f, 0.37f, 0.29f, 0.85f), DEPTH_PANEL_TOP);
+		}
+	}
 }
 
 void Game::DrawHud()
@@ -1774,64 +1857,31 @@ void Game::DrawHud()
 
 	DrawQuestGuide();
 
-	// --- quest panel, top left ---
-	const std::wstring questTitle = m_Dialogue->Line("ui_quest_title");
-
-	std::wstring objective;
-
-	if (!m_MetElder)
-	{
-		objective = m_Dialogue->Line("ui_obj_elder");
-	}
-	else if (m_ClueMask != CLUE_ALL)
-	{
-		objective = m_Dialogue->Line("ui_obj_collect");
-	}
-	else
-	{
-		objective = m_Dialogue->Line("ui_obj_return");
-	}
-
-	const float panelX = left + 22.0f;
-	const float panelY = top + 20.0f;
-	const float panelW = 292.0f;
-	const float panelH = m_MetElder ? 98.0f : 74.0f;
-
-	DrawAccentPanel(panelX, panelY, panelW, panelH, VisualStyle::COL_MOSS, DEPTH_PANEL);
-
-	r->PushText(questTitle, panelX + 16.0f, panelY + 12.0f, 14, FONT_UI, false,
-		VisualStyle::COL_MOSS, ALIGN_LEFT);
-	r->PushText(objective, panelX + 16.0f, panelY + 36.0f, 17, FONT_UI, false,
-		RGBA(0.90f, 0.90f, 0.87f, 0.95f), ALIGN_LEFT);
-
-	if (m_MetElder)
-	{
-		// Three clue pips: filled once the villager has been asked.
-		const float pipY = panelY + 68.0f;
-
-		for (int i = 0; i < CLUE_TOTAL; ++i)
-		{
-			const bool have = (m_ClueMask & CLUE_BITS[i]) != 0;
-			const float pipX = panelX + 18.0f + i * 26.0f;
-			r->PushDiamond(pipX, pipY + 6.0f, 7.0f, 7.0f,
-				have ? VisualStyle::COL_SPIRIT : RGBA(0.32f, 0.37f, 0.29f, 0.85f), DEPTH_PANEL_TOP);
-		}
-
-		wchar_t counter[32];
-		swprintf_s(counter, 32, L"%d / %d", ClueCount(), CLUE_TOTAL);
-		r->PushText(counter, panelX + panelW - 16.0f, pipY - 3.0f, 15, FONT_UI, false,
-			RGBA(0.70f, 0.70f, 0.67f, 0.85f), ALIGN_RIGHT);
-	}
-
 	// --- controls, bottom left ---
-	r->PushText(m_Dialogue->Line("ui_controls"), left + 22.0f, bottom - 34.0f, 14, FONT_UI, false,
-		RGBA(0.62f, 0.64f, 0.62f, 0.65f), ALIGN_LEFT);
+	const std::wstring controls = m_Dialogue->Line("ui_hud_controls");
+	const std::wstring skip = m_Dialogue->Line("ui_hud_skip");
+	const float footerWidth = r->MeasureTextWidth(controls, SKIP_HINT_FONT_SIZE, FONT_UI, false)
+		+ r->MeasureTextWidth(skip, SKIP_HINT_FONT_SIZE, FONT_UI, false)
+		+ VisualStyle::HUD_MARGIN * 2.0f + HUD_FOOTER_GAP;
+	const bool splitFooter = footerWidth > r->GetWidth();
+	const float footerY = bottom - SKIP_HINT_BOTTOM_MARGIN;
+
+	r->PushText(splitFooter ? m_Dialogue->Line("ui_hud_movement") : controls,
+		left + VisualStyle::HUD_MARGIN, footerY - (splitFooter ? HUD_FOOTER_LINE_HEIGHT : 0.0f),
+		SKIP_HINT_FONT_SIZE, FONT_UI, false,
+		RGBA(0.84f, 0.86f, 0.77f, 0.78f), ALIGN_LEFT);
+
+	if (splitFooter)
+	{
+		r->PushText(m_Dialogue->Line("ui_hud_actions"), left + VisualStyle::HUD_MARGIN, footerY,
+			SKIP_HINT_FONT_SIZE, FONT_UI, false, RGBA(0.84f, 0.86f, 0.77f, 0.78f), ALIGN_LEFT);
+	}
 
 	// --- interaction prompt ---
 	if (m_State == STATE_PLAY && m_TargetKind != INTERACT_NONE)
 	{
 		float sx, sy;
-		r->WorldToScreen(m_TargetX, m_TargetY, 1.75f, &sx, &sy);
+		r->WorldToScreen(m_TargetX, m_TargetY, m_World.GetElevation(m_TargetX, m_TargetY) + 1.75f, &sx, &sy);
 
 		const float pulse = sinf(m_Time * 4.0f) * 2.5f;
 		r->PushDiamond(sx, sy + pulse, 6.0f, 8.0f, RGBA(0.95f, 0.80f, 0.45f, 0.9f), DEPTH_PANEL);
@@ -1852,10 +1902,11 @@ void Game::DrawHud()
 			}
 		}
 
-		const float width = r->MeasureTextWidth(prompt, 16, FONT_UI, false);
+		const int promptFont = 13;
+		const float width = r->MeasureTextWidth(prompt, promptFont, FONT_UI, false);
 
-		DrawPanel(-width * 0.5f - 14.0f, bottom - 92.0f, width + 28.0f, 32.0f, 0.72f, DEPTH_PANEL);
-		r->PushText(prompt, 0.0f, bottom - 85.0f, 16, FONT_UI, false,
+		DrawPanel(-width * 0.5f - 14.0f, bottom - 78.0f, width + 28.0f, 28.0f, 0.72f, DEPTH_PANEL);
+		r->PushText(prompt, 0.0f, bottom - 72.0f, promptFont, FONT_UI, false,
 			RGBA(0.93f, 0.90f, 0.84f, 0.95f), ALIGN_CENTER);
 	}
 
@@ -1864,12 +1915,14 @@ void Game::DrawHud()
 	{
 		const float alpha = Clamp(m_ToastTimer / 0.6f, 0.0f, 1.0f);
 		const float width = r->MeasureTextWidth(m_ToastText, 17, FONT_UI, true);
+		const float toastY = top + (r->GetWidth() < VisualStyle::HUD_STACK_WIDTH
+			? VisualStyle::HUD_MARGIN + VisualStyle::HUD_HEIGHT + GUIDE_PANEL_HEIGHT + 28.0f : 132.0f);
 
-		DrawPanel(-width * 0.5f - 20.0f, top + 132.0f, width + 40.0f, 38.0f, 0.80f * alpha, DEPTH_PANEL);
-		m_Renderer->PushRect(-width * 0.5f - 20.0f, top + 137.0f, 1.0f, 28.0f,
+		DrawPanel(-width * 0.5f - 20.0f, toastY, width + 40.0f, 38.0f, 0.80f * alpha, DEPTH_PANEL);
+		m_Renderer->PushRect(-width * 0.5f - 20.0f, toastY + 5.0f, 1.0f, 28.0f,
 			RGBA(VisualStyle::COL_SPIRIT.r, VisualStyle::COL_SPIRIT.g,
 				VisualStyle::COL_SPIRIT.b, alpha), DEPTH_PANEL_TOP);
-		r->PushText(m_ToastText, 0.0f, top + 140.0f, 17, FONT_UI, true,
+		r->PushText(m_ToastText, 0.0f, toastY + 8.0f, 17, FONT_UI, true,
 			RGBA(VisualStyle::COL_IVORY.r, VisualStyle::COL_IVORY.g,
 				VisualStyle::COL_IVORY.b, alpha), ALIGN_CENTER);
 	}
@@ -1880,7 +1933,9 @@ void Game::DrawTutorialSkipHint()
 	const float right = m_Renderer->GetWidth() * 0.5f;
 	const float bottom = m_Renderer->GetHeight() * 0.5f;
 
-	m_Renderer->PushText(m_Dialogue->Line("ui_tutorial_skip"), right - SKIP_HINT_SIDE_MARGIN,
+	const bool playing = m_State != STATE_INTRO && m_State != STATE_ENDING;
+
+	m_Renderer->PushText(m_Dialogue->Line(playing ? "ui_hud_skip" : "ui_tutorial_skip"), right - SKIP_HINT_SIDE_MARGIN,
 		bottom - SKIP_HINT_BOTTOM_MARGIN, SKIP_HINT_FONT_SIZE, FONT_UI, false,
 		RGBA(0.90f, 0.82f, 0.65f, 0.95f), ALIGN_RIGHT);
 }
@@ -2047,10 +2102,24 @@ void Game::DrawEnding()
 
 void Game::Render()
 {
+	if (m_Map.IsOpen())
+	{
+		m_Renderer->BeginFrame(COL_SKY, m_Time);
+		m_Map.Draw(*m_Renderer, m_PlayerActor->GetWorldPosition());
+		m_Renderer->EndFrame();
+		return;
+	}
+
 	m_Renderer->SetCamera(m_CameraX, m_CameraY, m_CameraZ);
 	m_Renderer->BeginFrame(COL_SKY, m_Time);
 	UpdateSceneState();
 	m_SceneGraph.Render(*m_Renderer);
+
+	if (m_State == STATE_PLAY)
+	{
+		m_Map.Draw(*m_Renderer, m_PlayerActor->GetWorldPosition());
+	}
+
 	m_Renderer->EndFrame();
 }
 

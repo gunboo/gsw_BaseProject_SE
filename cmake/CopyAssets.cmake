@@ -1,0 +1,10 @@
+file(MAKE_DIRECTORY "${DESTINATION}/Data/Fonts" "${DESTINATION}/Data/Logs/visual-qa" "${DESTINATION}/Shaders")
+foreach(folder IN ITEMS Data Shaders Data/Fonts)
+  file(GLOB assets LIST_DIRECTORIES false "${SOURCE}/${folder}/*")
+  foreach(asset IN LISTS assets)
+    if(NOT asset MATCHES "\\.cache$" AND NOT asset MATCHES "[/\\]\\.gitignore$")
+      execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${asset}" "${DESTINATION}/${folder}/"
+        COMMAND_ERROR_IS_FATAL ANY)
+    endif()
+  endforeach()
+endforeach()

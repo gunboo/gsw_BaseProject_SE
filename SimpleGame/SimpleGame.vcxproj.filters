@@ -33,6 +33,9 @@
     <ClInclude Include="Bow.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="PlayerMotion.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="VillageSimulation.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -54,10 +57,22 @@
     <ClInclude Include="Renderer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="PainterOrder.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="VisualStyle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="EnvironmentArt.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="GroundShadow.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ResidentActivity.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ResidentArt.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -72,6 +87,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="VillageSimulation.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ResidentArt.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="AnalysisLog.cpp">
@@ -93,6 +111,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="EnvironmentArt.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="GroundShadow.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -127,5 +148,40 @@
     <None Include="Shaders\SolidRect.vs">
       <Filter>소스 파일\Shaders</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\village.map">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\village_npcs.tsv">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\settlements.tsv">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\village_routes.tsv">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\rumors.tsv">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\village_core.map">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="Data\village_core_npcs.tsv">
+      <Filter>리소스 파일</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Platform.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClCompile Include="FontRasterizer.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClInclude Include="Platform.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClInclude Include="FontRasterizer.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClInclude Include="WindowInput.h"><Filter>헤더 파일</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MapOverlay.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClInclude Include="MapOverlay.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClInclude Include="MapView.h"><Filter>헤더 파일</Filter></ClInclude>
   </ItemGroup>
 </Project>

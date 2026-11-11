@@ -1,29 +1,41 @@
-# id behavior radius speed; whitespace separated, one row per map NPC.
-elder stay 0 0
-smith stay 0 0
-fisher stay 0 0
-child wander 1.5 1.0
-farmer patrol 2 1.0
-monk healer 2 1.0
-drunk wander 2 0.6
-ghost stay 0 0
-merchant_rice merchant 5 1.3
-merchant_medicine healer 4 1.1
-merchant_relic merchant 5 1.5
-priest_memorial healer 3 1.0
-priest_pilgrim patrol 5 1.2
-guard_west guard 5 1.8
-guard_east guard 5 1.8
-bandit_leader bandit 7 1.8
-bandit_scout bandit 6 2.0
-bandit_deserter flee 6 2.3
-refugee_mother follow 6 1.3
-refugee_child flee 4 1.7
-porter patrol 5 1.5
-hunter guard 6 2.0
-caretaker stay 0 0
-scribe stay 0 0
-relief_worker healer 5 1.4
-swindler flee 5 2.1
-charitable_farmer follow 5 1.3
-grave_keeper patrol 5 1.1
+# id behavior radius speed occupation facingX facingY homeVillage courier
+elder	stay	0	0	none	1	1	sanctuary	0
+smith	stay	0	0	forge	1	-1	sanctuary	0
+fisher	stay	0	0	fish	1	0	sanctuary	0
+child	wander	1.5	1.0	none	1	1	sanctuary	0
+farmer	patrol	2	1.0	garden	1	-1	sanctuary	0
+monk	healer	2	1.0	pray	1	1	sanctuary	0
+merchant_rice	merchant	6	3.1	carry	1	0	sanctuary	1
+guard_west	guard	5	1.8	sentry	-1	1	sanctuary	0
+guard_east	guard	5	1.8	torch	1	-1	sanctuary	0
+porter	merchant	6	3.1	carry	1	0	sanctuary	1
+caretaker	stay	0	0	garden	1	-1	sanctuary	0
+scribe	stay	0	0	read	1	1	sanctuary	0
+market_resident_01	merchant	5	1.3	carry	1	1	market	0
+market_resident_04	guard	5	1.8	sentry	-1	1	market	0
+market_resident_05	healer	2	1.0	pray	1	1	market	0
+market_resident_07	stay	0	0	read	1	1	market	0
+market_resident_09	merchant	6	3.1	carry	1	0	market	1
+market_resident_10	merchant	6	3.1	carry	1	0	market	1
+market_resident_11	patrol	2	1.0	garden	1	-1	market	0
+shrine_resident_04	guard	5	1.8	sentry	-1	1	shrine	0
+shrine_resident_05	healer	2	1.0	pray	1	1	shrine	0
+shrine_resident_06	healer	3	1.0	pray	1	1	shrine	0
+shrine_resident_07	stay	0	0	read	1	1	shrine	0
+shrine_resident_09	merchant	6	3.1	carry	1	0	shrine	1
+shrine_resident_10	merchant	6	3.1	carry	1	0	shrine	1
+shrine_resident_11	patrol	2	1.0	garden	1	-1	shrine	0
+priest_pilgrim	patrol	5	1.2	torch	1	1	lakeside	0
+bandit_leader	bandit	7	1.8	none	1	1	lakeside	0
+lakeside_resident_05	healer	2	1.0	pray	1	1	lakeside	0
+lakeside_resident_09	merchant	6	3.1	carry	1	0	lakeside	1
+lakeside_resident_10	merchant	6	3.1	carry	1	0	lakeside	1
+lakeside_resident_11	patrol	2	1.0	garden	1	-1	lakeside	0
+lakeside_resident_12	guard	5	1.8	sentry	-1	1	lakeside	0
+refugee_mother	follow	6	1.3	none	1	1	frontier	0
+refugee_child	flee	4	1.7	none	1	1	frontier	0
+hunter	guard	6	2.0	hunt	1	1	frontier	0
+frontier_resident_05	healer	2	1.0	pray	1	1	frontier	0
+frontier_resident_09	merchant	6	3.1	carry	1	0	frontier	1
+frontier_resident_10	merchant	6	3.1	carry	1	0	frontier	1
+frontier_resident_11	patrol	2	1.0	garden	1	-1	frontier	0

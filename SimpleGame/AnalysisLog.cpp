@@ -3,14 +3,7 @@
 #include "Renderer.h"
 #include "SceneGraph.h"
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <Windows.h>
-#include <Psapi.h>
+#include "Platform.h"
 
 #include <algorithm>
 #include <chrono>
@@ -22,7 +15,7 @@
 #include <numeric>
 #include <sstream>
 
-#pragma comment(lib, "Psapi.lib")
+
 
 namespace
 {
@@ -34,13 +27,7 @@ namespace
 
 	std::string Setting(const char* name)
 	{
-		char* value = NULL;
-		size_t length = 0;
-		_dupenv_s(&value, &length, name);
-		const std::string result = value != NULL ? value : "";
-		free(value);
-
-		return result;
+		return Platform::Environment(name);
 	}
 
 	std::string Csv(const std::string& value)
@@ -116,16 +103,10 @@ void AnalysisLog::Start()
 
 	m_Detail = Setting("GAME_ANALYSIS_DETAIL") != "0";
 	m_GpuTiming = Setting("GAME_ANALYSIS_GPU") != "0";
-	CreateDirectoryA("./Data/Logs", NULL);
-	SYSTEMTIME utc;
-	GetSystemTime(&utc);
-	char name[128];
-	sprintf_s(name, "./Data/Logs/%04u%02u%02u_%02u%02u%02u_%03u_%lu",
-		utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond,
-		utc.wMilliseconds, GetCurrentProcessId());
-	m_Directory = name;
+	Platform::MakeDirectory("./Data/Logs");
+	m_Directory = Platform::LogDirectoryName();
 
-	if (!CreateDirectoryA(m_Directory.c_str(), NULL))
+	if (!Platform::MakeDirectory(m_Directory))
 	{
 		std::cerr << "Analysis logs disabled: cannot create " << m_Directory << "\n";
 		return;
@@ -189,7 +170,7 @@ bool AnalysisLog::OpenDetail()
 	m_Frames.close();
 	m_Frames.clear();
 	char filename[48];
-	sprintf_s(filename, "/frames_%03u.csv", m_Part);
+	std::snprintf(filename, sizeof(filename), "/frames_%03u.csv", m_Part);
 	m_Frames.open(m_Directory + filename, std::ios::binary);
 	m_Frames.imbue(std::locale::classic());
 	m_DetailBytes = 0;
@@ -310,14 +291,11 @@ void AnalysisLog::RecordFrame(const FrameSample& frame, const Renderer& renderer
 		size_t actors = 0;
 		size_t depth = 0;
 		CountGraph(graph.GetRoot(), 0, actors, depth);
-		PROCESS_MEMORY_COUNTERS_EX memory = {};
-		memory.cb = sizeof(memory);
-		const bool memoryValid = GetProcessMemoryInfo(GetCurrentProcess(),
-			reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory)) != 0;
+		const Platform::MemoryStats memory = Platform::ProcessMemory();
 		Event("resources", "scene=" + m_Scene + ";actors=" + std::to_string(actors)
-			+ ";max_depth=" + std::to_string(depth) + ";memory_valid=" + std::to_string(memoryValid)
-			+ ";working_set_bytes=" + std::to_string(memory.WorkingSetSize)
-			+ ";private_bytes=" + std::to_string(memory.PrivateUsage));
+			+ ";max_depth=" + std::to_string(depth) + ";memory_valid=" + std::to_string(memory.valid)
+			+ ";working_set_bytes=" + std::to_string(memory.workingSet)
+			+ ";private_bytes=" + std::to_string(memory.privateBytes));
 		m_LastSampleMs = begin;
 	}
 
