@@ -1,0 +1,1466 @@
+{
+  "schemaVersion": 1,
+  "fps": 24,
+  "unit": "metre",
+  "coordinates": {
+    "blendUp": "+Z",
+    "blendForward": "-Y",
+    "glTFUp": "+Y",
+    "glTFForward": "+Z",
+    "note_ko": "glTF 변환은 Blender 내보내기에서 적용됨. 실제 게임 좌표계 변환은 가져오기 단계에서 선택."
+  },
+  "skeletons": {
+    "Human": {
+      "id": "HUMAN_7H_V2",
+      "bindPose": "Reference_TPose",
+      "rotationBase": "TurnBase",
+      "aPose": "Reference_APose",
+      "clips": {
+        "Reference_TPose": {
+          "blenderAction": "Human_Reference_TPose",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Reference_APose": {
+          "blenderAction": "Human_Reference_APose",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "TurnBase": {
+          "blenderAction": "Human_TurnBase",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Idle": {
+          "blenderAction": "Human_Idle",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        },
+        "Walk": {
+          "blenderAction": "Human_Walk",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": true,
+          "markers": [
+            {
+              "name": "L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "R_CONTACT",
+              "frame": 13,
+              "timeSeconds": 0.5
+            },
+            {
+              "name": "LOOP_END",
+              "frame": 25,
+              "timeSeconds": 1.0
+            }
+          ],
+          "nominalSpeedMps": 1.083333
+        },
+        "Run": {
+          "blenderAction": "Human_Run",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [
+            {
+              "name": "L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "R_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "LOOP_END",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            }
+          ],
+          "nominalSpeedMps": 3.375
+        },
+        "WalkStart": {
+          "blenderAction": "Human_WalkStart",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "WalkStop": {
+          "blenderAction": "Human_WalkStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "RunStop": {
+          "blenderAction": "Human_RunStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "TurnLeft90": {
+          "blenderAction": "Human_TurnLeft90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": 90
+        },
+        "TurnRight90": {
+          "blenderAction": "Human_TurnRight90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": -90
+        },
+        "Attack": {
+          "blenderAction": "Human_Attack",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [
+            {
+              "name": "HIT",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            }
+          ]
+        },
+        "Jump": {
+          "blenderAction": "Human_Jump",
+          "fps": 24,
+          "frames": [
+            1,
+            33
+          ],
+          "durationSeconds": 1.333333,
+          "loop": false,
+          "markers": [
+            {
+              "name": "TAKEOFF",
+              "frame": 7,
+              "timeSeconds": 0.25
+            },
+            {
+              "name": "APEX",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            },
+            {
+              "name": "LAND",
+              "frame": 27,
+              "timeSeconds": 1.083333
+            }
+          ],
+          "verticalMotion": "pelvis animated full jump arc; do not combine with actor ballistic lift"
+        },
+        "JumpStart": {
+          "blenderAction": "Human_JumpStart",
+          "fps": 24,
+          "frames": [
+            1,
+            9
+          ],
+          "durationSeconds": 0.333333,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpAir": {
+          "blenderAction": "Human_JumpAir",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpLand": {
+          "blenderAction": "Human_JumpLand",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        }
+      }
+    },
+    "Deer": {
+      "id": "QUAD_DEER_V1",
+      "bindPose": "Reference_Stand",
+      "rotationBase": "TurnBase",
+      "temperament": "neutral",
+      "clips": {
+        "Reference_Stand": {
+          "blenderAction": "Deer_Reference_Stand",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "TurnBase": {
+          "blenderAction": "Deer_TurnBase",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Idle": {
+          "blenderAction": "Deer_Idle",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        },
+        "Walk": {
+          "blenderAction": "Deer_Walk",
+          "fps": 24,
+          "frames": [
+            1,
+            33
+          ],
+          "durationSeconds": 1.333333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 25,
+              "timeSeconds": 1.0
+            }
+          ],
+          "nominalSpeedMps": 0.378621
+        },
+        "Run": {
+          "blenderAction": "Deer_Run",
+          "fps": 24,
+          "frames": [
+            1,
+            21
+          ],
+          "durationSeconds": 0.833333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 11,
+              "timeSeconds": 0.416667
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            }
+          ],
+          "nominalSpeedMps": 1.464
+        },
+        "WalkStart": {
+          "blenderAction": "Deer_WalkStart",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "WalkStop": {
+          "blenderAction": "Deer_WalkStop",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "RunStop": {
+          "blenderAction": "Deer_RunStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "TurnLeft90": {
+          "blenderAction": "Deer_TurnLeft90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": 90
+        },
+        "TurnRight90": {
+          "blenderAction": "Deer_TurnRight90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": -90
+        },
+        "Attack": {
+          "blenderAction": "Deer_Attack",
+          "fps": 24,
+          "frames": [
+            1,
+            29
+          ],
+          "durationSeconds": 1.166667,
+          "loop": false,
+          "markers": [
+            {
+              "name": "HIT",
+              "frame": 15,
+              "timeSeconds": 0.583333
+            }
+          ]
+        },
+        "Jump": {
+          "blenderAction": "Deer_Jump",
+          "fps": 24,
+          "frames": [
+            1,
+            37
+          ],
+          "durationSeconds": 1.5,
+          "loop": false,
+          "markers": [
+            {
+              "name": "TAKEOFF",
+              "frame": 8,
+              "timeSeconds": 0.291667
+            },
+            {
+              "name": "APEX",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "LAND",
+              "frame": 31,
+              "timeSeconds": 1.25
+            }
+          ],
+          "verticalMotion": "pelvis animated full jump arc; do not combine with actor ballistic lift"
+        },
+        "JumpStart": {
+          "blenderAction": "Deer_JumpStart",
+          "fps": 24,
+          "frames": [
+            1,
+            11
+          ],
+          "durationSeconds": 0.416667,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpAir": {
+          "blenderAction": "Deer_JumpAir",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpLand": {
+          "blenderAction": "Deer_JumpLand",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        }
+      }
+    },
+    "Wolf": {
+      "id": "QUAD_WOLF_V1",
+      "bindPose": "Reference_Stand",
+      "rotationBase": "TurnBase",
+      "temperament": "dangerous",
+      "clips": {
+        "Reference_Stand": {
+          "blenderAction": "Wolf_Reference_Stand",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "TurnBase": {
+          "blenderAction": "Wolf_TurnBase",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Idle": {
+          "blenderAction": "Wolf_Idle",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        },
+        "Walk": {
+          "blenderAction": "Wolf_Walk",
+          "fps": 24,
+          "frames": [
+            1,
+            33
+          ],
+          "durationSeconds": 1.333333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 25,
+              "timeSeconds": 1.0
+            }
+          ],
+          "nominalSpeedMps": 0.378621
+        },
+        "Run": {
+          "blenderAction": "Wolf_Run",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 15,
+              "timeSeconds": 0.583333
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 7,
+              "timeSeconds": 0.25
+            }
+          ],
+          "nominalSpeedMps": 1.83
+        },
+        "WalkStart": {
+          "blenderAction": "Wolf_WalkStart",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "WalkStop": {
+          "blenderAction": "Wolf_WalkStop",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "RunStop": {
+          "blenderAction": "Wolf_RunStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "TurnLeft90": {
+          "blenderAction": "Wolf_TurnLeft90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": 90
+        },
+        "TurnRight90": {
+          "blenderAction": "Wolf_TurnRight90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": -90
+        },
+        "Attack": {
+          "blenderAction": "Wolf_Attack",
+          "fps": 24,
+          "frames": [
+            1,
+            29
+          ],
+          "durationSeconds": 1.166667,
+          "loop": false,
+          "markers": [
+            {
+              "name": "HIT",
+              "frame": 15,
+              "timeSeconds": 0.583333
+            }
+          ]
+        },
+        "Jump": {
+          "blenderAction": "Wolf_Jump",
+          "fps": 24,
+          "frames": [
+            1,
+            37
+          ],
+          "durationSeconds": 1.5,
+          "loop": false,
+          "markers": [
+            {
+              "name": "TAKEOFF",
+              "frame": 8,
+              "timeSeconds": 0.291667
+            },
+            {
+              "name": "APEX",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "LAND",
+              "frame": 31,
+              "timeSeconds": 1.25
+            }
+          ],
+          "verticalMotion": "pelvis animated full jump arc; do not combine with actor ballistic lift"
+        },
+        "JumpStart": {
+          "blenderAction": "Wolf_JumpStart",
+          "fps": 24,
+          "frames": [
+            1,
+            11
+          ],
+          "durationSeconds": 0.416667,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpAir": {
+          "blenderAction": "Wolf_JumpAir",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpLand": {
+          "blenderAction": "Wolf_JumpLand",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        }
+      }
+    },
+    "Boar": {
+      "id": "QUAD_BOAR_V1",
+      "bindPose": "Reference_Stand",
+      "rotationBase": "TurnBase",
+      "temperament": "dangerous_when_provoked",
+      "clips": {
+        "Reference_Stand": {
+          "blenderAction": "Boar_Reference_Stand",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "TurnBase": {
+          "blenderAction": "Boar_TurnBase",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Idle": {
+          "blenderAction": "Boar_Idle",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        },
+        "Walk": {
+          "blenderAction": "Boar_Walk",
+          "fps": 24,
+          "frames": [
+            1,
+            33
+          ],
+          "durationSeconds": 1.333333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 25,
+              "timeSeconds": 1.0
+            }
+          ],
+          "nominalSpeedMps": 0.325862
+        },
+        "Run": {
+          "blenderAction": "Boar_Run",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            }
+          ],
+          "nominalSpeedMps": 1.575
+        },
+        "WalkStart": {
+          "blenderAction": "Boar_WalkStart",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "WalkStop": {
+          "blenderAction": "Boar_WalkStop",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "RunStop": {
+          "blenderAction": "Boar_RunStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "TurnLeft90": {
+          "blenderAction": "Boar_TurnLeft90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": 90
+        },
+        "TurnRight90": {
+          "blenderAction": "Boar_TurnRight90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": -90
+        },
+        "Attack": {
+          "blenderAction": "Boar_Attack",
+          "fps": 24,
+          "frames": [
+            1,
+            29
+          ],
+          "durationSeconds": 1.166667,
+          "loop": false,
+          "markers": [
+            {
+              "name": "HIT",
+              "frame": 15,
+              "timeSeconds": 0.583333
+            }
+          ]
+        },
+        "Jump": {
+          "blenderAction": "Boar_Jump",
+          "fps": 24,
+          "frames": [
+            1,
+            37
+          ],
+          "durationSeconds": 1.5,
+          "loop": false,
+          "markers": [
+            {
+              "name": "TAKEOFF",
+              "frame": 8,
+              "timeSeconds": 0.291667
+            },
+            {
+              "name": "APEX",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "LAND",
+              "frame": 31,
+              "timeSeconds": 1.25
+            }
+          ],
+          "verticalMotion": "pelvis animated full jump arc; do not combine with actor ballistic lift"
+        },
+        "JumpStart": {
+          "blenderAction": "Boar_JumpStart",
+          "fps": 24,
+          "frames": [
+            1,
+            11
+          ],
+          "durationSeconds": 0.416667,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpAir": {
+          "blenderAction": "Boar_JumpAir",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpLand": {
+          "blenderAction": "Boar_JumpLand",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        }
+      }
+    },
+    "Goat": {
+      "id": "QUAD_GOAT_V1",
+      "bindPose": "Reference_Stand",
+      "rotationBase": "TurnBase",
+      "temperament": "gentle",
+      "clips": {
+        "Reference_Stand": {
+          "blenderAction": "Goat_Reference_Stand",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "TurnBase": {
+          "blenderAction": "Goat_TurnBase",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": [],
+          "purpose": "interpolation_reference_hold_pose"
+        },
+        "Idle": {
+          "blenderAction": "Goat_Idle",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        },
+        "Walk": {
+          "blenderAction": "Goat_Walk",
+          "fps": 24,
+          "frames": [
+            1,
+            33
+          ],
+          "durationSeconds": 1.333333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 17,
+              "timeSeconds": 0.666667
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 25,
+              "timeSeconds": 1.0
+            }
+          ],
+          "nominalSpeedMps": 0.285517
+        },
+        "Run": {
+          "blenderAction": "Goat_Run",
+          "fps": 24,
+          "frames": [
+            1,
+            21
+          ],
+          "durationSeconds": 0.833333,
+          "loop": true,
+          "markers": [
+            {
+              "name": "F_foot.L_CONTACT",
+              "frame": 1,
+              "timeSeconds": 0.0
+            },
+            {
+              "name": "F_foot.R_CONTACT",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "H_foot.L_CONTACT",
+              "frame": 11,
+              "timeSeconds": 0.416667
+            },
+            {
+              "name": "H_foot.R_CONTACT",
+              "frame": 9,
+              "timeSeconds": 0.333333
+            }
+          ],
+          "nominalSpeedMps": 1.104
+        },
+        "WalkStart": {
+          "blenderAction": "Goat_WalkStart",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "WalkStop": {
+          "blenderAction": "Goat_WalkStop",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": false,
+          "markers": []
+        },
+        "RunStop": {
+          "blenderAction": "Goat_RunStop",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": []
+        },
+        "TurnLeft90": {
+          "blenderAction": "Goat_TurnLeft90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": 90
+        },
+        "TurnRight90": {
+          "blenderAction": "Goat_TurnRight90",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": [],
+          "extractRootYawDegrees": -90
+        },
+        "Attack": {
+          "blenderAction": "Goat_Attack",
+          "fps": 24,
+          "frames": [
+            1,
+            29
+          ],
+          "durationSeconds": 1.166667,
+          "loop": false,
+          "markers": [
+            {
+              "name": "HIT",
+              "frame": 15,
+              "timeSeconds": 0.583333
+            }
+          ]
+        },
+        "Jump": {
+          "blenderAction": "Goat_Jump",
+          "fps": 24,
+          "frames": [
+            1,
+            37
+          ],
+          "durationSeconds": 1.5,
+          "loop": false,
+          "markers": [
+            {
+              "name": "TAKEOFF",
+              "frame": 8,
+              "timeSeconds": 0.291667
+            },
+            {
+              "name": "APEX",
+              "frame": 19,
+              "timeSeconds": 0.75
+            },
+            {
+              "name": "LAND",
+              "frame": 31,
+              "timeSeconds": 1.25
+            }
+          ],
+          "verticalMotion": "pelvis animated full jump arc; do not combine with actor ballistic lift"
+        },
+        "JumpStart": {
+          "blenderAction": "Goat_JumpStart",
+          "fps": 24,
+          "frames": [
+            1,
+            11
+          ],
+          "durationSeconds": 0.416667,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpAir": {
+          "blenderAction": "Goat_JumpAir",
+          "fps": 24,
+          "frames": [
+            1,
+            17
+          ],
+          "durationSeconds": 0.666667,
+          "loop": true,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        },
+        "JumpLand": {
+          "blenderAction": "Goat_JumpLand",
+          "fps": 24,
+          "frames": [
+            1,
+            13
+          ],
+          "durationSeconds": 0.5,
+          "loop": false,
+          "markers": [],
+          "verticalMotion": "split-state animation for externally controlled actor trajectory"
+        }
+      }
+    }
+  },
+  "blendSpace": {
+    "Human": {
+      "idleSpeedMps": 0,
+      "walkSpeedMps": 1.0833,
+      "runSpeedMps": 3.375
+    },
+    "Deer": {
+      "idleSpeedMps": 0,
+      "walkSpeedMps": 0.3786,
+      "runSpeedMps": 1.464
+    },
+    "Wolf": {
+      "idleSpeedMps": 0,
+      "walkSpeedMps": 0.3786,
+      "runSpeedMps": 1.83
+    },
+    "Boar": {
+      "idleSpeedMps": 0,
+      "walkSpeedMps": 0.3259,
+      "runSpeedMps": 1.575
+    },
+    "Goat": {
+      "idleSpeedMps": 0,
+      "walkSpeedMps": 0.2855,
+      "runSpeedMps": 1.104
+    }
+  },
+  "transitions": [
+    {
+      "from": "Idle",
+      "to": "WalkStart",
+      "crossFadeSeconds": 0.12,
+      "phase": "start at zero"
+    },
+    {
+      "from": "WalkStart",
+      "to": "Walk",
+      "crossFadeSeconds": 0.08,
+      "phase": "destination phase zero at source completion"
+    },
+    {
+      "from": "Walk",
+      "to": "Run",
+      "crossFadeSeconds": 0.2,
+      "phase": "preserve normalized gait phase; align left front/human left contact; blend playback periods"
+    },
+    {
+      "from": "Run",
+      "to": "Walk",
+      "crossFadeSeconds": 0.22,
+      "phase": "preserve normalized gait phase; retain stance foot until lift-off"
+    },
+    {
+      "from": "Walk",
+      "to": "WalkStop",
+      "crossFadeSeconds": 0.12,
+      "phase": "start near left contact; mirror/offset half cycle for opposite lead"
+    },
+    {
+      "from": "Run",
+      "to": "RunStop",
+      "crossFadeSeconds": 0.15,
+      "phase": "start near left contact"
+    },
+    {
+      "from": "WalkStop|RunStop",
+      "to": "Idle",
+      "crossFadeSeconds": 0.16,
+      "phase": "after final frame"
+    },
+    {
+      "from": "Idle|Walk|Run",
+      "to": "JumpStart",
+      "crossFadeSeconds": 0.08,
+      "phase": "restart jump at zero"
+    },
+    {
+      "from": "JumpStart",
+      "to": "JumpAir",
+      "crossFadeSeconds": 0.06,
+      "phase": "at take-off; loop air while airborne"
+    },
+    {
+      "from": "JumpAir",
+      "to": "JumpLand",
+      "crossFadeSeconds": 0.07,
+      "phase": "ground contact selects landing, restart at zero"
+    },
+    {
+      "from": "JumpLand",
+      "to": "Idle|Walk|Run",
+      "crossFadeSeconds": 0.15,
+      "phase": "after landing compression; match next stance contact"
+    },
+    {
+      "from": "Idle|Walk",
+      "to": "TurnLeft90|TurnRight90",
+      "crossFadeSeconds": 0.12,
+      "phase": "TurnBase is reference; extract root yaw into actor orientation"
+    },
+    {
+      "from": "TurnLeft90|TurnRight90",
+      "to": "Idle|Walk",
+      "crossFadeSeconds": 0.15,
+      "phase": "consume final root yaw, reset root local rotation, preserve actor heading"
+    },
+    {
+      "from": "Idle|Walk|Run",
+      "to": "Attack",
+      "crossFadeSeconds": 0.1,
+      "phase": "restart at zero; use full-body clip"
+    },
+    {
+      "from": "Attack",
+      "to": "Idle|Walk|Run",
+      "crossFadeSeconds": 0.18,
+      "phase": "after recovery; match desired gait phase"
+    }
+  ],
+  "gaitPhase": {
+    "Human": {
+      "cycleZero": "left foot contact",
+      "left": 0,
+      "right": 0.5,
+      "walkStanceFraction": 0.6,
+      "runStanceFraction": 0.4
+    },
+    "quadrupedWalk": {
+      "frontLeft": 0,
+      "hindRight": 0.75,
+      "frontRight": 0.5,
+      "hindLeft": 0.25,
+      "stanceFraction": 0.58
+    },
+    "quadrupedRunCanter": {
+      "frontLeft": 0,
+      "frontRight": 0.9,
+      "hindLeft": 0.5,
+      "hindRight": 0.4,
+      "stanceFraction": 0.4
+    },
+    "boarRunTrot": {
+      "frontLeft": 0,
+      "hindRight": 0,
+      "frontRight": 0.5,
+      "hindLeft": 0.5,
+      "stanceFraction": 0.4
+    }
+  },
+  "constraints_ko": [
+    "모든 이동 클립은 전방 수평 제자리 동작이다. 배치 이동은 게임의 액터가 담당한다.",
+    "90도 회전 클립은 root의 회전을 포함한다. 같은 각도를 액터와 root 양쪽에 중복 적용하지 않는다.",
+    "전체 Jump와 분할 JumpStart/JumpAir/JumpLand는 대안이다. 둘을 동시에 적용하지 않는다.",
+    "걷기/뛰기 전환은 클립 시각이 아니라 정규화 보행 위상을 맞춘다. 네발동물은 앞왼발을 공통 기준으로 사용한다.",
+    "권장 블렌딩 시간과 발 접지 정보는 리소스 조합 명세다. 게임 상태 머신과 지형 IK는 별도 구현이 필요하다.",
+    "서로 다른 동물 종은 관절 이름은 유사하지만 길이와 바인드 포즈가 달라 부위 직접 교환 대상이 아니다.",
+    "Reference_TPose/Reference_APose/TurnBase와 동물 Reference_Stand는 보간용 정지 포즈다.",
+    "전투 애니메이션은 전신 동작이다. 상체 전용 가산 애니메이션으로 간주하지 않는다.",
+    "v2 인체의 어깨와 팔 바인드 위치를 수정했다. 같은 뼈 이름의 기존 로컬 애니메이션은 v2 골격에 연결해 사용한다."
+  ],
+  "environment": {
+    "SlidingDoor": {
+      "clips": {
+        "Open": {
+          "blenderAction": "Door_Open",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": []
+        },
+        "Close": {
+          "blenderAction": "Door_Close",
+          "fps": 24,
+          "frames": [
+            1,
+            25
+          ],
+          "durationSeconds": 1.0,
+          "loop": false,
+          "markers": []
+        },
+        "Closed": {
+          "blenderAction": "Door_Closed",
+          "fps": 24,
+          "frames": [
+            1,
+            1
+          ],
+          "durationSeconds": 0.041667,
+          "loop": false,
+          "markers": []
+        }
+      }
+    },
+    "GrassWind": {
+      "clips": {
+        "Wind": {
+          "blenderAction": "Grass_Wind",
+          "fps": 24,
+          "frames": [
+            1,
+            49
+          ],
+          "durationSeconds": 2.0,
+          "loop": true,
+          "markers": []
+        }
+      }
+    }
+  },
+  "revision": 2
+}

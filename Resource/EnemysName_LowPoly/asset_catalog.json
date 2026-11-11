@@ -1,0 +1,4321 @@
+{
+  "title": "원수의 이름 · 로우폴리 모듈 리소스 v2",
+  "created": "2026-10-21",
+  "sourceDocuments": [
+    "스토리_확장안.md",
+    "스토리_조사_설계.md"
+  ],
+  "authoring": "Blender 5.2.1 LTS",
+  "counts": {
+    "humanParts": 63,
+    "animalParts": 95,
+    "characterPresets": 9,
+    "animalSpecies": 4,
+    "architectureModules": 22,
+    "propModules": 32,
+    "natureModules": 27,
+    "glbFiles": 256,
+    "materialAssets": 42,
+    "texturePngs": 79
+  },
+  "materials": [
+    {
+      "name": "EN_SkinWarm",
+      "srgbHex": "#B78563",
+      "maps": [
+        "Materials/SkinWarm_BaseColor.png",
+        "Materials/SkinWarm_Roughness.png",
+        "Materials/SkinWarm_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_SkinLight",
+      "srgbHex": "#D4AD87",
+      "maps": [
+        "Materials/SkinLight_BaseColor.png",
+        "Materials/SkinLight_Roughness.png",
+        "Materials/SkinLight_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_SkinDeep",
+      "srgbHex": "#815E49",
+      "maps": [
+        "Materials/SkinDeep_BaseColor.png",
+        "Materials/SkinDeep_Roughness.png",
+        "Materials/SkinDeep_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Indigo",
+      "srgbHex": "#303E53",
+      "maps": [
+        "Materials/Indigo_BaseColor.png",
+        "Materials/Indigo_Roughness.png",
+        "Materials/Indigo_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_FadedIndigo",
+      "srgbHex": "#596B78",
+      "maps": [
+        "Materials/FadedIndigo_BaseColor.png",
+        "Materials/FadedIndigo_Roughness.png",
+        "Materials/FadedIndigo_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_MossCloth",
+      "srgbHex": "#59664A",
+      "maps": [
+        "Materials/MossCloth_BaseColor.png",
+        "Materials/MossCloth_Roughness.png",
+        "Materials/MossCloth_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Hemp",
+      "srgbHex": "#B1A084",
+      "maps": [
+        "Materials/Hemp_BaseColor.png",
+        "Materials/Hemp_Roughness.png",
+        "Materials/Hemp_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Ivory",
+      "srgbHex": "#D9CEB3",
+      "maps": [
+        "Materials/Ivory_BaseColor.png",
+        "Materials/Ivory_Roughness.png",
+        "Materials/Ivory_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Rust",
+      "srgbHex": "#874B3C",
+      "maps": [
+        "Materials/Rust_BaseColor.png",
+        "Materials/Rust_Roughness.png",
+        "Materials/Rust_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Soot",
+      "srgbHex": "#282C2E",
+      "maps": []
+    },
+    {
+      "name": "EN_Wood",
+      "srgbHex": "#68513D",
+      "maps": [
+        "Materials/Wood_BaseColor.png",
+        "Materials/Wood_Roughness.png",
+        "Materials/Wood_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_WoodLight",
+      "srgbHex": "#9A7951",
+      "maps": [
+        "Materials/WoodLight_BaseColor.png",
+        "Materials/WoodLight_Roughness.png",
+        "Materials/WoodLight_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_WoodDark",
+      "srgbHex": "#3F342D",
+      "maps": [
+        "Materials/WoodDark_BaseColor.png",
+        "Materials/WoodDark_Roughness.png",
+        "Materials/WoodDark_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Plaster",
+      "srgbHex": "#B4AD90",
+      "maps": [
+        "Materials/Plaster_BaseColor.png",
+        "Materials/Plaster_Roughness.png",
+        "Materials/Plaster_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Thatch",
+      "srgbHex": "#A38A51",
+      "maps": [
+        "Materials/Thatch_BaseColor.png",
+        "Materials/Thatch_Roughness.png",
+        "Materials/Thatch_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Tile",
+      "srgbHex": "#444E55",
+      "maps": [
+        "Materials/Tile_BaseColor.png",
+        "Materials/Tile_Roughness.png",
+        "Materials/Tile_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Stone",
+      "srgbHex": "#70756D",
+      "maps": [
+        "Materials/Stone_BaseColor.png",
+        "Materials/Stone_Roughness.png",
+        "Materials/Stone_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_StoneDark",
+      "srgbHex": "#444B49",
+      "maps": []
+    },
+    {
+      "name": "EN_Iron",
+      "srgbHex": "#434A4B",
+      "maps": []
+    },
+    {
+      "name": "EN_Leather",
+      "srgbHex": "#5E4432",
+      "maps": []
+    },
+    {
+      "name": "EN_Rope",
+      "srgbHex": "#B6A174",
+      "maps": []
+    },
+    {
+      "name": "EN_Paper",
+      "srgbHex": "#DDD0AA",
+      "maps": [
+        "Materials/Paper_BaseColor.png",
+        "Materials/Paper_Roughness.png",
+        "Materials/Paper_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_SealRed",
+      "srgbHex": "#9A4035",
+      "maps": []
+    },
+    {
+      "name": "EN_Spirit",
+      "srgbHex": "#64ACAC",
+      "maps": []
+    },
+    {
+      "name": "EN_Bark",
+      "srgbHex": "#594834",
+      "maps": [
+        "Materials/Bark_BaseColor.png",
+        "Materials/Bark_Roughness.png",
+        "Materials/Bark_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Leaf",
+      "srgbHex": "#536744",
+      "maps": []
+    },
+    {
+      "name": "EN_LeafLight",
+      "srgbHex": "#718152",
+      "maps": []
+    },
+    {
+      "name": "EN_LeafDark",
+      "srgbHex": "#364B3A",
+      "maps": []
+    },
+    {
+      "name": "EN_Grass",
+      "srgbHex": "#738058",
+      "maps": [
+        "Materials/Grass_BaseColor.png",
+        "Materials/Grass_Roughness.png",
+        "Materials/Grass_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Earth",
+      "srgbHex": "#796247",
+      "maps": [
+        "Materials/Earth_BaseColor.png",
+        "Materials/Earth_Roughness.png",
+        "Materials/Earth_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_EarthDark",
+      "srgbHex": "#51483D",
+      "maps": []
+    },
+    {
+      "name": "EN_Sand",
+      "srgbHex": "#AF9C73",
+      "maps": []
+    },
+    {
+      "name": "EN_Deer",
+      "srgbHex": "#9B7651",
+      "maps": [
+        "Materials/Deer_BaseColor.png",
+        "Materials/Deer_Roughness.png",
+        "Materials/Deer_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_DeerDark",
+      "srgbHex": "#68503D",
+      "maps": [
+        "Materials/DeerDark_BaseColor.png",
+        "Materials/DeerDark_Roughness.png",
+        "Materials/DeerDark_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_FurCream",
+      "srgbHex": "#C8B990",
+      "maps": [
+        "Materials/FurCream_BaseColor.png",
+        "Materials/FurCream_Roughness.png",
+        "Materials/FurCream_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Wolf",
+      "srgbHex": "#727A78",
+      "maps": [
+        "Materials/Wolf_BaseColor.png",
+        "Materials/Wolf_Roughness.png",
+        "Materials/Wolf_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_WolfDark",
+      "srgbHex": "#464D4C",
+      "maps": [
+        "Materials/WolfDark_BaseColor.png",
+        "Materials/WolfDark_Roughness.png",
+        "Materials/WolfDark_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Boar",
+      "srgbHex": "#5C5146",
+      "maps": [
+        "Materials/Boar_BaseColor.png",
+        "Materials/Boar_Roughness.png",
+        "Materials/Boar_Normal.png"
+      ]
+    },
+    {
+      "name": "EN_Hoof",
+      "srgbHex": "#333634",
+      "maps": []
+    },
+    {
+      "name": "EN_Water",
+      "srgbHex": "#537C80",
+      "maps": []
+    },
+    {
+      "name": "EN_Eye",
+      "srgbHex": "#211B13",
+      "maps": []
+    },
+    {
+      "name": "EN_Steel",
+      "srgbHex": "#B7BDC0",
+      "maps": []
+    }
+  ],
+  "humanParts": [
+    {
+      "id": "Body_Pelvis",
+      "file": "Characters/Parts/Body_Pelvis.glb",
+      "slot": "pelvis",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "pelvis"
+      ],
+      "faces": 62,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Torso",
+      "file": "Characters/Parts/Body_Torso.glb",
+      "slot": "torso",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine"
+      ],
+      "faces": 122,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Neck",
+      "file": "Characters/Parts/Body_Neck.glb",
+      "slot": "neck",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "neck",
+        "neck.001",
+        "neck.002",
+        "neck.003",
+        "neck.004",
+        "neck.005",
+        "neck.006",
+        "neck.007",
+        "neck.008",
+        "neck.009"
+      ],
+      "faces": 50,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Face_Adult",
+      "file": "Characters/Parts/Face_Adult.glb",
+      "slot": "face",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001",
+        "head.002",
+        "head.003",
+        "head.004",
+        "head.005"
+      ],
+      "faces": 728,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Face_Elder",
+      "file": "Characters/Parts/Face_Elder.glb",
+      "slot": "face",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001",
+        "head.002"
+      ],
+      "faces": 752,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Face_Broad",
+      "file": "Characters/Parts/Face_Broad.glb",
+      "slot": "face",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001"
+      ],
+      "faces": 728,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hair_Topknot",
+      "file": "Characters/Parts/Hair_Topknot.glb",
+      "slot": "hair",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001",
+        "head.002",
+        "head.003"
+      ],
+      "faces": 787,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hair_Tied",
+      "file": "Characters/Parts/Hair_Tied.glb",
+      "slot": "hair",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001",
+        "head.002",
+        "head.003"
+      ],
+      "faces": 809,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hair_Bob",
+      "file": "Characters/Parts/Hair_Bob.glb",
+      "slot": "hair",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001"
+      ],
+      "faces": 841,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hair_Grey",
+      "file": "Characters/Parts/Hair_Grey.glb",
+      "slot": "hair",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001",
+        "head.002"
+      ],
+      "faces": 787,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Beard_Grey",
+      "file": "Characters/Parts/Beard_Grey.glb",
+      "slot": "beard",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001"
+      ],
+      "faces": 144,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Torso_Indigo",
+      "file": "Characters/Parts/Clothes_Torso_Indigo.glb",
+      "slot": "torso_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine",
+        "chest.001",
+        "pelvis.001",
+        "spine.001",
+        "chest.002",
+        "pelvis.002",
+        "spine.002"
+      ],
+      "faces": 265,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Torso_Hemp",
+      "file": "Characters/Parts/Clothes_Torso_Hemp.glb",
+      "slot": "torso_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine",
+        "chest.001",
+        "pelvis.001",
+        "spine.001",
+        "chest.002",
+        "pelvis.002",
+        "spine.002",
+        "chest.003",
+        "pelvis.003",
+        "spine.003"
+      ],
+      "faces": 265,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Torso_Moss",
+      "file": "Characters/Parts/Clothes_Torso_Moss.glb",
+      "slot": "torso_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine",
+        "chest.001",
+        "pelvis.001",
+        "spine.001",
+        "chest.002",
+        "pelvis.002",
+        "spine.002",
+        "chest.003",
+        "pelvis.003",
+        "spine.003"
+      ],
+      "faces": 265,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Torso_Robe",
+      "file": "Characters/Parts/Clothes_Torso_Robe.glb",
+      "slot": "torso_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine",
+        "chest.001",
+        "pelvis.001",
+        "spine.001"
+      ],
+      "faces": 265,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Belt_Obi",
+      "file": "Characters/Parts/Belt_Obi.glb",
+      "slot": "belt",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "pelvis",
+        "pelvis.001",
+        "pelvis.002",
+        "pelvis.003",
+        "pelvis.004",
+        "pelvis.005",
+        "pelvis.006",
+        "pelvis.007",
+        "pelvis.008",
+        "pelvis.009"
+      ],
+      "faces": 186,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Apron_Smith",
+      "file": "Characters/Parts/Apron_Smith.glb",
+      "slot": "apron",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "pelvis",
+        "spine",
+        "chest.001",
+        "pelvis.001",
+        "spine.001"
+      ],
+      "faces": 36,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_UpperArm_L",
+      "file": "Characters/Parts/Body_UpperArm_L.glb",
+      "slot": "upperarm.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003",
+        "forearm.L.004",
+        "upperarm.L.004",
+        "forearm.L.005",
+        "upperarm.L.005",
+        "forearm.L.006",
+        "upperarm.L.006",
+        "forearm.L.007",
+        "upperarm.L.007",
+        "forearm.L.008",
+        "upperarm.L.008",
+        "forearm.L.009",
+        "upperarm.L.009"
+      ],
+      "faces": 81,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Forearm_L",
+      "file": "Characters/Parts/Body_Forearm_L.glb",
+      "slot": "forearm.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003",
+        "forearm.L.004",
+        "upperarm.L.004",
+        "forearm.L.005",
+        "upperarm.L.005",
+        "forearm.L.006",
+        "upperarm.L.006",
+        "forearm.L.007",
+        "upperarm.L.007",
+        "forearm.L.008",
+        "upperarm.L.008",
+        "forearm.L.009",
+        "upperarm.L.009"
+      ],
+      "faces": 81,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Hand_L",
+      "file": "Characters/Parts/Body_Hand_L.glb",
+      "slot": "hand.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "hand.L",
+        "hand.L.001",
+        "hand.L.002",
+        "hand.L.003",
+        "hand.L.004",
+        "hand.L.005",
+        "hand.L.006",
+        "hand.L.007",
+        "hand.L.008",
+        "hand.L.009"
+      ],
+      "faces": 132,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Thigh_L",
+      "file": "Characters/Parts/Body_Thigh_L.glb",
+      "slot": "thigh.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "thigh.L",
+        "thigh.L.001",
+        "thigh.L.002",
+        "thigh.L.003",
+        "thigh.L.004",
+        "thigh.L.005",
+        "thigh.L.006",
+        "thigh.L.007",
+        "thigh.L.008",
+        "thigh.L.009"
+      ],
+      "faces": 66,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Shin_L",
+      "file": "Characters/Parts/Body_Shin_L.glb",
+      "slot": "shin.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.L",
+        "shin.L.001",
+        "shin.L.002",
+        "shin.L.003",
+        "shin.L.004",
+        "shin.L.005",
+        "shin.L.006",
+        "shin.L.007",
+        "shin.L.008",
+        "shin.L.009"
+      ],
+      "faces": 82,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Indigo_Upper_L",
+      "file": "Characters/Parts/Sleeve_Indigo_Upper_L.glb",
+      "slot": "sleeve.upper.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Indigo_Lower_L",
+      "file": "Characters/Parts/Sleeve_Indigo_Lower_L.glb",
+      "slot": "sleeve.lower.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Hemp_Upper_L",
+      "file": "Characters/Parts/Sleeve_Hemp_Upper_L.glb",
+      "slot": "sleeve.upper.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Hemp_Lower_L",
+      "file": "Characters/Parts/Sleeve_Hemp_Lower_L.glb",
+      "slot": "sleeve.lower.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Moss_Upper_L",
+      "file": "Characters/Parts/Sleeve_Moss_Upper_L.glb",
+      "slot": "sleeve.upper.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Moss_Lower_L",
+      "file": "Characters/Parts/Sleeve_Moss_Lower_L.glb",
+      "slot": "sleeve.lower.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001",
+        "forearm.L.002",
+        "upperarm.L.002",
+        "forearm.L.003",
+        "upperarm.L.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Robe_Upper_L",
+      "file": "Characters/Parts/Sleeve_Robe_Upper_L.glb",
+      "slot": "sleeve.upper.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Robe_Lower_L",
+      "file": "Characters/Parts/Sleeve_Robe_Lower_L.glb",
+      "slot": "sleeve.lower.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.L",
+        "upperarm.L",
+        "forearm.L.001",
+        "upperarm.L.001"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Dark_Thigh_L",
+      "file": "Characters/Parts/Hakama_Dark_Thigh_L.glb",
+      "slot": "trouser.thigh.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.L",
+        "thigh.L",
+        "shin.L.001",
+        "thigh.L.001",
+        "shin.L.002",
+        "thigh.L.002",
+        "shin.L.003",
+        "thigh.L.003",
+        "shin.L.004",
+        "thigh.L.004",
+        "shin.L.005",
+        "thigh.L.005",
+        "shin.L.006",
+        "thigh.L.006"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Dark_Shin_L",
+      "file": "Characters/Parts/Hakama_Dark_Shin_L.glb",
+      "slot": "trouser.shin.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.L",
+        "thigh.L",
+        "shin.L.001",
+        "thigh.L.001",
+        "shin.L.002",
+        "thigh.L.002",
+        "shin.L.003",
+        "thigh.L.003",
+        "shin.L.004",
+        "thigh.L.004",
+        "shin.L.005",
+        "thigh.L.005",
+        "shin.L.006",
+        "thigh.L.006"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Hemp_Thigh_L",
+      "file": "Characters/Parts/Hakama_Hemp_Thigh_L.glb",
+      "slot": "trouser.thigh.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.L",
+        "thigh.L",
+        "shin.L.001",
+        "thigh.L.001",
+        "shin.L.002",
+        "thigh.L.002",
+        "shin.L.003",
+        "thigh.L.003"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Hemp_Shin_L",
+      "file": "Characters/Parts/Hakama_Hemp_Shin_L.glb",
+      "slot": "trouser.shin.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.L",
+        "thigh.L",
+        "shin.L.001",
+        "thigh.L.001",
+        "shin.L.002",
+        "thigh.L.002",
+        "shin.L.003",
+        "thigh.L.003"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Foot_Sandal_L",
+      "file": "Characters/Parts/Foot_Sandal_L.glb",
+      "slot": "foot.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "foot.L",
+        "foot.L.001",
+        "foot.L.002",
+        "foot.L.003",
+        "foot.L.004",
+        "foot.L.005",
+        "foot.L.006"
+      ],
+      "faces": 302,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Foot_Tabi_L",
+      "file": "Characters/Parts/Foot_Tabi_L.glb",
+      "slot": "foot.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "foot.L",
+        "foot.L.001",
+        "foot.L.002",
+        "foot.L.003"
+      ],
+      "faces": 106,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_UpperArm_R",
+      "file": "Characters/Parts/Body_UpperArm_R.glb",
+      "slot": "upperarm.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003",
+        "forearm.R.004",
+        "upperarm.R.004",
+        "forearm.R.005",
+        "upperarm.R.005",
+        "forearm.R.006",
+        "upperarm.R.006",
+        "forearm.R.007",
+        "upperarm.R.007",
+        "forearm.R.008",
+        "upperarm.R.008",
+        "forearm.R.009",
+        "upperarm.R.009"
+      ],
+      "faces": 81,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Forearm_R",
+      "file": "Characters/Parts/Body_Forearm_R.glb",
+      "slot": "forearm.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003",
+        "forearm.R.004",
+        "upperarm.R.004",
+        "forearm.R.005",
+        "upperarm.R.005",
+        "forearm.R.006",
+        "upperarm.R.006",
+        "forearm.R.007",
+        "upperarm.R.007",
+        "forearm.R.008",
+        "upperarm.R.008",
+        "forearm.R.009",
+        "upperarm.R.009"
+      ],
+      "faces": 81,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Hand_R",
+      "file": "Characters/Parts/Body_Hand_R.glb",
+      "slot": "hand.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "hand.R",
+        "hand.R.001",
+        "hand.R.002",
+        "hand.R.003",
+        "hand.R.004",
+        "hand.R.005",
+        "hand.R.006",
+        "hand.R.007",
+        "hand.R.008",
+        "hand.R.009"
+      ],
+      "faces": 132,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Thigh_R",
+      "file": "Characters/Parts/Body_Thigh_R.glb",
+      "slot": "thigh.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "thigh.R",
+        "thigh.R.001",
+        "thigh.R.002",
+        "thigh.R.003",
+        "thigh.R.004",
+        "thigh.R.005",
+        "thigh.R.006",
+        "thigh.R.007",
+        "thigh.R.008",
+        "thigh.R.009"
+      ],
+      "faces": 66,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_Shin_R",
+      "file": "Characters/Parts/Body_Shin_R.glb",
+      "slot": "shin.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.R",
+        "shin.R.001",
+        "shin.R.002",
+        "shin.R.003",
+        "shin.R.004",
+        "shin.R.005",
+        "shin.R.006",
+        "shin.R.007",
+        "shin.R.008",
+        "shin.R.009"
+      ],
+      "faces": 82,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Indigo_Upper_R",
+      "file": "Characters/Parts/Sleeve_Indigo_Upper_R.glb",
+      "slot": "sleeve.upper.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Indigo_Lower_R",
+      "file": "Characters/Parts/Sleeve_Indigo_Lower_R.glb",
+      "slot": "sleeve.lower.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Hemp_Upper_R",
+      "file": "Characters/Parts/Sleeve_Hemp_Upper_R.glb",
+      "slot": "sleeve.upper.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Hemp_Lower_R",
+      "file": "Characters/Parts/Sleeve_Hemp_Lower_R.glb",
+      "slot": "sleeve.lower.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Moss_Upper_R",
+      "file": "Characters/Parts/Sleeve_Moss_Upper_R.glb",
+      "slot": "sleeve.upper.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Moss_Lower_R",
+      "file": "Characters/Parts/Sleeve_Moss_Lower_R.glb",
+      "slot": "sleeve.lower.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001",
+        "forearm.R.002",
+        "upperarm.R.002",
+        "forearm.R.003",
+        "upperarm.R.003"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Robe_Upper_R",
+      "file": "Characters/Parts/Sleeve_Robe_Upper_R.glb",
+      "slot": "sleeve.upper.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Sleeve_Robe_Lower_R",
+      "file": "Characters/Parts/Sleeve_Robe_Lower_R.glb",
+      "slot": "sleeve.lower.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "forearm.R",
+        "upperarm.R",
+        "forearm.R.001",
+        "upperarm.R.001"
+      ],
+      "faces": 101,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Dark_Thigh_R",
+      "file": "Characters/Parts/Hakama_Dark_Thigh_R.glb",
+      "slot": "trouser.thigh.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.R",
+        "thigh.R",
+        "shin.R.001",
+        "thigh.R.001",
+        "shin.R.002",
+        "thigh.R.002",
+        "shin.R.003",
+        "thigh.R.003",
+        "shin.R.004",
+        "thigh.R.004",
+        "shin.R.005",
+        "thigh.R.005",
+        "shin.R.006",
+        "thigh.R.006"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Dark_Shin_R",
+      "file": "Characters/Parts/Hakama_Dark_Shin_R.glb",
+      "slot": "trouser.shin.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.R",
+        "thigh.R",
+        "shin.R.001",
+        "thigh.R.001",
+        "shin.R.002",
+        "thigh.R.002",
+        "shin.R.003",
+        "thigh.R.003",
+        "shin.R.004",
+        "thigh.R.004",
+        "shin.R.005",
+        "thigh.R.005",
+        "shin.R.006",
+        "thigh.R.006"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Hemp_Thigh_R",
+      "file": "Characters/Parts/Hakama_Hemp_Thigh_R.glb",
+      "slot": "trouser.thigh.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.R",
+        "thigh.R",
+        "shin.R.001",
+        "thigh.R.001",
+        "shin.R.002",
+        "thigh.R.002",
+        "shin.R.003",
+        "thigh.R.003"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hakama_Hemp_Shin_R",
+      "file": "Characters/Parts/Hakama_Hemp_Shin_R.glb",
+      "slot": "trouser.shin.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "shin.R",
+        "thigh.R",
+        "shin.R.001",
+        "thigh.R.001",
+        "shin.R.002",
+        "thigh.R.002",
+        "shin.R.003",
+        "thigh.R.003"
+      ],
+      "faces": 121,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Foot_Sandal_R",
+      "file": "Characters/Parts/Foot_Sandal_R.glb",
+      "slot": "foot.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "foot.R",
+        "foot.R.001",
+        "foot.R.002",
+        "foot.R.003",
+        "foot.R.004",
+        "foot.R.005",
+        "foot.R.006"
+      ],
+      "faces": 302,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Foot_Tabi_R",
+      "file": "Characters/Parts/Foot_Tabi_R.glb",
+      "slot": "foot.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "foot.R",
+        "foot.R.001",
+        "foot.R.002",
+        "foot.R.003"
+      ],
+      "faces": 106,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Weapon_Katana",
+      "file": "Characters/Parts/Weapon_Katana.glb",
+      "slot": "weapon.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "hand.R",
+        "hand.R.001",
+        "hand.R.002"
+      ],
+      "faces": 250,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Hat_Straw",
+      "file": "Characters/Parts/Hat_Straw.glb",
+      "slot": "hat",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "head",
+        "head.001"
+      ],
+      "faces": 322,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Pelvis_Dark",
+      "file": "Characters/Parts/Clothes_Pelvis_Dark.glb",
+      "slot": "pelvis_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "pelvis",
+        "pelvis.001",
+        "pelvis.002",
+        "pelvis.003",
+        "pelvis.004",
+        "pelvis.005",
+        "pelvis.006"
+      ],
+      "faces": 86,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Clothes_Pelvis_Hemp",
+      "file": "Characters/Parts/Clothes_Pelvis_Hemp.glb",
+      "slot": "pelvis_clothes",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "pelvis",
+        "pelvis.001",
+        "pelvis.002",
+        "pelvis.003"
+      ],
+      "faces": 86,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Armor_Shoulder_L",
+      "file": "Characters/Parts/Armor_Shoulder_L.glb",
+      "slot": "armor.shoulder.L",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "upperarm.L",
+        "upperarm.L.001"
+      ],
+      "faces": 16,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Armor_Shoulder_R",
+      "file": "Characters/Parts/Armor_Shoulder_R.glb",
+      "slot": "armor.shoulder.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "upperarm.R",
+        "upperarm.R.001"
+      ],
+      "faces": 16,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Armor_LamellarTorso",
+      "file": "Characters/Parts/Armor_LamellarTorso.glb",
+      "slot": "armor.torso",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "chest",
+        "spine",
+        "chest.001",
+        "spine.001"
+      ],
+      "faces": 258,
+      "origin": "common character origin at feet"
+    },
+    {
+      "id": "Body_HandGrip_R",
+      "file": "Characters/Parts/Body_HandGrip_R.glb",
+      "slot": "hand.R",
+      "skeleton": "HUMAN_7H_V2",
+      "revision": 2,
+      "bones": [
+        "hand.R"
+      ],
+      "faces": 132,
+      "origin": "common character origin at feet"
+    }
+  ],
+  "characters": [
+    {
+      "id": "CH_Protagonist",
+      "file": "Characters/CH_Protagonist.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_HandGrip_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Topknot",
+        "Clothes_Torso_Indigo",
+        "Sleeve_Indigo_Upper_L",
+        "Sleeve_Indigo_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Tabi_L",
+        "Sleeve_Indigo_Upper_R",
+        "Sleeve_Indigo_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Tabi_R",
+        "Weapon_Katana"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Saito_Headman",
+      "file": "Characters/CH_Saito_Headman.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Elder",
+        "Hair_Grey",
+        "Clothes_Torso_Hemp",
+        "Sleeve_Hemp_Upper_L",
+        "Sleeve_Hemp_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Hemp_Upper_R",
+        "Sleeve_Hemp_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Sandal_R",
+        "Beard_Grey"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Genzo_Smith",
+      "file": "Characters/CH_Genzo_Smith.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Broad",
+        "Hair_Tied",
+        "Clothes_Torso_Hemp",
+        "Sleeve_Hemp_Upper_L",
+        "Sleeve_Hemp_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Hemp_Upper_R",
+        "Sleeve_Hemp_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Sandal_R",
+        "Apron_Smith"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Taro_Fisher",
+      "file": "Characters/CH_Taro_Fisher.glb",
+      "parts": [
+        "Clothes_Pelvis_Hemp",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Tied",
+        "Clothes_Torso_Moss",
+        "Sleeve_Moss_Upper_L",
+        "Sleeve_Moss_Lower_L",
+        "Hakama_Hemp_Thigh_L",
+        "Hakama_Hemp_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Moss_Upper_R",
+        "Sleeve_Moss_Lower_R",
+        "Hakama_Hemp_Thigh_R",
+        "Hakama_Hemp_Shin_R",
+        "Foot_Sandal_R",
+        "Hat_Straw"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Masanori_Recorder",
+      "file": "Characters/CH_Masanori_Recorder.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Elder",
+        "Hair_Topknot",
+        "Clothes_Torso_Robe",
+        "Sleeve_Robe_Upper_L",
+        "Sleeve_Robe_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Tabi_L",
+        "Sleeve_Robe_Upper_R",
+        "Sleeve_Robe_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Tabi_R"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Monk",
+      "file": "Characters/CH_Monk.glb",
+      "parts": [
+        "Clothes_Pelvis_Hemp",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Grey",
+        "Clothes_Torso_Hemp",
+        "Sleeve_Hemp_Upper_L",
+        "Sleeve_Hemp_Lower_L",
+        "Hakama_Hemp_Thigh_L",
+        "Hakama_Hemp_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Hemp_Upper_R",
+        "Sleeve_Hemp_Lower_R",
+        "Hakama_Hemp_Thigh_R",
+        "Hakama_Hemp_Shin_R",
+        "Foot_Sandal_R"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Spirit_Guard",
+      "file": "Characters/CH_Spirit_Guard.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_HandGrip_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Topknot",
+        "Clothes_Torso_Indigo",
+        "Sleeve_Indigo_Upper_L",
+        "Sleeve_Indigo_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Tabi_L",
+        "Sleeve_Indigo_Upper_R",
+        "Sleeve_Indigo_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Tabi_R",
+        "Weapon_Katana"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Hana",
+      "file": "Characters/CH_Hana.glb",
+      "parts": [
+        "Clothes_Pelvis_Hemp",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Bob",
+        "Clothes_Torso_Moss",
+        "Sleeve_Moss_Upper_L",
+        "Sleeve_Moss_Lower_L",
+        "Hakama_Hemp_Thigh_L",
+        "Hakama_Hemp_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Moss_Upper_R",
+        "Sleeve_Moss_Lower_R",
+        "Hakama_Hemp_Thigh_R",
+        "Hakama_Hemp_Shin_R",
+        "Foot_Sandal_R"
+      ],
+      "heightM": 1.25,
+      "rigScale": [
+        0.7142857313156128,
+        0.7142857313156128,
+        0.7142857313156128
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    },
+    {
+      "id": "CH_Deserter",
+      "file": "Characters/CH_Deserter.glb",
+      "parts": [
+        "Clothes_Pelvis_Dark",
+        "Body_Neck",
+        "Belt_Obi",
+        "Body_UpperArm_L",
+        "Body_Forearm_L",
+        "Body_Hand_L",
+        "Body_Thigh_L",
+        "Body_Shin_L",
+        "Body_UpperArm_R",
+        "Body_Forearm_R",
+        "Body_Hand_R",
+        "Body_Thigh_R",
+        "Body_Shin_R",
+        "Face_Adult",
+        "Hair_Tied",
+        "Clothes_Torso_Moss",
+        "Sleeve_Moss_Upper_L",
+        "Sleeve_Moss_Lower_L",
+        "Hakama_Dark_Thigh_L",
+        "Hakama_Dark_Shin_L",
+        "Foot_Sandal_L",
+        "Sleeve_Moss_Upper_R",
+        "Sleeve_Moss_Lower_R",
+        "Hakama_Dark_Thigh_R",
+        "Hakama_Dark_Shin_R",
+        "Foot_Sandal_R",
+        "Armor_LamellarTorso",
+        "Armor_Shoulder_L",
+        "Armor_Shoulder_R"
+      ],
+      "heightM": 1.75,
+      "rigScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "headBodyRatio": 7,
+      "skeleton": "HUMAN_7H_V2",
+      "animationSet": "Human",
+      "revision": 2
+    }
+  ],
+  "animals": [
+    {
+      "id": "Deer",
+      "file": "Animals/AN_Deer.glb",
+      "temperament": "neutral",
+      "skeleton": "QUAD_DEER_V1",
+      "parts": [
+        {
+          "slot": "Body",
+          "file": "Animals/Deer/Parts/Body.glb",
+          "bones": [
+            "spine"
+          ]
+        },
+        {
+          "slot": "Rump",
+          "file": "Animals/Deer/Parts/Rump.glb",
+          "bones": [
+            "pelvis"
+          ]
+        },
+        {
+          "slot": "Chest",
+          "file": "Animals/Deer/Parts/Chest.glb",
+          "bones": [
+            "chest"
+          ]
+        },
+        {
+          "slot": "Neck",
+          "file": "Animals/Deer/Parts/Neck.glb",
+          "bones": [
+            "neck"
+          ]
+        },
+        {
+          "slot": "Head",
+          "file": "Animals/Deer/Parts/Head.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "Antlers",
+          "file": "Animals/Deer/Parts/Antlers.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "F_upper.L",
+          "file": "Animals/Deer/Parts/F_upper_L.glb",
+          "bones": [
+            "F_upper.L"
+          ]
+        },
+        {
+          "slot": "F_lower.L",
+          "file": "Animals/Deer/Parts/F_lower_L.glb",
+          "bones": [
+            "F_lower.L"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.L",
+          "file": "Animals/Deer/Parts/F_metacarpal_L.glb",
+          "bones": [
+            "F_metacarpal.L"
+          ]
+        },
+        {
+          "slot": "F_foot.L",
+          "file": "Animals/Deer/Parts/F_foot_L.glb",
+          "bones": [
+            "F_foot.L"
+          ]
+        },
+        {
+          "slot": "H_femur.L",
+          "file": "Animals/Deer/Parts/H_femur_L.glb",
+          "bones": [
+            "H_femur.L"
+          ]
+        },
+        {
+          "slot": "H_tibia.L",
+          "file": "Animals/Deer/Parts/H_tibia_L.glb",
+          "bones": [
+            "H_tibia.L"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.L",
+          "file": "Animals/Deer/Parts/H_metatarsal_L.glb",
+          "bones": [
+            "H_metatarsal.L"
+          ]
+        },
+        {
+          "slot": "H_foot.L",
+          "file": "Animals/Deer/Parts/H_foot_L.glb",
+          "bones": [
+            "H_foot.L"
+          ]
+        },
+        {
+          "slot": "F_upper.R",
+          "file": "Animals/Deer/Parts/F_upper_R.glb",
+          "bones": [
+            "F_upper.R"
+          ]
+        },
+        {
+          "slot": "F_lower.R",
+          "file": "Animals/Deer/Parts/F_lower_R.glb",
+          "bones": [
+            "F_lower.R"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.R",
+          "file": "Animals/Deer/Parts/F_metacarpal_R.glb",
+          "bones": [
+            "F_metacarpal.R"
+          ]
+        },
+        {
+          "slot": "F_foot.R",
+          "file": "Animals/Deer/Parts/F_foot_R.glb",
+          "bones": [
+            "F_foot.R"
+          ]
+        },
+        {
+          "slot": "H_femur.R",
+          "file": "Animals/Deer/Parts/H_femur_R.glb",
+          "bones": [
+            "H_femur.R"
+          ]
+        },
+        {
+          "slot": "H_tibia.R",
+          "file": "Animals/Deer/Parts/H_tibia_R.glb",
+          "bones": [
+            "H_tibia.R"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.R",
+          "file": "Animals/Deer/Parts/H_metatarsal_R.glb",
+          "bones": [
+            "H_metatarsal.R"
+          ]
+        },
+        {
+          "slot": "H_foot.R",
+          "file": "Animals/Deer/Parts/H_foot_R.glb",
+          "bones": [
+            "H_foot.R"
+          ]
+        },
+        {
+          "slot": "Tail",
+          "file": "Animals/Deer/Parts/Tail.glb",
+          "bones": [
+            "tail"
+          ]
+        },
+        {
+          "slot": "RumpPatch",
+          "file": "Animals/Deer/Parts/RumpPatch.glb",
+          "bones": [
+            "pelvis"
+          ]
+        },
+        {
+          "slot": "Spots",
+          "file": "Animals/Deer/Parts/Spots.glb",
+          "bones": [
+            "spine"
+          ]
+        }
+      ],
+      "revision": 2,
+      "surface": "continuous sculpted body, split into modules with shared seam weights"
+    },
+    {
+      "id": "Wolf",
+      "file": "Animals/AN_Wolf.glb",
+      "temperament": "dangerous",
+      "skeleton": "QUAD_WOLF_V1",
+      "parts": [
+        {
+          "slot": "Body",
+          "file": "Animals/Wolf/Parts/Body.glb",
+          "bones": [
+            "spine"
+          ]
+        },
+        {
+          "slot": "Rump",
+          "file": "Animals/Wolf/Parts/Rump.glb",
+          "bones": [
+            "pelvis"
+          ]
+        },
+        {
+          "slot": "Chest",
+          "file": "Animals/Wolf/Parts/Chest.glb",
+          "bones": [
+            "chest"
+          ]
+        },
+        {
+          "slot": "Neck",
+          "file": "Animals/Wolf/Parts/Neck.glb",
+          "bones": [
+            "neck"
+          ]
+        },
+        {
+          "slot": "Head",
+          "file": "Animals/Wolf/Parts/Head.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "Ruff",
+          "file": "Animals/Wolf/Parts/Ruff.glb",
+          "bones": [
+            "chest"
+          ]
+        },
+        {
+          "slot": "F_upper.L",
+          "file": "Animals/Wolf/Parts/F_upper_L.glb",
+          "bones": [
+            "F_upper.L"
+          ]
+        },
+        {
+          "slot": "F_lower.L",
+          "file": "Animals/Wolf/Parts/F_lower_L.glb",
+          "bones": [
+            "F_lower.L"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.L",
+          "file": "Animals/Wolf/Parts/F_metacarpal_L.glb",
+          "bones": [
+            "F_metacarpal.L"
+          ]
+        },
+        {
+          "slot": "F_foot.L",
+          "file": "Animals/Wolf/Parts/F_foot_L.glb",
+          "bones": [
+            "F_foot.L"
+          ]
+        },
+        {
+          "slot": "H_femur.L",
+          "file": "Animals/Wolf/Parts/H_femur_L.glb",
+          "bones": [
+            "H_femur.L"
+          ]
+        },
+        {
+          "slot": "H_tibia.L",
+          "file": "Animals/Wolf/Parts/H_tibia_L.glb",
+          "bones": [
+            "H_tibia.L"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.L",
+          "file": "Animals/Wolf/Parts/H_metatarsal_L.glb",
+          "bones": [
+            "H_metatarsal.L"
+          ]
+        },
+        {
+          "slot": "H_foot.L",
+          "file": "Animals/Wolf/Parts/H_foot_L.glb",
+          "bones": [
+            "H_foot.L"
+          ]
+        },
+        {
+          "slot": "F_upper.R",
+          "file": "Animals/Wolf/Parts/F_upper_R.glb",
+          "bones": [
+            "F_upper.R"
+          ]
+        },
+        {
+          "slot": "F_lower.R",
+          "file": "Animals/Wolf/Parts/F_lower_R.glb",
+          "bones": [
+            "F_lower.R"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.R",
+          "file": "Animals/Wolf/Parts/F_metacarpal_R.glb",
+          "bones": [
+            "F_metacarpal.R"
+          ]
+        },
+        {
+          "slot": "F_foot.R",
+          "file": "Animals/Wolf/Parts/F_foot_R.glb",
+          "bones": [
+            "F_foot.R"
+          ]
+        },
+        {
+          "slot": "H_femur.R",
+          "file": "Animals/Wolf/Parts/H_femur_R.glb",
+          "bones": [
+            "H_femur.R"
+          ]
+        },
+        {
+          "slot": "H_tibia.R",
+          "file": "Animals/Wolf/Parts/H_tibia_R.glb",
+          "bones": [
+            "H_tibia.R"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.R",
+          "file": "Animals/Wolf/Parts/H_metatarsal_R.glb",
+          "bones": [
+            "H_metatarsal.R"
+          ]
+        },
+        {
+          "slot": "H_foot.R",
+          "file": "Animals/Wolf/Parts/H_foot_R.glb",
+          "bones": [
+            "H_foot.R"
+          ]
+        },
+        {
+          "slot": "Tail",
+          "file": "Animals/Wolf/Parts/Tail.glb",
+          "bones": [
+            "tail"
+          ]
+        }
+      ],
+      "revision": 2,
+      "surface": "continuous sculpted body, split into modules with shared seam weights"
+    },
+    {
+      "id": "Boar",
+      "file": "Animals/AN_Boar.glb",
+      "temperament": "dangerous_when_provoked",
+      "skeleton": "QUAD_BOAR_V1",
+      "parts": [
+        {
+          "slot": "Body",
+          "file": "Animals/Boar/Parts/Body.glb",
+          "bones": [
+            "spine"
+          ]
+        },
+        {
+          "slot": "Rump",
+          "file": "Animals/Boar/Parts/Rump.glb",
+          "bones": [
+            "pelvis"
+          ]
+        },
+        {
+          "slot": "Chest",
+          "file": "Animals/Boar/Parts/Chest.glb",
+          "bones": [
+            "chest"
+          ]
+        },
+        {
+          "slot": "Neck",
+          "file": "Animals/Boar/Parts/Neck.glb",
+          "bones": [
+            "neck"
+          ]
+        },
+        {
+          "slot": "Head",
+          "file": "Animals/Boar/Parts/Head.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "Bristles",
+          "file": "Animals/Boar/Parts/Bristles.glb",
+          "bones": [
+            "spine"
+          ]
+        },
+        {
+          "slot": "F_upper.L",
+          "file": "Animals/Boar/Parts/F_upper_L.glb",
+          "bones": [
+            "F_upper.L"
+          ]
+        },
+        {
+          "slot": "F_lower.L",
+          "file": "Animals/Boar/Parts/F_lower_L.glb",
+          "bones": [
+            "F_lower.L"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.L",
+          "file": "Animals/Boar/Parts/F_metacarpal_L.glb",
+          "bones": [
+            "F_metacarpal.L"
+          ]
+        },
+        {
+          "slot": "F_foot.L",
+          "file": "Animals/Boar/Parts/F_foot_L.glb",
+          "bones": [
+            "F_foot.L"
+          ]
+        },
+        {
+          "slot": "H_femur.L",
+          "file": "Animals/Boar/Parts/H_femur_L.glb",
+          "bones": [
+            "H_femur.L"
+          ]
+        },
+        {
+          "slot": "H_tibia.L",
+          "file": "Animals/Boar/Parts/H_tibia_L.glb",
+          "bones": [
+            "H_tibia.L"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.L",
+          "file": "Animals/Boar/Parts/H_metatarsal_L.glb",
+          "bones": [
+            "H_metatarsal.L"
+          ]
+        },
+        {
+          "slot": "H_foot.L",
+          "file": "Animals/Boar/Parts/H_foot_L.glb",
+          "bones": [
+            "H_foot.L"
+          ]
+        },
+        {
+          "slot": "F_upper.R",
+          "file": "Animals/Boar/Parts/F_upper_R.glb",
+          "bones": [
+            "F_upper.R"
+          ]
+        },
+        {
+          "slot": "F_lower.R",
+          "file": "Animals/Boar/Parts/F_lower_R.glb",
+          "bones": [
+            "F_lower.R"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.R",
+          "file": "Animals/Boar/Parts/F_metacarpal_R.glb",
+          "bones": [
+            "F_metacarpal.R"
+          ]
+        },
+        {
+          "slot": "F_foot.R",
+          "file": "Animals/Boar/Parts/F_foot_R.glb",
+          "bones": [
+            "F_foot.R"
+          ]
+        },
+        {
+          "slot": "H_femur.R",
+          "file": "Animals/Boar/Parts/H_femur_R.glb",
+          "bones": [
+            "H_femur.R"
+          ]
+        },
+        {
+          "slot": "H_tibia.R",
+          "file": "Animals/Boar/Parts/H_tibia_R.glb",
+          "bones": [
+            "H_tibia.R"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.R",
+          "file": "Animals/Boar/Parts/H_metatarsal_R.glb",
+          "bones": [
+            "H_metatarsal.R"
+          ]
+        },
+        {
+          "slot": "H_foot.R",
+          "file": "Animals/Boar/Parts/H_foot_R.glb",
+          "bones": [
+            "H_foot.R"
+          ]
+        },
+        {
+          "slot": "Tail",
+          "file": "Animals/Boar/Parts/Tail.glb",
+          "bones": [
+            "tail"
+          ]
+        }
+      ],
+      "revision": 2,
+      "surface": "continuous sculpted body, split into modules with shared seam weights"
+    },
+    {
+      "id": "Goat",
+      "file": "Animals/AN_Goat.glb",
+      "temperament": "gentle",
+      "skeleton": "QUAD_GOAT_V1",
+      "parts": [
+        {
+          "slot": "Body",
+          "file": "Animals/Goat/Parts/Body.glb",
+          "bones": [
+            "spine"
+          ]
+        },
+        {
+          "slot": "Rump",
+          "file": "Animals/Goat/Parts/Rump.glb",
+          "bones": [
+            "pelvis"
+          ]
+        },
+        {
+          "slot": "Chest",
+          "file": "Animals/Goat/Parts/Chest.glb",
+          "bones": [
+            "chest"
+          ]
+        },
+        {
+          "slot": "Neck",
+          "file": "Animals/Goat/Parts/Neck.glb",
+          "bones": [
+            "neck"
+          ]
+        },
+        {
+          "slot": "Head",
+          "file": "Animals/Goat/Parts/Head.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "Horns",
+          "file": "Animals/Goat/Parts/Horns.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "Beard",
+          "file": "Animals/Goat/Parts/Beard.glb",
+          "bones": [
+            "head"
+          ]
+        },
+        {
+          "slot": "F_upper.L",
+          "file": "Animals/Goat/Parts/F_upper_L.glb",
+          "bones": [
+            "F_upper.L"
+          ]
+        },
+        {
+          "slot": "F_lower.L",
+          "file": "Animals/Goat/Parts/F_lower_L.glb",
+          "bones": [
+            "F_lower.L"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.L",
+          "file": "Animals/Goat/Parts/F_metacarpal_L.glb",
+          "bones": [
+            "F_metacarpal.L"
+          ]
+        },
+        {
+          "slot": "F_foot.L",
+          "file": "Animals/Goat/Parts/F_foot_L.glb",
+          "bones": [
+            "F_foot.L"
+          ]
+        },
+        {
+          "slot": "H_femur.L",
+          "file": "Animals/Goat/Parts/H_femur_L.glb",
+          "bones": [
+            "H_femur.L"
+          ]
+        },
+        {
+          "slot": "H_tibia.L",
+          "file": "Animals/Goat/Parts/H_tibia_L.glb",
+          "bones": [
+            "H_tibia.L"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.L",
+          "file": "Animals/Goat/Parts/H_metatarsal_L.glb",
+          "bones": [
+            "H_metatarsal.L"
+          ]
+        },
+        {
+          "slot": "H_foot.L",
+          "file": "Animals/Goat/Parts/H_foot_L.glb",
+          "bones": [
+            "H_foot.L"
+          ]
+        },
+        {
+          "slot": "F_upper.R",
+          "file": "Animals/Goat/Parts/F_upper_R.glb",
+          "bones": [
+            "F_upper.R"
+          ]
+        },
+        {
+          "slot": "F_lower.R",
+          "file": "Animals/Goat/Parts/F_lower_R.glb",
+          "bones": [
+            "F_lower.R"
+          ]
+        },
+        {
+          "slot": "F_metacarpal.R",
+          "file": "Animals/Goat/Parts/F_metacarpal_R.glb",
+          "bones": [
+            "F_metacarpal.R"
+          ]
+        },
+        {
+          "slot": "F_foot.R",
+          "file": "Animals/Goat/Parts/F_foot_R.glb",
+          "bones": [
+            "F_foot.R"
+          ]
+        },
+        {
+          "slot": "H_femur.R",
+          "file": "Animals/Goat/Parts/H_femur_R.glb",
+          "bones": [
+            "H_femur.R"
+          ]
+        },
+        {
+          "slot": "H_tibia.R",
+          "file": "Animals/Goat/Parts/H_tibia_R.glb",
+          "bones": [
+            "H_tibia.R"
+          ]
+        },
+        {
+          "slot": "H_metatarsal.R",
+          "file": "Animals/Goat/Parts/H_metatarsal_R.glb",
+          "bones": [
+            "H_metatarsal.R"
+          ]
+        },
+        {
+          "slot": "H_foot.R",
+          "file": "Animals/Goat/Parts/H_foot_R.glb",
+          "bones": [
+            "H_foot.R"
+          ]
+        },
+        {
+          "slot": "Tail",
+          "file": "Animals/Goat/Parts/Tail.glb",
+          "bones": [
+            "tail"
+          ]
+        }
+      ],
+      "revision": 2,
+      "surface": "continuous sculpted body, split into modules with shared seam weights"
+    }
+  ],
+  "staticModules": [
+    {
+      "id": "AR_Wall_Plaster_2m",
+      "file": "Architecture/AR_Wall_Plaster_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -0.12000000476837158,
+          0.0
+        ],
+        [
+          1.0,
+          0.10999999940395355,
+          2.4000000953674316
+        ]
+      ],
+      "faces": 600,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Wall_Burnt_2m",
+      "file": "Architecture/AR_Wall_Burnt_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -0.12000000476837158,
+          0.0
+        ],
+        [
+          1.0,
+          0.10999999940395355,
+          2.4000000953674316
+        ]
+      ],
+      "faces": 600,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Wall_Window_2m",
+      "file": "Architecture/AR_Wall_Window_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.001489281654358,
+          -0.17045271396636963,
+          -0.0013985299738124013
+        ],
+        [
+          1.0017225742340088,
+          0.11143132299184799,
+          2.4017250537872314
+        ]
+      ],
+      "faces": 918,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_DoorFrame_2m",
+      "file": "Architecture/AR_DoorFrame_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0015780925750732,
+          -0.12657508254051208,
+          -0.0014968258328735828
+        ],
+        [
+          1.0017231702804565,
+          0.12648740410804749,
+          2.4017250537872314
+        ]
+      ],
+      "faces": 216,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Door_Wood_1m",
+      "file": "Architecture/AR_Door_Wood_1m.glb",
+      "category": "Architecture",
+      "gridM": 1,
+      "boundsLocal": [
+        [
+          -0.00024851635680533946,
+          -0.08405520766973495,
+          -0.0009705672273412347
+        ],
+        [
+          1.0009390115737915,
+          0.030489753931760788,
+          2.000553846359253
+        ]
+      ],
+      "faces": 648,
+      "pivot": "left bottom door edge",
+      "revision": 2
+    },
+    {
+      "id": "AR_Door_Shoji_1m",
+      "file": "Architecture/AR_Door_Shoji_1m.glb",
+      "category": "Architecture",
+      "gridM": 1,
+      "boundsLocal": [
+        [
+          -0.00024851635680533946,
+          -0.08405520766973495,
+          -0.0009705672273412347
+        ],
+        [
+          1.0009390115737915,
+          0.030489753931760788,
+          2.000553846359253
+        ]
+      ],
+      "faces": 648,
+      "pivot": "left bottom door edge",
+      "revision": 2
+    },
+    {
+      "id": "AR_Floor_Plank_2m",
+      "file": "Architecture/AR_Floor_Plank_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -0.9959999918937683,
+          0.0
+        ],
+        [
+          1.0,
+          0.9960000514984131,
+          0.15299999713897705
+        ]
+      ],
+      "faces": 720,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Floor_Tatami_2m",
+      "file": "Architecture/AR_Floor_Tatami_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.9950000047683716,
+          -1.0,
+          0.0
+        ],
+        [
+          0.9950000047683716,
+          1.0,
+          0.140500009059906
+        ]
+      ],
+      "faces": 156,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Floor_Stone_2m",
+      "file": "Architecture/AR_Floor_Stone_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.9940000176429749,
+          -0.9940000176429749,
+          0.0
+        ],
+        [
+          0.9940000176429749,
+          0.9940000176429749,
+          0.12999999523162842
+        ]
+      ],
+      "faces": 234,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Post_2p4m",
+      "file": "Architecture/AR_Post_2p4m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.1511596441268921,
+          -0.1517389416694641,
+          -0.0015883626183494925
+        ],
+        [
+          0.15040022134780884,
+          0.1514233499765396,
+          2.4014627933502197
+        ]
+      ],
+      "faces": 272,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Beam_2m",
+      "file": "Architecture/AR_Beam_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0009162425994873,
+          -0.09086305648088455,
+          -0.10060713440179825
+        ],
+        [
+          1.0009154081344604,
+          0.0908624529838562,
+          0.10060622543096542
+        ]
+      ],
+      "faces": 54,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Beam_Burnt_2m",
+      "file": "Architecture/AR_Beam_Burnt_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0009162425994873,
+          -0.09086305648088455,
+          -0.10060713440179825
+        ],
+        [
+          1.0009154081344604,
+          0.0908624529838562,
+          0.10060622543096542
+        ]
+      ],
+      "faces": 54,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Brace_Diagonal",
+      "file": "Architecture/AR_Brace_Diagonal.glb",
+      "category": "Architecture",
+      "gridM": 1,
+      "boundsLocal": [
+        [
+          -0.042143914848566055,
+          -0.06633885949850082,
+          -0.04210970178246498
+        ],
+        [
+          1.0419296026229858,
+          0.06616014987230301,
+          1.043178677558899
+        ]
+      ],
+      "faces": 54,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Roof_Thatch_2m",
+      "file": "Architecture/AR_Roof_Thatch_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.037071745842695236,
+          -0.010130690410733223,
+          -0.14000000059604645
+        ],
+        [
+          2.0238196849823,
+          2.0101306438446045,
+          1.0451194047927856
+        ]
+      ],
+      "faces": 2544,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Roof_Tile_2m",
+      "file": "Architecture/AR_Roof_Tile_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.011180340312421322,
+          -0.02500000037252903,
+          -0.14000000059604645
+        ],
+        [
+          2.0111804008483887,
+          2.0250000953674316,
+          1.0853606462478638
+        ]
+      ],
+      "faces": 744,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Roof_Ridge_2m",
+      "file": "Architecture/AR_Roof_Ridge_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.10461621731519699,
+          -0.03833729773759842,
+          -0.057780250906944275
+        ],
+        [
+          0.10461621731519699,
+          2.110952854156494,
+          0.18000000715255737
+        ]
+      ],
+      "faces": 198,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Gable_2m",
+      "file": "Architecture/AR_Gable_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -0.9957027435302734,
+          -4.23108613176737e-05,
+          -0.0012857988476753235
+        ],
+        [
+          0.9942756295204163,
+          0.10077272355556488,
+          0.49827930331230164
+        ]
+      ],
+      "faces": 41,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Fence_2m",
+      "file": "Architecture/AR_Fence_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0437641143798828,
+          -0.061435628682374954,
+          -0.0009065546910278499
+        ],
+        [
+          1.0432229042053223,
+          0.061117880046367645,
+          1.2012823820114136
+        ]
+      ],
+      "faces": 378,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Stairs_3Steps",
+      "file": "Architecture/AR_Stairs_3Steps.glb",
+      "category": "Architecture",
+      "gridM": 0.25,
+      "boundsLocal": [
+        [
+          -0.800000011920929,
+          -0.15785302221775055,
+          -0.008882492780685425
+        ],
+        [
+          0.800000011920929,
+          0.7578530311584473,
+          0.6488824486732483
+        ]
+      ],
+      "faces": 90,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Dock_2m",
+      "file": "Architecture/AR_Dock_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -0.1054999977350235,
+          -0.6021000146865845
+        ],
+        [
+          1.0,
+          1.8654999732971191,
+          0.36180201172828674
+        ]
+      ],
+      "faces": 334,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_StoneFoundation_2m",
+      "file": "Architecture/AR_StoneFoundation_2m.glb",
+      "category": "Architecture",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0000247955322266,
+          -1.0005593299865723,
+          -0.0004957020282745361
+        ],
+        [
+          1.0005439519882202,
+          1.0010459423065186,
+          0.300276517868042
+        ]
+      ],
+      "faces": 832,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "AR_Altar_1m",
+      "file": "Architecture/AR_Altar_1m.glb",
+      "category": "Architecture",
+      "gridM": 1,
+      "boundsLocal": [
+        [
+          -0.6002888679504395,
+          -0.3000123202800751,
+          -0.0015608061803504825
+        ],
+        [
+          0.5984712243080139,
+          0.3000141680240631,
+          0.9488661289215088
+        ]
+      ],
+      "faces": 324,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_LowTable",
+      "file": "Props/PR_LowTable.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5975000262260437,
+          -0.34700000286102295,
+          0.022645920515060425
+        ],
+        [
+          0.5975000262260437,
+          0.34699997305870056,
+          0.44749999046325684
+        ]
+      ],
+      "faces": 274,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Workbench",
+      "file": "Props/PR_Workbench.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.7975000143051147,
+          -0.32199999690055847,
+          0.0251692533493042
+        ],
+        [
+          0.7975000143051147,
+          0.3219999670982361,
+          0.8274999856948853
+        ]
+      ],
+      "faces": 274,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Bench",
+      "file": "Props/PR_Bench.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5975000262260437,
+          -0.171999990940094,
+          0.022991061210632324
+        ],
+        [
+          0.5975000262260437,
+          0.171999990940094,
+          0.4675000011920929
+        ]
+      ],
+      "faces": 196,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Stool",
+      "file": "Props/PR_Stool.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.20492248237133026,
+          -0.1770000010728836,
+          0.02736222743988037
+        ],
+        [
+          0.20492248237133026,
+          0.1769999861717224,
+          0.42750000953674316
+        ]
+      ],
+      "faces": 222,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Chest",
+      "file": "Props/PR_Chest.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.4724999964237213,
+          -0.27399998903274536,
+          0.025000005960464478
+        ],
+        [
+          0.4724999666213989,
+          0.2669999897480011,
+          0.6974999904632568
+        ]
+      ],
+      "faces": 984,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Shelf",
+      "file": "Props/PR_Shelf.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.46299999952316284,
+          -0.1730000078678131,
+          0.0
+        ],
+        [
+          0.46299999952316284,
+          0.1730000078678131,
+          1.5800000429153442
+        ]
+      ],
+      "faces": 222,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Futon",
+      "file": "Props/PR_Futon.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.4000000059604645,
+          -0.8999999761581421,
+          0.0
+        ],
+        [
+          0.4000000059604645,
+          0.8999999761581421,
+          0.24000000953674316
+        ]
+      ],
+      "faces": 212,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_ClayJar",
+      "file": "Props/PR_ClayJar.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.2792366147041321,
+          -0.2807633876800537,
+          0.0
+        ],
+        [
+          0.2792366147041321,
+          0.2807633876800537,
+          0.6060000061988831
+        ]
+      ],
+      "faces": 394,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_ClayBowl",
+      "file": "Props/PR_ClayBowl.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.179509237408638,
+          -0.18049076199531555,
+          0.0
+        ],
+        [
+          0.179509237408638,
+          0.18049076199531555,
+          0.14139999449253082
+        ]
+      ],
+      "faces": 394,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_WoodBucket",
+      "file": "Props/PR_WoodBucket.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.20339231193065643,
+          -0.20339231193065643,
+          0.009999999776482582
+        ],
+        [
+          0.2033422589302063,
+          0.20339231193065643,
+          0.6712200045585632
+        ]
+      ],
+      "faces": 538,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Basket",
+      "file": "Props/PR_Basket.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.30612435936927795,
+          -0.30612435936927795,
+          0.009999999776482582
+        ],
+        [
+          0.30606597661972046,
+          0.30612435936927795,
+          0.414000004529953
+        ]
+      ],
+      "faces": 3558,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_RiceSack",
+      "file": "Props/PR_RiceSack.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.2387281060218811,
+          -0.1972101777791977,
+          0.0
+        ],
+        [
+          0.2387281060218811,
+          0.1972101777791977,
+          0.6200000047683716
+        ]
+      ],
+      "faces": 354,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_PaperLantern",
+      "file": "Props/PR_PaperLantern.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.20580248534679413,
+          -0.2052345871925354,
+          0.09600000083446503
+        ],
+        [
+          0.20580248534679413,
+          0.20599816739559174,
+          0.8489999771118164
+        ]
+      ],
+      "faces": 1220,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_StoneLantern",
+      "file": "Props/PR_StoneLantern.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.3100000023841858,
+          -0.3100000023841858,
+          0.0
+        ],
+        [
+          0.3100000023841858,
+          0.3100000023841858,
+          1.3899999856948853
+        ]
+      ],
+      "faces": 318,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Brazier",
+      "file": "Props/PR_Brazier.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.30000001192092896,
+          -0.30000001192092896,
+          -0.007611938286572695
+        ],
+        [
+          0.30000001192092896,
+          0.30000001192092896,
+          0.41999998688697815
+        ]
+      ],
+      "faces": 360,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Anvil",
+      "file": "Props/PR_Anvil.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.25999999046325684,
+          -0.14000000059604645,
+          0.019999999552965164
+        ],
+        [
+          0.4703562259674072,
+          0.14000000059604645,
+          0.4246509373188019
+        ]
+      ],
+      "faces": 70,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Hammer",
+      "file": "Props/PR_Hammer.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.125,
+          -0.05249999836087227,
+          -0.0009188522817566991
+        ],
+        [
+          0.125,
+          0.05249999836087227,
+          0.5024999976158142
+        ]
+      ],
+      "faces": 64,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Axe",
+      "file": "Props/PR_Axe.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.032596807926893234,
+          -0.024000000208616257,
+          -0.0015944731421768665
+        ],
+        [
+          0.2750000059604645,
+          0.024000000208616257,
+          0.7099999785423279
+        ]
+      ],
+      "faces": 48,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_FishingRod",
+      "file": "Props/PR_FishingRod.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.018016237765550613,
+          -0.015999985858798027,
+          -2.105261228280142e-05
+        ],
+        [
+          0.018016237765550613,
+          0.28119999170303345,
+          1.8517439365386963
+        ]
+      ],
+      "faces": 124,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Paddle",
+      "file": "Props/PR_Paddle.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.10999999940395355,
+          -0.02500000037252903,
+          0.0
+        ],
+        [
+          0.10999999940395355,
+          0.02199999988079071,
+          1.149999976158142
+        ]
+      ],
+      "faces": 37,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_FishingBoat",
+      "file": "Props/PR_FishingBoat.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5959792137145996,
+          -1.4495373964309692,
+          0.04500001668930054
+        ],
+        [
+          0.5959792137145996,
+          0.9674999713897705,
+          0.5059999823570251
+        ]
+      ],
+      "faces": 382,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_Ledger",
+      "file": "Props/PR_Ledger.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.14559808373451233,
+          -0.17749999463558197,
+          0.0
+        ],
+        [
+          0.13249999284744263,
+          0.17749999463558197,
+          0.07313656806945801
+        ]
+      ],
+      "faces": 342,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_OrderScroll",
+      "file": "Props/PR_OrderScroll.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.18000000715255737,
+          -0.27000001072883606,
+          0.008000001311302185
+        ],
+        [
+          0.18000000715255737,
+          0.27000001072883606,
+          0.04800000041723251
+        ]
+      ],
+      "faces": 150,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_SealStamp",
+      "file": "Props/PR_SealStamp.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.045931197702884674,
+          -0.045942969620227814,
+          -0.0009361447882838547
+        ],
+        [
+          0.04693905636668205,
+          0.04698071628808975,
+          0.15000000596046448
+        ]
+      ],
+      "faces": 249,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_SealStamp_Chipped",
+      "file": "Props/PR_SealStamp_Chipped.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.045931726694107056,
+          -0.04594245180487633,
+          -0.000933133065700531
+        ],
+        [
+          0.046056117862463,
+          0.04618434980511665,
+          0.15000000596046448
+        ]
+      ],
+      "faces": 262,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_BurntTrainingPlaque",
+      "file": "Props/PR_BurntTrainingPlaque.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.15000000596046448,
+          -0.03271188586950302,
+          0.0
+        ],
+        [
+          0.15000000596046448,
+          0.027499999850988388,
+          0.36000001430511475
+        ]
+      ],
+      "faces": 86,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_NameTablet",
+      "file": "Props/PR_NameTablet.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.05999999865889549,
+          -0.010999999940395355,
+          0.0
+        ],
+        [
+          0.05999999865889549,
+          0.010999999940395355,
+          0.4440000057220459
+        ]
+      ],
+      "faces": 52,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_SealedRelicBox",
+      "file": "Props/PR_SealedRelicBox.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.2849999964237213,
+          -0.18449999392032623,
+          0.0
+        ],
+        [
+          0.2849999964237213,
+          0.17897766828536987,
+          0.463939368724823
+        ]
+      ],
+      "faces": 144,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_BrokenKatana",
+      "file": "Props/PR_BrokenKatana.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.056999996304512024,
+          -0.041999999433755875,
+          0.0
+        ],
+        [
+          0.05700000002980232,
+          0.041999995708465576,
+          0.5600000023841858
+        ]
+      ],
+      "faces": 116,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_DiscardedArmor",
+      "file": "Props/PR_DiscardedArmor.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.23199999332427979,
+          -0.20499999821186066,
+          0.01289448793977499
+        ],
+        [
+          0.23199999332427979,
+          0.14100000262260437,
+          0.38499999046325684
+        ]
+      ],
+      "faces": 128,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_CutRope",
+      "file": "Props/PR_CutRope.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.036521848291158676,
+          -0.0854174941778183,
+          0.0033344770781695843
+        ],
+        [
+          3.2530369758605957,
+          0.08555472642183304,
+          0.03394804522395134
+        ]
+      ],
+      "faces": 1554,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "PR_MemorialTablet",
+      "file": "Props/PR_MemorialTablet.glb",
+      "category": "Props",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.14000000059604645,
+          -0.07999999821186066,
+          0.0
+        ],
+        [
+          0.14000000059604645,
+          0.07999999821186066,
+          0.550000011920929
+        ]
+      ],
+      "faces": 206,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Broadleaf_1",
+      "file": "Nature/NA_Broadleaf_1.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -1.4075253009796143,
+          -1.3511940240859985,
+          -0.01062583178281784
+        ],
+        [
+          1.2892475128173828,
+          1.4307233095169067,
+          2.9049925804138184
+        ]
+      ],
+      "faces": 5812,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Broadleaf_2",
+      "file": "Nature/NA_Broadleaf_2.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -1.3898464441299438,
+          -1.2666927576065063,
+          -0.01062583178281784
+        ],
+        [
+          1.3160511255264282,
+          1.3170382976531982,
+          2.912691593170166
+        ]
+      ],
+      "faces": 5812,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Broadleaf_3",
+      "file": "Nature/NA_Broadleaf_3.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -1.323654055595398,
+          -1.3291077613830566,
+          -0.01062583178281784
+        ],
+        [
+          1.3182529211044312,
+          1.318379521369934,
+          3.080657958984375
+        ]
+      ],
+      "faces": 5812,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Pine_1",
+      "file": "Nature/NA_Pine_1.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -1.1593976020812988,
+          -1.083020567893982,
+          -0.0030947616323828697
+        ],
+        [
+          1.1846489906311035,
+          1.2621034383773804,
+          3.274770498275757
+        ]
+      ],
+      "faces": 6176,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Pine_2",
+      "file": "Nature/NA_Pine_2.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -1.1805747747421265,
+          -1.2811158895492554,
+          -0.0030947616323828697
+        ],
+        [
+          1.166727066040039,
+          1.193670630455017,
+          3.650747060775757
+        ]
+      ],
+      "faces": 6176,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_BambooClump",
+      "file": "Nature/NA_BambooClump.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5730185508728027,
+          -0.10139744728803635,
+          -0.002659477759152651
+        ],
+        [
+          0.8430185317993164,
+          0.5167685747146606,
+          3.2850000858306885
+        ]
+      ],
+      "faces": 1424,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_DeadTree",
+      "file": "Nature/NA_DeadTree.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.6024868488311768,
+          -0.5689258575439453,
+          -0.006699320860207081
+        ],
+        [
+          0.7854424715042114,
+          0.47476550936698914,
+          2.601797580718994
+        ]
+      ],
+      "faces": 154,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Stump",
+      "file": "Nature/NA_Stump.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.45471736788749695,
+          -0.4445939362049103,
+          -0.00218982994556427
+        ],
+        [
+          0.5012218356132507,
+          0.4684126377105713,
+          0.40049999952316284
+        ]
+      ],
+      "faces": 966,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_FallenLog",
+      "file": "Nature/NA_FallenLog.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.9291941523551941,
+          -0.17528463900089264,
+          -0.009966731071472168
+        ],
+        [
+          0.9279999732971191,
+          0.1907321810722351,
+          0.37910136580467224
+        ]
+      ],
+      "faces": 74,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Shrub_1",
+      "file": "Nature/NA_Shrub_1.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.6543135046958923,
+          -0.665725827217102,
+          -0.019007885828614235
+        ],
+        [
+          0.6387490034103394,
+          0.6374017596244812,
+          0.7419958710670471
+        ]
+      ],
+      "faces": 1358,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Shrub_2",
+      "file": "Nature/NA_Shrub_2.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.6531691551208496,
+          -0.6623480916023254,
+          -0.019007885828614235
+        ],
+        [
+          0.6415145993232727,
+          0.6336202025413513,
+          0.7673171162605286
+        ]
+      ],
+      "faces": 1358,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Shrub_3",
+      "file": "Nature/NA_Shrub_3.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.6548640727996826,
+          -0.672066330909729,
+          -0.019007885828614235
+        ],
+        [
+          0.6517122983932495,
+          0.6308082342147827,
+          0.7412464022636414
+        ]
+      ],
+      "faces": 1358,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Grass_1",
+      "file": "Nature/NA_Grass_1.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.22223225235939026,
+          -0.2110452502965927,
+          0.0
+        ],
+        [
+          0.23756751418113708,
+          0.25943446159362793,
+          0.4071633517742157
+        ]
+      ],
+      "faces": 184,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Grass_2",
+      "file": "Nature/NA_Grass_2.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.21017761528491974,
+          -0.20220057666301727,
+          0.0
+        ],
+        [
+          0.23314517736434937,
+          0.2132670283317566,
+          0.4568345546722412
+        ]
+      ],
+      "faces": 184,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Grass_3",
+      "file": "Nature/NA_Grass_3.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.2602301836013794,
+          -0.2178439199924469,
+          0.0
+        ],
+        [
+          0.24014297127723694,
+          0.27511775493621826,
+          0.4996282458305359
+        ]
+      ],
+      "faces": 184,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Fern",
+      "file": "Nature/NA_Fern.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5501262545585632,
+          -0.5501262545585632,
+          0.024186519905924797
+        ],
+        [
+          0.5501262545585632,
+          0.5501262545585632,
+          0.414212167263031
+        ]
+      ],
+      "faces": 880,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Rock_1",
+      "file": "Nature/NA_Rock_1.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.3772187829017639,
+          -0.27134209871292114,
+          0.00042654573917388916
+        ],
+        [
+          0.3339114785194397,
+          0.333665132522583,
+          0.49925166368484497
+        ]
+      ],
+      "faces": 44,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Rock_2",
+      "file": "Nature/NA_Rock_2.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.4717267155647278,
+          -0.33738669753074646,
+          0.037980929017066956
+        ],
+        [
+          0.4072829484939575,
+          0.387253075838089,
+          0.636031985282898
+        ]
+      ],
+      "faces": 44,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Rock_3",
+      "file": "Nature/NA_Rock_3.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.5938106775283813,
+          -0.40906739234924316,
+          0.07713072001934052
+        ],
+        [
+          0.5645642280578613,
+          0.4318476915359497,
+          0.763690710067749
+        ]
+      ],
+      "faces": 44,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Rock_4",
+      "file": "Nature/NA_Rock_4.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.6877743005752563,
+          -0.49352046847343445,
+          0.10929089784622192
+        ],
+        [
+          0.6689848303794861,
+          0.4593883156776428,
+          0.8776690363883972
+        ]
+      ],
+      "faces": 44,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Rock_5",
+      "file": "Nature/NA_Rock_5.glb",
+      "category": "Nature",
+      "gridM": 0,
+      "boundsLocal": [
+        [
+          -0.7126979231834412,
+          -0.5818333625793457,
+          0.1341831386089325
+        ],
+        [
+          0.7915986776351929,
+          0.5289050340652466,
+          0.9745218753814697
+        ]
+      ],
+      "faces": 44,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Ground_Earth_2m",
+      "file": "Nature/NA_Ground_Earth_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0,
+          -0.20000000298023224
+        ],
+        [
+          1.0,
+          1.0,
+          0.047642435878515244
+        ]
+      ],
+      "faces": 205,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Ground_Grass_2m",
+      "file": "Nature/NA_Ground_Grass_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0,
+          -0.20000000298023224
+        ],
+        [
+          1.0,
+          1.0,
+          0.047642435878515244
+        ]
+      ],
+      "faces": 205,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Ground_Sand_2m",
+      "file": "Nature/NA_Ground_Sand_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0,
+          -0.20000000298023224
+        ],
+        [
+          1.0,
+          1.0,
+          0.047642435878515244
+        ]
+      ],
+      "faces": 205,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Ground_Mud_2m",
+      "file": "Nature/NA_Ground_Mud_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0,
+          -0.20000000298023224
+        ],
+        [
+          1.0,
+          1.0,
+          0.019056973978877068
+        ]
+      ],
+      "faces": 205,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_Ground_Stone_2m",
+      "file": "Nature/NA_Ground_Stone_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0,
+          -0.20000000298023224
+        ],
+        [
+          1.0,
+          1.0,
+          0.047642435878515244
+        ]
+      ],
+      "faces": 205,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    },
+    {
+      "id": "NA_StreamBed_2m",
+      "file": "Nature/NA_StreamBed_2m.glb",
+      "category": "Nature",
+      "gridM": 2,
+      "boundsLocal": [
+        [
+          -1.0,
+          -1.0531151294708252,
+          -0.25999999046325684
+        ],
+        [
+          1.0,
+          1.0381152629852295,
+          0.10499998927116394
+        ]
+      ],
+      "faces": 418,
+      "pivot": "documented mesh origin / bottom centre",
+      "revision": 2
+    }
+  ],
+  "assemblyRules_ko": [
+    "인간형: 얼굴·머리카락·몸통 의복·좌우 상완/전완 소매·골반/바지·발·무기 슬롯을 선택한다. 같은 슬롯은 한 종류만 사용한다.",
+    "완성 캐릭터 GLB 하나를 골격 기준으로 삼고 Parts의 JOINTS를 뼈 이름으로 대응시켜 기존 골격에 바인딩한다. 각 Parts의 복제 골격은 중복 생성하지 않는다.",
+    "Parts 메시의 원점과 바인드 포즈를 유지한다. 눈으로 위치를 맞추기 위해 메시를 옮기지 않는다.",
+    "Body_Torso와 Clothes_Torso는 대체 슬롯이다. 보이는 의복 아래에 같은 몸통을 겹쳐 넣을 필요가 없다.",
+    "Body_Pelvis와 Clothes_Pelvis도 대체 슬롯이다. Hakama와 함께 Clothes_Pelvis를 사용한다.",
+    "종별 동물 내부에서 Head/Antlers/Horns/Tail 등을 교체 또는 숨길 수 있다. 사슴 암컷은 Antlers를 숨기는 조합을 사용한다.",
+    "건축 벽 폭 2m, 높이 2.4m. AR_Floor 계열은 2x2m. 지붕은 X로 2m 진행하며 1m 상승, Y로 2m 반복한다.",
+    "문짝 폭 1m, 높이 2m. 문짝 원점은 왼쪽 하단, 이동식 문틀은 폭 2m. ENV_SlidingDoor는 0.95m 미닫이 애니메이션.",
+    "시연 주택은 4x4m. Assembly_VillageHome.glb / Assembly_BurntDojo.glb에 부품 배치 예제가 있다.",
+    "재질은 임의색 변경보다 EN_ 팔레트에서 선택한다. 원령 청록과 봉인 붉은색은 작은 면적에 한정한다.",
+    "지형은 2x2m, 가장자리는 높이 0으로 맞춘다. 미리보기용 물은 단색 PBR 메시이며 물 시뮬레이션은 포함하지 않는다.",
+    "v2의 인간 골격은 어깨 위치와 팔 길이가 바뀌었다. 이전 v1의 메시/바인드 행렬을 섞지 않고 v2 파일끼리 조합한다.",
+    "Body_HandGrip_R은 검을 쥐는 오른손, Body_Hand_R은 편 손이다. 같은 hand.R 슬롯에서 하나만 사용한다."
+  ],
+  "revision": 2,
+  "revisionNote_ko": "인체·의복·동물의 연결된 실루엣·건축 마감·생활 구조·식생 및 자연 재질 전면 수정."
+}

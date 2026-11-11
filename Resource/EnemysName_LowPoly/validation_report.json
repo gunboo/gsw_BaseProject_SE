@@ -1,0 +1,314 @@
+{
+  "revision": 2,
+  "checkedGlbs": 256,
+  "errors": [],
+  "skeletalFiles": 173,
+  "weightVerticesChecked": 173254,
+  "animationTracksChecked": 208,
+  "animatedPresets": [
+    {
+      "file": "Animals/AN_Boar.glb",
+      "clips": [
+        "Reference_Stand",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 10329
+    },
+    {
+      "file": "Animals/AN_Deer.glb",
+      "clips": [
+        "Reference_Stand",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 12748
+    },
+    {
+      "file": "Animals/AN_Goat.glb",
+      "clips": [
+        "Reference_Stand",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 10008
+    },
+    {
+      "file": "Animals/AN_Wolf.glb",
+      "clips": [
+        "Reference_Stand",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 12723
+    },
+    {
+      "file": "Architecture/ENV_SlidingDoor.glb",
+      "clips": [
+        "Open",
+        "Close",
+        "Closed"
+      ],
+      "triangles": 1296
+    },
+    {
+      "file": "Characters/CH_Deserter.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 10116
+    },
+    {
+      "file": "Characters/CH_Genzo_Smith.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9572
+    },
+    {
+      "file": "Characters/CH_Hana.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9684
+    },
+    {
+      "file": "Characters/CH_Masanori_Recorder.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 8864
+    },
+    {
+      "file": "Characters/CH_Monk.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9444
+    },
+    {
+      "file": "Characters/CH_Protagonist.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9304
+    },
+    {
+      "file": "Characters/CH_Saito_Headman.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9838
+    },
+    {
+      "file": "Characters/CH_Spirit_Guard.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 9304
+    },
+    {
+      "file": "Characters/CH_Taro_Fisher.glb",
+      "clips": [
+        "Reference_TPose",
+        "Reference_APose",
+        "TurnBase",
+        "Idle",
+        "Walk",
+        "Run",
+        "WalkStart",
+        "WalkStop",
+        "RunStop",
+        "TurnLeft90",
+        "TurnRight90",
+        "Attack",
+        "Jump",
+        "JumpStart",
+        "JumpAir",
+        "JumpLand"
+      ],
+      "triangles": 10232
+    },
+    {
+      "file": "Nature/ENV_GrassWind.glb",
+      "clips": [
+        "Wind"
+      ],
+      "triangles": 368
+    }
+  ],
+  "engineRuntimeTested": false,
+  "passed": true,
+  "uniqueSourceActions": 80,
+  "expectedHumanSkeleton": "HUMAN_7H_V2",
+  "materialAssets": 42,
+  "texturePngs": 79
+}

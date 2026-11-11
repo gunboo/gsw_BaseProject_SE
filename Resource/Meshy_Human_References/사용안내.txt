@@ -1,0 +1,23 @@
+원수의 이름 — Meshy 인간 캐릭터 입력 이미지
+
+구성: 개별 전신 PNG 9장, 각 1024 x 1536 픽셀.
+밝은 단색 배경, 한 이미지에 한 인물, 빈손과 중립 자세로 제작했습니다.
+이미지에는 얼굴·머리·의상이 함께 포함되어 있습니다.
+
+01_Protagonist.png — 주인공 · 호위 무사
+02_Saito_Headman.png — 사이토 · 촌장
+03_Genzo_Smith.png — 겐조 · 대장장이
+04_Taro_Fisher.png — 타로 · 어부
+05_Masanori_Recorder.png — 마사노리 · 구휼소 책임자
+06_Monk.png — 승려
+07_Spirit_Guard.png — 원령 검객 · 도장 문지기
+08_Hana.png — 하나 · 마을 아이
+09_Deserter.png — 탈영병 · 행렬의 생존자
+
+각 PNG를 원하는 캐릭터의 이미지 입력 자료로 사용하세요.
+이 파일들은 외형 참고 이미지이며, 부위별 메시 분리·리깅·애니메이션은 포함하지 않습니다.
+뒷면·가려진 구조는 이 단일 시점 이미지에서 확인할 수 없습니다.
+
+제작: 기본 제공 image_gen.imagegen, generate 모드.
+전체 생성 프롬프트: prompts.json
+
