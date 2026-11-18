@@ -14,6 +14,7 @@
 #include "MapOverlay.h"
 #include "Bow.h"
 #include "Monitoring.h"
+#include "SkillPanel.h"
 
 enum LevelState
 {
@@ -81,13 +82,15 @@ class Level
 public:
 	Level();
 
-	bool Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue, unsigned int seed);
+	bool Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue, unsigned int seed,
+		const PlayerStats* progression = NULL);
 
 	void Update(float deltaSeconds);
 	void Render();
 	MonitoredWorld CaptureMonitoring(bool active) const;
 	void OnKey(unsigned char key, bool down, bool shift);
 	MapOverlay& GetMap() { return m_Map; }
+	SkillPanel& GetSkills() { return m_SkillPanel; }
 
 	// Gameplay retains borrowed Actor pointers; remove managed actors only
 	// through the scene lifecycle.
@@ -155,6 +158,8 @@ private:
 
 	World m_World;
 	MapOverlay m_Map;
+	SkillPanel m_SkillPanel;
+	SkillCombat m_Skills;
 	Bow m_Bow;
 	WeaponKind m_Weapon = WEAPON_SWORD;
 	Lighting m_Lighting;

@@ -42,8 +42,10 @@ int ExperienceForLevel(int level)
 	return BASE_EXPERIENCE + EXPERIENCE_STEP * (level - 1) * level / 2;
 }
 
-void PlayerStats::Reset()
+void PlayerStats::Reset(float startingHealth)
 {
+	skills.Reset();
+	healthBase = startingHealth > 0.0f ? startingHealth : BASE_HEALTH;
 	level = 1;
 	experience = 0;
 	totalExperience = 0;
@@ -93,6 +95,7 @@ bool PlayerStats::AddExperience(int amount)
 
 	if (levelled)
 	{
+		skills.GrantLevel(level);
 		// A level up is also a breather: the new maximum is restored in full.
 		health = MaxHealth();
 	}
@@ -141,12 +144,14 @@ int PlayerStats::GetPoints(StatKind stat) const
 
 float PlayerStats::MaxHealth() const
 {
-	return BASE_HEALTH + HEALTH_PER_LEVEL * (level - 1) + HEALTH_PER_POINT * invested[STAT_VITALITY];
+	return healthBase + HEALTH_PER_LEVEL * (level - 1) + HEALTH_PER_POINT * invested[STAT_VITALITY]
+		+ skills.Value(SKILL_VITALITY);
 }
 
 float PlayerStats::AttackPower() const
 {
-	return BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1) + ATTACK_PER_POINT * invested[STAT_STRENGTH];
+	return (BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1) + ATTACK_PER_POINT * invested[STAT_STRENGTH])
+		* (1.0f + skills.Value(SKILL_MASTERY));
 }
 
 float PlayerStats::DamageReduction() const
@@ -160,7 +165,7 @@ float PlayerStats::MoveSpeed() const
 {
 	const float speed = BASE_SPEED + SPEED_PER_POINT * invested[STAT_AGILITY];
 
-	return speed > MAX_SPEED ? MAX_SPEED : speed;
+	return (speed > MAX_SPEED ? MAX_SPEED : speed) * (1.0f + skills.Value(SKILL_FLEET));
 }
 
 float PlayerStats::AttackInterval() const
@@ -168,4 +173,27 @@ float PlayerStats::AttackInterval() const
 	const float interval = BASE_SWING - SWING_PER_POINT * invested[STAT_AGILITY];
 
 	return interval < MIN_SWING ? MIN_SWING : interval;
+}
+
+bool PlayerStats::LearnSkill(int index)
+{
+	const float previousMax = MaxHealth();
+
+	if (!skills.Learn(index))
+	{
+		return false;
+	}
+
+	health += MaxHealth() - previousMax;
+	return true;
+}
+
+void PlayerStats::HealOnKill()
+{
+	health += MaxHealth() * skills.Value(SKILL_LEECH);
+
+	if (health > MaxHealth())
+	{
+		health = MaxHealth();
+	}
 }

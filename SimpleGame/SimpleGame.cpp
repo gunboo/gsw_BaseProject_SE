@@ -91,7 +91,7 @@ namespace
 
 		g_Level = new Level();
 
-		if (!g_Level->Initialize(g_Renderer, g_Models, g_Dialogue, seed))
+		if (!g_Level->Initialize(g_Renderer, g_Models, g_Dialogue, seed, &g_Tutorial->GetProgression()))
 		{
 			std::cout << "Level 1 could not be generated; staying in the tutorial.\n";
 
@@ -285,6 +285,11 @@ MapOverlay* ActiveMap()
 	return InLevel() ? &g_Level->GetMap() : g_Tutorial != NULL ? &g_Tutorial->GetMap() : NULL;
 }
 
+SkillPanel* ActiveSkills()
+{
+	return InLevel() ? &g_Level->GetSkills() : g_Tutorial != NULL ? &g_Tutorial->GetSkills() : NULL;
+}
+
 // GLFW cursor positions use window pixels; the renderer can use DPI-scaled pixels.
 void MapCursor(GLFWwindow* window, double x, double y, float& screenX, float& screenY)
 {
@@ -318,6 +323,13 @@ void CursorCallback(GLFWwindow* window, double x, double y)
 	{
 		float screenX, screenY;
 		MapCursor(window, x, y, screenX, screenY);
+
+		if (ActiveSkills() != NULL && ActiveSkills()->IsOpen())
+		{
+			ActiveSkills()->OnPointer(screenX, screenY, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, *g_Renderer);
+			return;
+		}
+
 		map->OnPointer(screenX, screenY, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, *g_Renderer);
 	}
 }
@@ -344,6 +356,11 @@ void FocusCallback(GLFWwindow*, int focused)
 	if (ActiveMap() != NULL)
 	{
 		ActiveMap()->CancelDrag();
+	}
+
+	if (ActiveSkills() != NULL)
+	{
+		ActiveSkills()->CancelPointer();
 	}
 }
 

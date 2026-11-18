@@ -184,4 +184,14 @@
     <ClInclude Include="MapOverlay.h"><Filter>헤더 파일</Filter></ClInclude>
     <ClInclude Include="MapView.h"><Filter>헤더 파일</Filter></ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Skills.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClCompile Include="Skills.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClInclude Include="SkillCombat.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClCompile Include="SkillCombat.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClInclude Include="SkillVfx.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClCompile Include="SkillVfx.cpp"><Filter>소스 파일</Filter></ClCompile>
+    <ClInclude Include="SkillPanel.h"><Filter>헤더 파일</Filter></ClInclude>
+    <ClCompile Include="SkillPanel.cpp"><Filter>소스 파일</Filter></ClCompile>
+  </ItemGroup>
 </Project>

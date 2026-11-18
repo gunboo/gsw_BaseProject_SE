@@ -13,6 +13,7 @@
 #include "Monitoring.h"
 #include "SceneGraph.h"
 #include "VillageSimulation.h"
+#include "SkillPanel.h"
 
 enum GameState
 {
@@ -76,6 +77,8 @@ public:
 
 	void OnKey(unsigned char key, bool down, bool shift);
 	MapOverlay& GetMap() { return m_Map; }
+	SkillPanel& GetSkills() { return m_SkillPanel; }
+	const PlayerStats& GetProgression() const { return m_Village.Stats(); }
 	bool WantsExit() const { return m_WantsExit; }
 	bool ConsumeNextLevelRequest();
 	GameState GetState() const
@@ -147,6 +150,7 @@ private:
 	DialogueDB* m_Dialogue;
 	World m_World;
 	MapOverlay m_Map;
+	SkillPanel m_SkillPanel;
 	SceneGraph m_SceneGraph;
 	VillageSimulation m_Village;
 	bool m_Attacking = false;

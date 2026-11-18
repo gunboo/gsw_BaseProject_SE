@@ -8,6 +8,7 @@
 #include "Bow.h"
 #include "Monitoring.h"
 #include "ResidentActivity.h"
+#include "SkillCombat.h"
 
 // Borrowed actors are owned by Game's scene graph. This simulation has no
 // story progression flags and never changes the separate farming level.
@@ -19,6 +20,10 @@ public:
 	void Update(float deltaSeconds);
 	void SetState(bool active, bool visible);
 	void Attack();
+	bool CastSkill(int skill);
+	PlayerStats& Stats() { return m_Stats; }
+	const PlayerStats& Stats() const { return m_Stats; }
+	SkillCombat& Skills() { return m_Skills; }
 	void SetFacing(float x, float y);
 	const PlayerAttackMotion& AttackMotion() const
 	{
@@ -137,7 +142,7 @@ private:
 	void FindWorkTarget(Resident& resident);
 	void UpdateMonster(size_t index, float deltaSeconds);
 	bool SpawnMonster(size_t index, bool initial);
-	void HitMonster(size_t index, float damage);
+	void HitMonster(size_t index, float damage, bool playerCredit = true);
 	void ResolveAttack();
 	void HurtPlayer(float damage);
 	void DrawMonster(size_t index, Renderer& renderer);
@@ -165,7 +170,8 @@ private:
 	std::vector<Rumor> m_Rumors;
 	float m_ContactTimer = 0.0f;
 	Rng m_Rng;
-	float m_Health = 100.0f;
+	PlayerStats m_Stats;
+	SkillCombat m_Skills;
 	float m_AttackCooldown = 0.0f;
 	float m_Invulnerable = 0.0f;
 	PlayerAttackMotion m_AttackMotion;

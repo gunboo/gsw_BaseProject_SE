@@ -17,7 +17,7 @@ MonitoredWorld Level::CaptureMonitoring(bool active) const
 	snapshot.id = "level1";
 	snapshot.name = "Forest level 1";
 	snapshot.active = active;
-	snapshot.state = active ? (m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
+	snapshot.state = active ? (m_SkillPanel.IsOpen() ? "skills" : m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
 	snapshot.width = m_World.GetWidth();
 	snapshot.height = m_World.GetHeight();
 	snapshot.kills = static_cast<unsigned int>(m_Kills);
@@ -224,7 +224,7 @@ Level::Level()
 	}
 }
 
-bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue, unsigned int seed)
+bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dialogue, unsigned int seed, const PlayerStats* progression)
 {
 	m_Renderer = renderer;
 	m_Models = models;
@@ -243,6 +243,13 @@ bool Level::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dia
 	m_Lighting.SetViewer(m_CameraX, m_CameraY);
 
 	m_Stats.Reset();
+
+	if (progression != NULL)
+	{
+		m_Stats = *progression;
+	}
+
+	m_SkillPanel.Initialize(m_Stats, m_Skills, *m_Dialogue);
 
 	// Dusk rather than deep night: the village sells mood, this level has to
 	// stay readable while three things are swinging at once.
@@ -347,6 +354,15 @@ void Level::BuildSceneGraph()
 	}
 
 	m_PickupActors = m_SceneGraph.CreateActor("pickups", m_SimulationActor);
+	m_Skills.Initialize(m_SceneGraph, m_SimulationActor, m_PlayerActor, m_World, m_Stats, m_Enemies.size(),
+		[this](size_t index) -> Actor*
+		{
+			return m_Enemies[index].alive ? m_Enemies[index].actor : NULL;
+		},
+		[this](size_t index, float damage, bool critical)
+		{
+			DamageEnemy(static_cast<int>(index), damage, critical);
+		}, 1.0f, m_Models);
 	m_Bow.Initialize(m_SceneGraph, m_SimulationActor, m_World, m_Enemies.size(),
 		[this](size_t index) -> Actor*
 		{
@@ -354,7 +370,7 @@ void Level::BuildSceneGraph()
 		},
 		[this](size_t index, float damage)
 		{
-			DamageEnemy(static_cast<int>(index), damage, false);
+			m_Skills.Hit(index, damage, true);
 		});
 	m_FloatingTextActors = m_SceneGraph.CreateActor("floating_text", m_SimulationActor);
 
@@ -675,7 +691,7 @@ void Level::AddFloatingText(const std::wstring& text, const ActorPosition& posit
 
 void Level::Attack()
 {
-	if (m_SwingCooldown > 0.0f || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
+	if (m_SwingCooldown > 0.0f || m_Skills.Busy() || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
 	{
 		return;
 	}
@@ -737,7 +753,7 @@ void Level::ResolveAttack()
 			continue;
 		}
 
-		const bool critical = m_Rng.NextFloat() < CRIT_CHANCE;
+		const bool critical = m_Rng.NextFloat() < CRIT_CHANCE + m_Stats.skills.Value(SKILL_PRECISION);
 		float damage = m_AttackDamage * m_Rng.Range(0.88f, 1.12f);
 
 		if (critical)
@@ -745,6 +761,7 @@ void Level::ResolveAttack()
 			damage *= CRIT_MULTIPLIER;
 		}
 
+		m_Skills.Impact(position, critical);
 		DamageEnemy((int)i, damage, critical);
 	}
 }
@@ -800,6 +817,7 @@ void Level::KillEnemy(int index)
 	enemy.actor->SetVisible(false);
 	enemy.respawnTimer = m_Rng.Range(RESPAWN_MIN, RESPAWN_MAX);
 	++m_Kills;
+	m_Stats.HealOnKill();
 
 	SpawnPickup(PICKUP_ORB, position.x, position.y, profile.experience);
 
@@ -817,12 +835,12 @@ void Level::KillEnemy(int index)
 
 void Level::DamagePlayer(float amount)
 {
-	if (m_HurtFlash > 0.0f || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
+	if (m_HurtFlash > 0.0f || m_Skills.Invulnerable() || m_State != LEVEL_PLAY || !m_PlayerActor->IsActiveInHierarchy())
 	{
 		return;
 	}
 
-	const float reduced = amount * (1.0f - m_Stats.DamageReduction());
+	const float reduced = amount * (1.0f - m_Stats.DamageReduction()) * m_Skills.IncomingMultiplier();
 
 	m_Stats.health -= reduced;
 	m_HurtFlash = INVULNERABLE_TIME;
@@ -839,6 +857,7 @@ void Level::DamagePlayer(float amount)
 		m_StateTime = 0.0f;
 		m_DownedTimer = DOWNED_DURATION;
 		m_Bow.Clear();
+		m_Skills.ClearEffects();
 		m_AttackMotion.Clear();
 		m_MoveMotion.Clear();
 		m_AttackHeld = false;
@@ -902,7 +921,7 @@ void Level::CollectPickup(int index)
 
 void Level::Update(float deltaSeconds)
 {
-	if (m_Map.IsOpen())
+	if (m_Map.IsOpen() || m_SkillPanel.IsOpen())
 	{
 		return;
 	}
@@ -914,6 +933,11 @@ void Level::Update(float deltaSeconds)
 
 void Level::UpdateSimulation(float deltaSeconds)
 {
+	if (m_State == LEVEL_PLAY)
+	{
+		m_Skills.Update(deltaSeconds);
+	}
+
 	m_Time += deltaSeconds;
 	m_StateTime += deltaSeconds;
 	m_Fade = Clamp(m_Fade - deltaSeconds / 1.2f, 0.0f, 1.0f);
@@ -1213,7 +1237,8 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 		key = (unsigned char)(key - 'A' + 'a');
 	}
 
-	if (m_Map.OnKey(key, down, m_State == LEVEL_PLAY, PlayerPosition()))
+	if (m_SkillPanel.OnKey(key, down, m_State == LEVEL_PLAY && !m_Map.IsOpen())
+		|| m_Map.OnKey(key, down, m_State == LEVEL_PLAY && !m_SkillPanel.IsOpen(), PlayerPosition()))
 	{
 		for (bool& moving : m_MoveKey)
 		{
@@ -1280,6 +1305,15 @@ void Level::OnKey(unsigned char key, bool down, bool shift)
 			}
 		}
 
+		return;
+	}
+
+	const int skill = SkillForKey(key);
+
+	if (m_State == LEVEL_PLAY && skill >= 0)
+	{
+		const bool cast = !m_AttackMotion.active && m_Skills.Cast(skill, m_Weapon == WEAPON_BOW, m_FacingX, m_FacingY);
+		m_SkillPanel.NotifyCast(skill, cast);
 		return;
 	}
 
@@ -1719,6 +1753,14 @@ void Level::DrawDownedScreen()
 
 void Level::Render()
 {
+	if (m_SkillPanel.IsOpen())
+	{
+		m_Renderer->BeginFrame(COL_SKY, m_Time);
+		m_SkillPanel.Draw(*m_Renderer);
+		m_Renderer->EndFrame();
+		return;
+	}
+
 	if (m_Map.IsOpen())
 	{
 		m_Renderer->BeginFrame(COL_SKY, m_Time);
@@ -1734,6 +1776,7 @@ void Level::Render()
 	if (m_State == LEVEL_PLAY)
 	{
 		m_Map.Draw(*m_Renderer, PlayerPosition());
+		m_SkillPanel.DrawHotbar(*m_Renderer, m_Weapon == WEAPON_BOW);
 	}
 
 	m_Renderer->EndFrame();

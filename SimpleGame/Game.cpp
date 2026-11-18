@@ -17,7 +17,7 @@ MonitoredWorld Game::CaptureMonitoring(bool active) const
 	snapshot.id = "tutorial";
 	snapshot.name = "Five settlement region";
 	snapshot.active = active;
-	snapshot.state = active ? (m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
+	snapshot.state = active ? (m_SkillPanel.IsOpen() ? "skills" : m_Map.IsOpen() ? "map" : states[m_State]) : "inactive";
 	snapshot.width = m_World.GetWidth();
 	snapshot.height = m_World.GetHeight();
 	m_Village.CaptureMonitoring(snapshot);
@@ -75,7 +75,7 @@ namespace
 	const float PLAYER_RADIUS = 0.28f;
 	const float WALK_SPEED = 3.1f;
 	const float RUN_SPEED = 5.2f;
-	const unsigned char TUTORIAL_SKIP_KEY = 'k';
+	const unsigned char TUTORIAL_SKIP_KEY = 'j';
 	const int SKIP_HINT_FONT_SIZE = 11;
 	const float SKIP_HINT_SIDE_MARGIN = VisualStyle::HUD_MARGIN;
 	const float SKIP_HINT_BOTTOM_MARGIN = 24.0f;
@@ -293,6 +293,7 @@ bool Game::Initialize(Renderer* renderer, ModelLibrary* models, DialogueDB* dial
 		return false;
 	}
 
+	m_SkillPanel.Initialize(m_Village.Stats(), m_Village.Skills(), *m_Dialogue);
 	m_Map.Initialize(m_World, *m_Dialogue, "ui_map_village");
 
 	for (const Npc& npc : m_Npcs)
@@ -598,7 +599,7 @@ void Game::UpdateSceneState()
 
 void Game::Update(float deltaSeconds)
 {
-	if (m_Map.IsOpen())
+	if (m_Map.IsOpen() || m_SkillPanel.IsOpen())
 	{
 		return;
 	}
@@ -727,7 +728,7 @@ void Game::UpdatePlayer(float deltaSeconds)
 	dy /= length;
 	m_Village.SetFacing(dx, dy);
 
-	const float speed = m_Running ? RUN_SPEED : WALK_SPEED;
+	const float speed = (m_Running ? RUN_SPEED : WALK_SPEED) * (1.0f + m_Village.Stats().skills.Value(SKILL_FLEET));
 	const float stepX = dx * speed * deltaSeconds;
 	const float stepY = dy * speed * deltaSeconds;
 	const ActorPosition worldPosition = m_PlayerActor->GetWorldPosition();
@@ -1125,7 +1126,8 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 		key = (unsigned char)(key - 'A' + 'a');
 	}
 
-	if (m_Map.OnKey(key, down, m_State == STATE_PLAY, m_PlayerActor->GetWorldPosition()))
+	if (m_SkillPanel.OnKey(key, down, m_State == STATE_PLAY && !m_Map.IsOpen())
+		|| m_Map.OnKey(key, down, m_State == STATE_PLAY && !m_SkillPanel.IsOpen(), m_PlayerActor->GetWorldPosition()))
 	{
 		for (bool& moving : m_MoveKey)
 		{
@@ -1159,6 +1161,14 @@ void Game::OnKey(unsigned char key, bool down, bool shift)
 
 	if (!down)
 	{
+		return;
+	}
+
+	const int skill = SkillForKey(key);
+
+	if (m_State == STATE_PLAY && skill >= 0)
+	{
+		m_SkillPanel.NotifyCast(skill, m_Village.CastSkill(skill));
 		return;
 	}
 
@@ -2102,6 +2112,14 @@ void Game::DrawEnding()
 
 void Game::Render()
 {
+	if (m_SkillPanel.IsOpen())
+	{
+		m_Renderer->BeginFrame(COL_SKY, m_Time);
+		m_SkillPanel.Draw(*m_Renderer);
+		m_Renderer->EndFrame();
+		return;
+	}
+
 	if (m_Map.IsOpen())
 	{
 		m_Renderer->BeginFrame(COL_SKY, m_Time);
@@ -2118,6 +2136,7 @@ void Game::Render()
 	if (m_State == STATE_PLAY)
 	{
 		m_Map.Draw(*m_Renderer, m_PlayerActor->GetWorldPosition());
+		m_SkillPanel.DrawHotbar(*m_Renderer, m_Village.HasBow());
 	}
 
 	m_Renderer->EndFrame();

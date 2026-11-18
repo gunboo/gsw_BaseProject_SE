@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Skills.h"
+
 // The four things a point can be spent on. Kept as an enum so the allocation
 // screen and the derived values cannot drift apart.
 enum StatKind
@@ -15,6 +17,7 @@ enum StatKind
 // points are what the player assigns after each level up.
 struct PlayerStats
 {
+	SkillBook skills;
 	int level;
 	int experience;			// toward the next level
 	int totalExperience;
@@ -22,8 +25,9 @@ struct PlayerStats
 	int invested[STAT_COUNT];
 
 	float health;
+	float healthBase;
 
-	void Reset();
+	void Reset(float startingHealth = 60.0f);
 
 	int ExperienceToNext() const;
 	bool IsMaxLevel() const;
@@ -32,6 +36,8 @@ struct PlayerStats
 	bool AddExperience(int amount);
 
 	bool Spend(StatKind stat);
+	bool LearnSkill(int index);
+	void HealOnKill();
 
 	int GetPoints(StatKind stat) const;
 

@@ -15,7 +15,7 @@ namespace
 	const float HIT_RADIUS = 0.6f;
 	const float MIN_DISTANCE = 0.001f;
 	const float DRAW_HEIGHT = 0.8f;
-	const float TAIL_LENGTH = 0.65f;
+	const float TAIL_LENGTH = 1.25f;
 
 	void Place(Actor& actor, const ActorPosition& position)
 	{
@@ -39,7 +39,7 @@ void Bow::Initialize(SceneGraph& graph, Actor* parent, World& world, size_t targ
 		Arrow& arrow = m_Arrows[i];
 		arrow = {};
 		arrow.actor = graph.CreateActor("Arrow_" + std::to_string(i), parent);
-		arrow.actor->SetRenderBounds(-50.0f, -60.0f, 50.0f, 30.0f);
+		arrow.actor->SetRenderBounds(-75.0f, -80.0f, 75.0f, 55.0f);
 		arrow.actor->SetUpdateCallback([this, i](Actor&, float deltaSeconds)
 		{
 			Update(i, deltaSeconds);
@@ -235,13 +235,42 @@ void Bow::Draw(size_t index, Renderer& renderer)
 {
 	const Arrow& arrow = m_Arrows[index];
 	const ActorPosition position = arrow.actor->GetWorldPosition();
+	const float tailLength = std::min(TAIL_LENGTH, RANGE - arrow.remaining);
 	float x, y, tailX, tailY;
 	renderer.WorldToScreen(position.x, position.y, position.z + DRAW_HEIGHT, &x, &y);
-	renderer.WorldToScreen(position.x - arrow.dx * TAIL_LENGTH,
-		position.y - arrow.dy * TAIL_LENGTH, position.z - arrow.dz * TAIL_LENGTH + DRAW_HEIGHT, &tailX, &tailY);
+	renderer.WorldToScreen(position.x - arrow.dx * tailLength,
+		position.y - arrow.dy * tailLength, position.z - arrow.dz * tailLength + DRAW_HEIGHT, &tailX, &tailY);
 	const float depth = position.x + position.y + 0.2f;
-	renderer.PushLine(tailX, tailY, x, y, 2.5f, RGBA(0.9f, 0.77f, 0.45f), depth);
-	renderer.PushDiamond(x, y, 3.0f, 3.0f, RGBA(1.0f, 0.95f, 0.8f), depth + 0.01f);
+	renderer.ClearAnim();
+
+	// Fading segments preserve the flight direction without an opaque beam.
+	for (int i = 0; i < 5; ++i)
+	{
+		const float t = static_cast<float>(i) / 5.0f;
+		const float next = static_cast<float>(i + 1) / 5.0f;
+		const float startX = tailX + (x - tailX) * t;
+		const float startY = tailY + (y - tailY) * t;
+		const float endX = tailX + (x - tailX) * next;
+		const float endY = tailY + (y - tailY) * next;
+		renderer.PushLine(startX, startY, endX, endY, 7.0f,
+			RGBA(0.3f, 0.8f, 1.0f, next * 0.15f), depth);
+		renderer.PushLine(startX, startY, endX, endY, 2.5f,
+			RGBA(0.65f, 0.9f, 1.0f, next * 0.85f), depth + 0.001f);
+	}
+
+	const float dx = x - tailX, dy = y - tailY;
+	const float length = sqrtf(dx * dx + dy * dy);
+
+	if (length > 0.001f)
+	{
+		const float ux = dx / length, uy = dy / length;
+		const float head[] = { x + ux * 6.0f, y + uy * 6.0f,
+			x - ux * 5.0f - uy * 3.0f, y - uy * 5.0f + ux * 3.0f,
+			x - ux * 5.0f + uy * 3.0f, y - uy * 5.0f - ux * 3.0f };
+		renderer.PushLine(x - dx * 0.45f, y - dy * 0.45f, x, y, 1.2f,
+			RGBA(1.0f, 0.97f, 0.85f), depth + 0.002f);
+		renderer.PushPolygon(head, 3, RGBA(1.0f, 0.97f, 0.85f), depth + 0.01f);
+	}
 }
 
 void Bow::DrawEquipped(Renderer& renderer, const ActorPosition& position)

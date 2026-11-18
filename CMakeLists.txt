@@ -96,7 +96,7 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
-  foreach(name IN ITEMS player_motion resident_activity render_optimizations fonts window_input map)
+  foreach(name IN ITEMS player_motion resident_activity render_optimizations fonts window_input map skills)
     add_executable(test_${name} Tools/test_${name}.cpp)
     target_link_libraries(test_${name} PRIVATE game_core)
     add_dependencies(test_${name} game_assets)

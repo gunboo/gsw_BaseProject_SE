@@ -187,4 +187,14 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClInclude Include="Skills.h"></ClInclude>
+    <ClCompile Include="Skills.cpp"></ClCompile>
+    <ClInclude Include="SkillCombat.h"></ClInclude>
+    <ClCompile Include="SkillCombat.cpp"></ClCompile>
+    <ClInclude Include="SkillVfx.h"></ClInclude>
+    <ClCompile Include="SkillVfx.cpp"></ClCompile>
+    <ClInclude Include="SkillPanel.h"></ClInclude>
+    <ClCompile Include="SkillPanel.cpp"></ClCompile>
+  </ItemGroup>
 </Project>

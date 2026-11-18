@@ -49,7 +49,7 @@ WASD 이동 · Shift 달리기 · Space 공격
 E 대화·조사 · Tab 단서 · Esc 종료
 
 @ui_hud_skip
-[K] 제1레벨
+[J] 제1레벨
 
 @ui_hud_lv_controls
 WASD 이동 · Shift 달리기 · Space 공격 · C 능력치 · Esc 종료
@@ -115,7 +115,7 @@ WASD 이동 · Shift 달리기 · Space 공격 · C 능력치 · Esc 종료
 WASD 이동   Shift 달리기   E 대화·조사   Tab 단서   Esc 종료
 
 @ui_tutorial_skip
-[K] 튜토리얼 건너뛰기 · 제1레벨
+[J] 튜토리얼 건너뛰기 · 제1레벨
 
 # ---------------------------------------------------------------- elder
 @elder_intro
@@ -948,3 +948,206 @@ $마을 사람
 
 @ui_map_gate
 성문
+
+# Skill progression and UI
+@ui_skill_title
+무공과 영술
+
+@ui_skill_job1
+1차 · 방랑무사
+
+@ui_skill_job2
+2차 · 퇴마무사
+
+@ui_skill_active
+액티브 · 칼/활 공용
+
+@ui_skill_passive
+패시브 · 항상 적용
+
+@ui_skill_list_hint
+스킬 선택 → 설명 확인 → [+] 버튼으로 강화
+
+@ui_skill_need_job
+2차 전직을 완료해야 배울 수 있습니다.
+
+@ui_skill_need
+선행 스킬 필요:
+
+@ui_skill_mastered
+마스터한 스킬입니다.
+
+@ui_skill_can_learn
+SP 1을 사용하여 배우거나 강화합니다.
+
+@ui_skill_no_sp
+SP 부족 · 레벨업마다 SP 3 획득
+
+@ui_skill_learned
+강화 완료!
+
+@ui_skill_advanced
+2차 전직 완료! · 퇴마무사
+
+@ui_skill_job_requirement
+2차 전직 조건: Lv.10 + 1차 스킬에 SP 9 투자
+
+@ui_skill_current
+[현재 레벨]
+
+@ui_skill_next
+[다음 레벨]
+
+@ui_skill_cooldown
+재사용 대기시간
+
+@ui_skill_spend
+SP 1 투자 · Enter
+
+@ui_skill_advance
+2차 전직하기 · P
+
+@ui_skill_keyboard
+1/2: 전직 탭   W/S: 스킬 선택   Enter: 강화   P: 전직   K/Esc: 닫기   ·   게임 일시 정지
+
+@ui_skill_not_learned
+아직 배우지 않은 스킬입니다. [K]에서 SP를 투자하세요.
+
+@ui_skill_wait
+스킬 재사용 또는 공격 동작이 끝나기를 기다려 주세요.
+
+@ui_skill_bar_bow
+활 스킬
+
+@ui_skill_bar_sword
+칼 스킬
+
+@skill_combo
+무기연격
+
+@skill_combo_desc
+칼: 전방 돌진 후 주변을 벱니다.
+활: 목표를 향해 화살 3발을 펼칩니다.
+화살 한 발은 표시 피해의 65%입니다.
+
+@skill_combo_value
+공격력 대비 피해
+
+@skill_breaker
+파쇄격
+
+@skill_breaker_desc
+칼: 전방 3.2칸의 적들을 꿰뚫습니다.
+활: 7칸을 관통하는 영혼 화살입니다.
+벽에 막히며 적 여러 명을 맞힙니다.
+
+@skill_breaker_value
+공격력 대비 피해
+
+@skill_ward
+수호결계
+
+@skill_ward_desc
+5초 동안 받는 피해를 줄입니다.
+칼과 활 모두에 적용되며, 기존 방어력에
+추가로 적용됩니다.
+
+@skill_ward_value
+받는 피해 감소
+
+@skill_mastery
+무기수련
+
+@skill_mastery_desc
+칼과 활의 기본 공격력을 높입니다.
+일반 공격과 모든 공격 스킬이 함께
+강해집니다.
+
+@skill_mastery_value
+공격력 증가
+
+@skill_fleet
+경공
+
+@skill_fleet_desc
+걷기와 달리기 속도를 높입니다.
+칼·활을 들었을 때 모두 적용됩니다.
+
+@skill_fleet_value
+이동 속도 증가
+
+@skill_vitality
+생명단련
+
+@skill_vitality_desc
+최대 체력이 증가합니다.
+새로 증가한 체력만큼 즉시 회복됩니다.
+
+@skill_vitality_value
+최대 체력 추가
+
+@skill_barrage
+영혼난무
+
+@skill_barrage_desc
+칼: 주위 3.6칸을 크게 회전해 벱니다.
+활: 조준 지점 3.6칸에 화살비를 내립니다.
+벽 너머의 적에게는 닿지 않습니다.
+
+@skill_barrage_value
+공격력 대비 피해
+
+@skill_shadow
+그림자보법
+
+@skill_shadow_desc
+바라보는 방향으로 최대 4.5칸 이동하고
+잠시 모든 피해를 무시합니다.
+칼·활 공용이며 벽을 통과하지 못합니다.
+
+@skill_shadow_value
+무적 지속시간
+
+@skill_storm
+퇴마폭풍
+
+@skill_storm_desc
+칼: 발동 위치에 영혼 폭풍을 만듭니다.
+활: 조준 위치에 영혼 화살비를 내립니다.
+3.8칸 범위에 1초 간격으로 3회 타격합니다.
+
+@skill_storm_value
+타격당 공격력 대비 피해
+
+@skill_precision
+심안
+
+@skill_precision_desc
+칼·활 일반 공격과 공격 스킬의
+치명타 확률을 높입니다.
+치명타 피해는 기본 피해의 1.8배입니다.
+
+@skill_precision_value
+치명타 확률 추가
+
+@skill_leech
+흡혼
+
+@skill_leech_desc
+직접 몬스터를 처치할 때마다
+최대 체력의 일부를 회복합니다.
+일반 공격과 스킬 모두 적용됩니다.
+
+@skill_leech_value
+처치당 최대 체력 회복
+
+@skill_focus
+정신집중
+
+@skill_focus_desc
+모든 액티브 스킬의 재사용 시간을
+줄입니다. 다음 사용부터 적용되며
+일반 공격 간격에는 영향이 없습니다.
+
+@skill_focus_value
+스킬 재사용 시간 감소
